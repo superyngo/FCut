@@ -1,0 +1,278 @@
+初步idea：
+我想基於ffmpeg開發一款跨平台(桌面、移動、web)端的自動影片剪輯軟體
+功能包括但不限於speedup、jumpcut、remove silence、remove motionless等
+
+業務邏輯部分我已經用python開發完成，git頁面為https://github.com/superyngo/ffmpeg_toolkit
+現在我要完成app的UI部分，我計畫使用pywebview搭配前端技術來開發，
+實現前後端分離以便將來可輕易移植到移動端和web端，
+我的想法是先用pywebview開發一個原型，
+並使用nuitka編譯成執行檔，
+先鎖定windows平台，
+之後考慮移植到linux和macOS平台，
+最後再考慮移植到移動端和web端。
+(未來有可能考慮將業務邏輯移植到rust並改成使用tauri開發以便更方便的多跨平台)
+
+關於編譯成windows執行檔部分，
+因為要上架到microsoft store，
+所以必須考慮封裝成msix安裝檔的需求。
+
+在python開發上，我使用uv做套件及環境管理。
+
+在前端UI部分，
+我計畫使用typescript、vite、vue3、Vue Router、pinia等配套技術來開發，
+css部分可能考慮tailwind
+
+關於typescript及vue3開發風格部分，
+我有一個特殊想法，
+我希望能做到類似python pydentic的功能，
+將component封裝成一個可繼承的base class，
+並將屬性編準化，
+例如可傳入name、class、id、style、v-model等，
+最好還包括可傳入/讀出的reactive資料，
+再從這個base class繼承出不同的component，
+例如button、input、select等，
+並各自去設計可傳入的參數，
+這樣做的目的是更輕易且彈性的維護/修改
+但我不確定是否可行？
+
+關於整體UI設計部分，
+可參考我已經上架的app Trimshh(https://apps.microsoft.com/detail/9NQPRSSRVV2C?hl=neutral&gl=TW&ocid=pdpshare)
+但Trimshh的設計非常簡陋，而且是terminal based，
+我這次我想做新的設計
+
+首先是左上角的選單按鈕，
+參考Paetron網站(https://paetron.com/)設計，
+把app的設定或是資訊(例如theme、about及license資訊等)放進選單按鈕中，
+在大螢幕上點選選單會從左側滑出導航欄，
+在小尺寸螢幕上點選選單導航會跳出並覆蓋整個螢幕
+
+操作區的部分分成3大塊：
+
+第一塊是共同操作區
+可讓用戶點選開啟系統檔案樓覽器或相片瀏覽器以便選擇要輸入的檔案
+一次可選擇多個檔案，也可以不斷添加新檔案
+選擇輸入的影片以列表呈現
+列表高度在一定範圍內，
+溢出時會出現滾動條，
+每個影片有小預覽圖、影片名稱、影片長度等資訊
+並提供刪除按鈕，以及清空影片按鈕
+
+第二塊是功能操作區
+根據不同的功能選項提供不同的可設定參數
+例如speedup功能就提供speedup倍數的選項，
+remove silenc就提供dB threshold的選項等
+每個選項都可以用選單的方式提供預設值，
+也可以直接輸入數字修改，
+選項有文字說明，例如大中小，並對應相應的預設值
+選擇預設選項會立刻修改直接輸入的數字
+還要有一個send to queue的按鈕，
+把選擇的影片搭配功能操作的內容送進queue區
+由於每個功能都對應呼叫不同的業務邏輯function
+send to queue就是把影片和function封裝起來放在queue等待執行
+
+第三塊是輸出內容區
+提供設定輸出檔案的路徑資料夾(預設為downloads資料夾)
+以及queue區和log區
+queue區也是以列表呈現
+列表高度在一定範圍內，
+溢出時會出現滾動條
+每個queue任務有小預覽圖、要操作的功能以及參數等資訊
+最後是log區
+log區是顯示當前正在執行的任務的log資訊
+高度在一定範圍內，
+溢出時會出現滾動條
+
+重點在於這三大區塊要怎麼布局
+我的想法是，
+從第一個共同區塊開始往下垂直布局
+但在螢幕最上方懸浮一條頁籤式的功能導航條
+可提示並切換要操作的功能(speedup、jumcut、remove silence等)
+頁籤整體可左右滑動以放入更多頁籤
+不同頁籤使用不同顏色
+切換頁籤時螢幕底色會跟著改變
+而二區塊功能操作區會更著頁籤切換左右快速滑動並更換操作內容
+這代表用戶也可直接在功能操作區左右滑動來切換不同頁籤功能
+而第一和第三區塊則是固定不動，區塊底色也不會跟著頁籤改變
+
+開發指南初步分析
+
+技術架構方面
+前後端分離架構確認
+
+使用 pywebview 作為橋接 Python 後端與前端 UI 的工具是個好選擇
+建議明確定義 Python 後端和前端之間的 API 介面，以利後續移植到其他平台
+Vue3 與 TypeScript 的組件設計
+
+您希望基於繼承的組件系統是可行的，可以使用 Vue 3 的組合式 API + TypeScript 類型系統
+建議實現方案：
+建立基礎組件類 (BaseComponent)，包含共用屬性和方法
+使用 TypeScript 的泛型和類型系統定義組件的 props、events 和 slots
+使用 Vue 3 的 defineComponent 和 defineProps 實現類型安全
+項目結構與工作流程
+目錄結構建議
+
+前端源碼與後端源碼分離的文件夾結構
+共用類型定義和介面分離管理
+開發工作流程
+
+建議先構建前端原型，再連接到後端功能
+定義明確的開發階段和里程碑
+UI/UX 設計細節
+響應式設計考量
+
+您的三大區塊布局需要在不同螢幕尺寸下有不同表現
+建議定義清晰的斷點和相應的布局變化
+介面一致性
+
+各功能頁籤顏色區分的同時，需要維持整體設計語言的一致性
+考慮使用設計系統或組件庫來保持一致性
+用戶體驗流程
+
+建議補充定義錯誤處理機制和用戶反饋系統
+考慮處理大檔案時的加載和進度提示
+需要補充的內容
+測試策略
+
+前端單元測試和整合測試計劃
+後端功能測試和 E2E 測試
+打包和發布流程
+
+MSIX 封裝具體方案
+自動化構建和發布流程
+國際化和本地化
+
+如果計劃支援多語言，需要提前設計
+效能考量
+
+大文件處理策略
+後台處理機制
+後續步驟建議
+建立詳細的技術規格文件，明確定義：
+
+前後端通信介面
+資料模型和狀態管理
+組件庫設計規範
+創建低保真原型或線框圖驗證 UI 流程
+
+建立開發環境和初始項目結構
+
+定義明確的開發里程碑和時間表
+
+FCut 專案資料夾結構建議（含 i18n 模組）
+根據您的需求和之前我們討論的內容，以下是整合了國際化(i18n)功能的完整資料夾結構建議：
+FCut/
+├── backend/               # Python 後端
+│   ├── core/              # 核心業務邏輯
+│   │   ├── processors/    # 各種影片處理器 (speedup, jumpcut, silence removal 等)
+│   │   ├── queue/         # 任務佇列管理
+│   │   └── utils/         # 通用工具函數
+│   ├── api/               # API 端點定義，提供給前端呼叫
+│   ├── models/            # 資料模型
+│   └── locales/           # 後端國際化文字 (錯誤訊息、日誌等)
+├── frontend/              # 前端應用
+│   ├── src/
+│   │   ├── assets/        # 靜態資源 (圖片、字體等)
+│   │   ├── components/    # Vue 元件
+│   │   │   ├── base/      # 基礎元件類別 (您的 Base Component 設計)
+│   │   │   ├── common/    # 通用元件
+│   │   │   └── features/  # 功能專用元件
+│   │   ├── layouts/       # 布局元件
+│   │   ├── pages/         # 頁面元件
+│   │   ├── stores/        # Pinia 狀態管理
+│   │   │   └── i18n.ts    # i18n 狀態管理
+│   │   ├── i18n/          # 國際化相關
+│   │   │   ├── index.ts   # i18n 配置和實例
+│   │   │   └── locales/   # 翻譯文檔
+│   │   │       ├── en.ts  # 英文翻譯
+│   │   │       ├── zh-TW.ts # 繁體中文翻譯
+│   │   │       └── zh-CN.ts # 簡體中文翻譯
+│   │   ├── types/         # TypeScript 類型定義
+│   │   ├── router/        # Vue Router 設定
+│   │   ├── styles/        # 全局樣式
+│   │   └── utils/         # 前端工具函數
+│   ├── public/            # 靜態檔案
+│   ├── index.html
+│   ├── vite.config.ts     # Vite 配置
+│   └── package.json       # 前端依賴
+├── shared/                # 前後端共用程式碼
+│   ├── types/             # 共用類型定義
+│   └── i18n/              # 共用的國際化資源
+│       └── locales/       # 前後端共用的翻譯文字
+├── tests/                 # 測試相關
+│   ├── backend/           # 後端測試
+│   └── frontend/          # 前端測試
+├── scripts/               # 構建與部署腳本
+│   ├── build.py           # 構建腳本
+│   ├── package_msix.py    # MSIX 打包腳本
+│   └── extract_i18n.py    # 提取需翻譯文字的工具腳本
+├── dist/                  # 建構輸出目錄 (gitignore)
+├── resources/             # 應用資源 (圖標、安裝程式素材等)
+├── docs/                  # 專案文檔
+├── main.py                # 應用入口點
+├── pyproject.toml         # Python 專案設定
+└── README.md              # 專案說明
+重點說明
+1. 前後端明確分離
+backend/ 和 frontend/ 資料夾完全分開，未來移植到其他平台時可以直接遷移前端部分
+shared/ 資料夾存放前後端共用的類型定義和常量，確保資料結構的一致性
+2. 組件化設計支援
+frontend/src/components/base/ 資料夾專門放置您計畫實現的基礎元件類別系統
+建議在此目錄下建立 BaseComponent.ts 實現您的繼承式元件系統
+3. 功能模組化
+將各種影片處理功能模組化到 backend/core/processors/ 目錄
+每個功能可以是一個單獨的模組，便於獨立開發和測試
+4. 未來擴展考量
+目錄結構已考慮未來移植到 Rust/Tauri 的可能性，業務邏輯和 UI 邏輯完全分離
+共用類型定義放在 shared/ 目錄，將來重構時可以參照
+5. 打包和發布流程
+scripts/ 目錄包含所有構建和打包腳本
+專門的 MSIX 打包腳本以支持微軟商店的需求
+6. 遵循前端最佳實踐
+遵循 Vue 3 + TypeScript 的最佳實踐目錄結構
+將 stores、router 等配置分離，便於維護
+
+
+i18n 模組說明
+1. 前端國際化架構
+frontend/src/i18n/: 存放所有前端國際化相關代碼
+
+index.ts: 初始化和配置 Vue I18n
+locales/: 按語言分類的翻譯檔案
+frontend/src/stores/i18n.ts: 使用 Pinia 管理語言切換和持久化
+
+2. 後端國際化架構
+backend/locales/: 用於存放後端的多語言訊息，例如錯誤提示、日誌等
+3. 共用國際化資源
+shared/i18n/locales/: 前後端共用的翻譯文字
+4. 國際化輔助工具
+scripts/extract_i18n.py: 用於自動提取需要翻譯的文字字串
+實施建議
+前端國際化實現:
+
+使用 Vue I18n 庫實現前端國際化功能
+在 Pinia store 中管理當前語言設置
+實現語言切換功能和語言偵測
+後端國際化實現:
+
+使用 Python 內建的 gettext 或專門的 i18n 庫
+將所有用戶可見訊息納入翻譯範圍
+工作流程:
+
+在開發過程中使用國際化 key 而非硬編碼文字
+維護各語言的翻譯文件
+使用工具腳本自動更新翻譯鍵值
+設置持久化:
+
+用戶選擇的語言應被保存，下次啟動時自動加載
+
+
+
+
+
+
+
+
+
+
+
+
