@@ -33,12 +33,16 @@ jobs:
     #   shell: pwsh
 
     - name: Run Nuitka compilation
-      # Command provided by the user
-      run: uv run -m nuitka --standalone --include-data-dir=src/ui/dist=src/ui/dist --output-dir=dist --msvc=latest main.py
-      shell: pwsh
+      uses: Nuitka/Nuitka-Action@main
+      with:
+        nuitka-version: main
+        script-name: FCut.py
+        mode: app
+        include-data-dir: src/ui/dist=src/ui/dist
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
         name: windows-build-${{ github.sha }} # Name artifact using commit SHA
         path: dist/main.dist/ # Upload the actual distribution folder created by Nuitka
+        include-hidden-files: true
