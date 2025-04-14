@@ -48,7 +48,7 @@ jobs:
       shell: pwsh
 
     - name: Run Nuitka compilation
-      run: uv run -m nuitka --standalone --include-data-dir=src/ui/dist=src/ui/dist --output-dir=build --msvc=latest FCut.py
+      run: uv run -m nuitka --standalone --include-data-dir=src/ui/dist=src/ui/dist --output-dir=build --msvc=latest --assume-yes-for-downloads FCut.py
       shell: pwsh
 
     - name: Upload build artifact
