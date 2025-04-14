@@ -145,4 +145,4 @@ pyflow.lock
 *.build/
 *.dist/
 *.onefile-build/
-dist/
+build/
