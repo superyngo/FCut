@@ -1,13 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "FCut"
+name = "fcut"
 version = "0.0.1"
-requires-python=">=3.13"
+description = "FCut Video Processing Application"
+readme = "README.md"
+requires-python = ">=3.9"
 dependencies = [
     "fastapi>=0.115.12",
-    "ffmpeg-toolkit>=0.1.8",
-    "pydentic>=0.0.1.dev3",
+    "ffmpeg-toolkit>=0.2.0",
+    "pydantic>=1.10.21",
     "pywebview>=5.4",
-    "uvicorn>=0.34.0",
+    "uvicorn>=0.34.1",
 ]
 
 [dependency-groups]

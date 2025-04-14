@@ -1,0 +1,44 @@
+name: Nuitka Build on pyproject.toml change
+
+on:
+  push:
+    paths:
+      - 'pyproject.toml'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  build:
+    runs-on: windows-latest # Nuitka with MSVC requires Windows
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+
+    - name: Install uv
+      run: pip install uv
+      shell: pwsh # Specify shell for Windows runner
+
+    - name: Install dependencies (including Nuitka if listed in pyproject.toml)
+      run: uv sync --frozen # Use lock file for reproducible builds
+      shell: pwsh
+
+    # If Nuitka is not a project dependency in pyproject.toml, uncomment the following step
+    # - name: Install Nuitka
+    #   run: uv pip install nuitka
+    #   shell: pwsh
+
+    - name: Run Nuitka compilation
+      # Command provided by the user
+      run: uv run -m nuitka --standalone --include-data-dir=src/ui/dist=src/ui/dist --output-dir=dist --msvc=latest main.py
+      shell: pwsh
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build-${{ github.sha }} # Name artifact using commit SHA
+        path: dist/main.dist/ # Upload the actual distribution folder created by Nuitka
