@@ -2,7 +2,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+ui_app = FastAPI()
 
 # Path to the directory containing index.html
 ui_dist_path = Path(r"./src/ui/dist").resolve()
@@ -10,7 +10,7 @@ asgiapp = StaticFiles(directory=ui_dist_path, html=True)
 
 
 # Mount the static files directory
-app.mount("/", asgiapp)
+ui_app.mount("/", asgiapp)
 
 
 # @app.get("/")
