@@ -21,11 +21,11 @@ jobs:
     - name: Install pnpm
       uses: pnpm/action-setup@v3
       with:
-        version: 8 # Or your preferred pnpm version
+        version: 10 # Or your preferred pnpm version
         run_install: false
 
     - name: Install UI dependencies
-      run: pnpm install --frozen-lockfile
+      run: pnpm install # Removed --frozen-lockfile as suggested by the error message
       working-directory: ./src/ui # Run in the ui directory
       shell: pwsh
 
