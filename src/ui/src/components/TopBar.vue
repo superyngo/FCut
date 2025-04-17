@@ -1,9 +1,10 @@
 <template>
   <div class="top-bar">
+    <!-- Iterate over Map values -->
     <button
-      v-for="(button, index) in buttons"
-      :key="index"
-      v-if="button.visible !== false"
+      v-for="button in buttons.values()"
+      :key="button.label"
+      :class="{ hidden: !button.visible }"
       @click="button.action"
       class="icon-button"
     >
@@ -15,49 +16,94 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
-import MenuOptions from './MenuOptions.vue';
+import { ref } from "vue";
+import MenuOptions from "./MenuOptions.vue";
+import { BaseClass } from "../utils/BaseModel";
+
+class Button extends BaseClass {
+  id?: string | undefined = undefined;
+  label: string | undefined = undefined;
+  icon: string | undefined = undefined;
+  action: (() => void) | undefined = undefined;
+  visible?: boolean = true;
+
+  constructor(data: Record<string, any>) {
+    super();
+    this._init(data);
+  }
+}
 
 const isMenuVisible = ref(false);
 
-const buttons_data = [
-  { label: 'Menu', icon: 'fas fa-bars', action: () => toggleMenu() },
-  { label: '➕', icon: 'fas fa-plus', action: () => addTask() },
-  { label: '➖', icon: 'fas fa-minus', action: () => deleteTask(), visible: false },
-  { label: 'Clear', icon: 'fas fa-trash', action: () => clearCompletedTasks() },
-];
+// Use a Map for buttons_data
+const buttons_data = new Map<string, Button>([
+  [
+    "Menu",
+    new Button({
+      label: "Menu",
+      icon: "fas fa-bars",
+      action: () => toggleMenu(),
+    }),
+  ],
+  [
+    "Add",
+    new Button({
+      label: "➕",
+      icon: "fas fa-plus",
+      // Assuming addTask should be called here instead of updateDeleteButtonVisibility
+      action: () => updateDeleteButtonVisibility(true),
+    }),
+  ],
+  [
+    "Delete",
+    new Button({
+      label: "➖",
+      icon: "fas fa-minus",
+      action: () => deleteTask(),
+      visible: false, // Keep initial visibility state
+    }),
+  ],
+  [
+    "Clear",
+    new Button({
+      label: "Clear",
+      icon: "fas fa-trash",
+      action: () => clearCompletedTasks(),
+    }),
+  ],
+]);
 
-const buttons = ref<{
-  label: string;
-  icon: string;
-  action: () => void;
-  visible?: boolean;
-}[]>(buttons_data);
-
-
+// Update the type of the buttons ref
+const buttons = ref<Map<string, Button>>(buttons_data);
 
 const toggleMenu = () => {
   isMenuVisible.value = !isMenuVisible.value;
 };
 
 const addTask = () => {
-  console.log('Task added');
+  console.log("Task added");
   // Logic to add a new task
+  // Maybe you want to show the delete button when a task is added?
+  // updateDeleteButtonVisibility(true);
 };
 
 const deleteTask = () => {
-  console.log('Task deleted');
+  console.log("Task deleted");
   // Logic to delete selected tasks
+  // Maybe hide the delete button if no tasks are left selected?
+  // updateDeleteButtonVisibility(false);
 };
 
 const clearCompletedTasks = () => {
-  console.log('Completed tasks cleared');
+  console.log("Completed tasks cleared");
   // Logic to clear all completed tasks
+  // Hide delete button after clearing
+  updateDeleteButtonVisibility(false);
 };
 
-// Logic to update the visibility of the delete button
+// Logic to update the visibility of the delete button using the Map
 const updateDeleteButtonVisibility = (hasSelectedTasks: boolean) => {
-  const deleteButton = buttons.value.find(button => button.label === '➖');
+  const deleteButton = buttons.value.get("Delete"); // Access by key 'Delete'
   if (deleteButton) {
     deleteButton.visible = hasSelectedTasks;
   }
@@ -98,5 +144,9 @@ const updateDeleteButtonVisibility = (hasSelectedTasks: boolean) => {
 
 .icon-button:hover {
   color: #1a73e8;
+}
+
+.hidden {
+  display: none;
 }
 </style>
