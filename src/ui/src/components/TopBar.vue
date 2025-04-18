@@ -3,7 +3,7 @@
     <!-- Iterate over Map values -->
     <button
       v-for="button in buttons.values()"
-      :key="button.label"
+      :key="button.id"
       :class="{ hidden: !button.visible }"
       @click="button.action"
       class="icon-button"
@@ -18,20 +18,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import MenuOptions from "./MenuOptions.vue";
-import { BaseClass } from "../utils/BaseModel";
-
-class Button extends BaseClass {
-  id?: string | undefined = undefined;
-  label: string | undefined = undefined;
-  icon: string | undefined = undefined;
-  action: (() => void) | undefined = undefined;
-  visible?: boolean = true;
-
-  constructor(data: Record<string, any>) {
-    super();
-    this._init(data);
-  }
-}
+import { Button } from "../models/elements";
 
 const isMenuVisible = ref(false);
 
