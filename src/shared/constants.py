@@ -34,10 +34,15 @@ class ACTIONS(StrEnum):
         StrEnum (_type_): _description_
     """
 
-    pass
+    Custom = auto()
+    Cut = auto()
+    Speedup = auto()
+    Jumpcut = auto()
+    CutSilence = auto()
+    CutMotionless = auto()
 
 
 class CONFIG(Enum):
     UI_HOST = (_UI_HOST := "127.0.0.1")
-    UI_PORT = (_UI_PORT := 8000)
+    UI_PORT = (_UI_PORT := 5173)
     UI_URL = AnyUrl.build(scheme="http", host=_UI_HOST, port=_UI_PORT, path="/")

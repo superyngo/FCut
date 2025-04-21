@@ -1,7 +1,23 @@
+// tsconfig.json
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ]
+  "compilerOptions": {
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "jsx": "preserve", // 重要：對於 Vue JSX/TSX
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "lib": ["ESNext", "DOM"],
+    "skipLibCheck": true,
+    "noEmit": true, // vue-tsc 會處理輸出，TypeScript 編譯器本身不需要
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"] // 範例路徑別名
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"] // 確保包含 .vue 檔案
+  // "references": [{ "path": "./tsconfig.node.json" }] // 如果您有單獨的 Node 環境設定
 }

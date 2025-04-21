@@ -58,6 +58,14 @@ const buttons_data = new Map<string, Button>([
       action: () => clearCompletedTasks(),
     }),
   ],
+  [
+    "Start",
+    new Button({
+      label: "Start",
+      icon: "fas fa-trash",
+      action: () => startRender(),
+    }),
+  ],
 ]);
 
 // Update the type of the buttons ref
@@ -94,6 +102,11 @@ const updateDeleteButtonVisibility = (hasSelectedTasks: boolean) => {
   if (deleteButton) {
     deleteButton.visible = hasSelectedTasks;
   }
+};
+
+const startRender = () => {
+  console.log("Render started");
+  // Logic to start rendering tasks
 };
 
 // Example: Call this function when the task selection changes

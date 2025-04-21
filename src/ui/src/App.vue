@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import TopBar from './components/TopBar.vue';
-import TaskList from './components/TaskList.vue';
+import MainView from "./views/MainView.vue";
 </script>
 
 <template>
-  <div>
-    <TopBar />
-    <TaskList />
-  </div>
+  <MainView />
 </template>
 
 <style scoped>

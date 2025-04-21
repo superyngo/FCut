@@ -1,5 +1,6 @@
 import webview
 from src.shared import constants, logger
+from src.backend.api.api import Api
 
 
 def windows_webview_server():
@@ -19,16 +20,3 @@ def windows_webview_server():
 
     # Start the pywebview event loop
     webview.start(debug=True)  # Enable debug for more detailed logs
-
-
-class Api:
-    def ping(self):
-        return "pong"
-
-    def open_file_dialog(self):
-        file_types = ("Image Files (*.bmp;*.jpg;*.gif)", "All files (*.*)")
-
-        result = webview.windows[0].create_file_dialog(
-            webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types
-        )
-        return result

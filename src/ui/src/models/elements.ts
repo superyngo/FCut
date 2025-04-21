@@ -1,4 +1,4 @@
-import { BaseClass, Required } from "../utils/BaseModel";
+import { BaseClass, Required } from "./BaseModel";
 
 export class Button extends BaseClass {
   id: string = crypto.randomUUID();

@@ -42,46 +42,50 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { BaseClass, Required } from "../models/BaseModel";
+import { Logger } from "../utils/logger";
+import { useConstantsStore } from "../stores/index";
 
-interface Task {
-  id: number;
-  name: string;
-  previewUrl?: string; // Optional preview image URL
-  renderMethod: string;
-  availableMethods: string[];
-  status: "Preparing" | "Ready" | "Done";
+const constants = useConstantsStore();
+
+class Task extends BaseClass {
+  id: string = crypto.randomUUID(); // Optional property with a default value
+  name: string | Symbol = Required;
+  previewUrl?: string = undefined; // Optional preview image URL
+  renderMethod: string | undefined = undefined;
+  availableMethods: string[] | undefined = undefined;
+  status: "Preparing" | "Ready" | "Done" = "Preparing"; // Default status
+  constructor(data: Record<string, any>) {
+    super();
+    this._init(data);
+  }
 }
 
+// Create tasks using the Task class
 const tasks = ref<Task[]>([
-  {
-    id: 1,
+  new Task({
     name: "video1.mp4",
-    previewUrl: undefined, // Add actual URL if available
     renderMethod: "Fast",
     availableMethods: ["Fast", "Quality", "Custom"],
     status: "Ready",
-  },
-  {
-    id: 2,
+  }),
+  new Task({
     name: "another_clip.mov",
-    previewUrl: undefined,
     renderMethod: "Quality",
     availableMethods: ["Fast", "Quality", "Custom"],
     status: "Preparing",
-  },
-  {
-    id: 3,
+  }),
+  new Task({
     name: "final_render.avi",
-    previewUrl: undefined,
     renderMethod: "Fast",
     availableMethods: ["Fast", "Quality", "Custom"],
     status: "Done",
-  },
+  }),
   // Add more tasks as needed
 ]);
 
 const openSettings = (task: Task) => {
-  console.log("Opening settings for task:", task.id);
+  Logger.info(`Opening settings for task: ${task.id}`);
   // Implement settings modal logic here
 };
 </script>
