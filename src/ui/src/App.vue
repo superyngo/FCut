@@ -1,11 +1,24 @@
-<script setup lang="ts">
-import MainView from "./views/MainView.vue";
-</script>
-
 <template>
-  <MainView />
+  <div v-if="store.loading">Loading...</div>
+  <div v-else-if="store.error">Failed to load native API</div>
+  <div v-else>
+    <MainView />
+    <SettingsPanel />
+  </div>
 </template>
 
-<style scoped>
-/* Add any necessary styles for the layout */
+<script setup lang="ts">
+import MainView from "./views/MainView.vue";
+import SettingsPanel from "./components/SettingsPanel.vue";
+import { useAPP_STORE } from "./stores/app";
+const store = useAPP_STORE();
+
+store.initFromPython();
+</script>
+
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+}
 </style>

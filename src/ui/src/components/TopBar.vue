@@ -17,8 +17,8 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import MenuOptions from "./MenuOptions.vue";
 import { Button } from "../models/elements";
+import MenuOptions from "./MenuOptions.vue";
 
 const isMenuVisible = ref(false);
 

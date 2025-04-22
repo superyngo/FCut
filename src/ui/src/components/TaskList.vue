@@ -15,12 +15,13 @@
         <div class="task-details">
           <span class="task-filename">{{ task.name }}</span>
           <div class="task-actions">
-            <select v-model="task.renderMethod" class="render-select">
-              <option
-                v-for="method in task.availableMethods"
-                :key="method"
-                :value="method"
-              >
+            <select
+              v-model="task.renderMethod"
+              class="render-select"
+              @change="init_settings(task)"
+            >
+              <option value="" disabled selected>Please select</option>
+              <option v-for="method in ACTIONS" :key="method" :value="method">
                 {{ method }}
               </option>
             </select>
@@ -44,49 +45,58 @@
 import { ref } from "vue";
 import { BaseClass, Required } from "../models/BaseModel";
 import { Logger } from "../utils/logger";
-import { useConstantsStore } from "../stores/index";
+import { useAPP_STORE } from "../stores/app";
+import { init_settings } from "../models/taksks"; // Import the init_settings function
 
-const constants = useConstantsStore();
+const APP_STORE = useAPP_STORE();
+const ACTIONS = APP_STORE?.constants?.ACTIONS;
+
+enum TaskStatus {
+  Preparing,
+  Ready,
+  Done,
+}
 
 class Task extends BaseClass {
   id: string = crypto.randomUUID(); // Optional property with a default value
   name: string | Symbol = Required;
   previewUrl?: string = undefined; // Optional preview image URL
-  renderMethod: string | undefined = undefined;
-  availableMethods: string[] | undefined = undefined;
-  status: "Preparing" | "Ready" | "Done" = "Preparing"; // Default status
+  renderMethod: string = "";
+  settings?: Record<string, any> = {}; // Initialize settings as an empty object
+  status: TaskStatus = TaskStatus.Preparing; // Default status
+
   constructor(data: Record<string, any>) {
     super();
     this._init(data);
+    // Ensure settings is initialized if not provided
+    if (!this.settings) {
+      this.settings = {};
+    }
   }
 }
 
 // Create tasks using the Task class
-const tasks = ref<Task[]>([
+let tasks = ref<Task[]>([
   new Task({
     name: "video1.mp4",
-    renderMethod: "Fast",
-    availableMethods: ["Fast", "Quality", "Custom"],
-    status: "Ready",
+    status: TaskStatus.Ready, // Use enum value
   }),
   new Task({
     name: "another_clip.mov",
-    renderMethod: "Quality",
-    availableMethods: ["Fast", "Quality", "Custom"],
-    status: "Preparing",
+    status: TaskStatus.Preparing, // Use enum value
   }),
   new Task({
     name: "final_render.avi",
-    renderMethod: "Fast",
-    availableMethods: ["Fast", "Quality", "Custom"],
-    status: "Done",
+    status: TaskStatus.Done, // Use enum value
   }),
   // Add more tasks as needed
 ]);
 
 const openSettings = (task: Task) => {
   Logger.info(`Opening settings for task: ${task.id}`);
-  // Implement settings modal logic here
+  Logger.info(JSON.stringify(task.settings));
+  // Assuming APP_STORE has an action/mutation to open the panel and set the current task
+  APP_STORE.openSettingsPanel(task);
 };
 </script>
 

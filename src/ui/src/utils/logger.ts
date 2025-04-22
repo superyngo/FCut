@@ -1,4 +1,4 @@
-import { pywebview } from "../services/api";
+import { pywebview } from "../services/pywebview";
 
 export class Logger {
   static error(message: string): void {

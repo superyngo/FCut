@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 // Check if pywebview is available and initialize it if needed
-import { pywebview } from "../services/api";
+import { pywebview } from "../services/pywebview";
 
 export const useTaskStore = defineStore("task", {
   state: () => ({

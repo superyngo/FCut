@@ -2,7 +2,7 @@
 
 ```
 f:/FCut/                     # 專案根目錄
-├── .github/                 # GitHub Actions 工作流程設定
+├── .github/                 # GitHub ACTIONS 工作流程設定
 │   └── workflows/           # 工作流程定義檔目錄
 │       └── build.yml        # 範例：建置與測試工作流程
 ├── .vscode/                 # VS Code 編輯器設定
@@ -56,4 +56,3 @@ f:/FCut/                     # 專案根目錄
 ├── README.md                # 專案根說明文件
 └── uv.lock                  # uv (Python 套件管理器) 鎖定依賴版本檔案
 ```
-
