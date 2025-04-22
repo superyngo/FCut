@@ -32,8 +32,11 @@
         </div>
         <div class="task-status">
           <span
-            :class="['status-badge', `status-${task.status.toLowerCase()}`]"
-            >{{ task.status }}</span
+            :class="[
+              'status-badge',
+              `status-${TaskStatus[task.status].toLowerCase()}`,
+            ]"
+            >{{ TaskStatus[task.status] }}</span
           >
         </div>
       </li>
@@ -46,7 +49,7 @@ import { ref } from "vue";
 import { BaseClass, Required } from "../models/BaseModel";
 import { Logger } from "../utils/logger";
 import { useAPP_STORE } from "../stores/app";
-import { init_settings } from "../models/taksks"; // Import the init_settings function
+import { init_settings } from "../models/taksks_setting"; // Import the init_settings function
 
 const APP_STORE = useAPP_STORE();
 const ACTIONS = APP_STORE?.constants?.ACTIONS;
@@ -92,11 +95,11 @@ let tasks = ref<Task[]>([
   // Add more tasks as needed
 ]);
 
-const openSettings = (task: Task) => {
+const openSettings = (task: any) => {
   Logger.info(`Opening settings for task: ${task.id}`);
   Logger.info(JSON.stringify(task.settings));
   // Assuming APP_STORE has an action/mutation to open the panel and set the current task
-  APP_STORE.openSettingsPanel(task);
+  // APP_STORE.openSettingsPanel(task);
 };
 </script>
 

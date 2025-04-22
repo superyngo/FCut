@@ -3,17 +3,15 @@
   <div v-else-if="store.error">Failed to load native API</div>
   <div v-else>
     <MainView />
-    <SettingsPanel />
+    <!-- <SettingsPanel /> -->
   </div>
 </template>
 
 <script setup lang="ts">
 import MainView from "./views/MainView.vue";
-import SettingsPanel from "./components/SettingsPanel.vue";
+// import SettingsPanel from "./components/SettingsPanel.vue";
 import { useAPP_STORE } from "./stores/app";
 const store = useAPP_STORE();
-
-store.initFromPython();
 </script>
 
 <style>

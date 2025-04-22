@@ -10,10 +10,9 @@ def windows_webview_server():
         f"Creating pywebview window pointing to {constants.CONFIG.UI_URL.value}..."
     )
     # Create the pywebview window
-    # Pass the FastAPI app instance if needed for direct Python <-> JS bridge later
     api_instance = Api()  # Create an instance of the API class
     webview.create_window(
-        "FCut Application",
+        constants.DEV_INFO.APP_NAME.value,
         str(constants.CONFIG.UI_URL.value),
         js_api=api_instance,  # Expose the API instance to JavaScript
     )
