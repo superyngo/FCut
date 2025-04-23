@@ -1,6 +1,14 @@
-import { useCONSTANTS } from "../stores/app";
 import { Logger } from "../utils/logger";
 import { InputRange, InputText } from "./elements";
+
+export enum ACTIONS {
+  CUSTOM = "CUSTOM",
+  CUT = "CUT",
+  SPEEDUP = "SPEEDUP",
+  JUMPCUT = "JUMPCUT",
+  CUT_SILENCE = "JUMPCUT",
+  CUT_MOTIONLESS = "CUT_MOTIONLESS",
+}
 
 class _TaskSettings {
   async save() {
@@ -51,26 +59,24 @@ export type TaskSettings =
   | {};
 
 export function init_settings(task: any) {
-  const APP_STORE = useCONSTANTS();
-  const ACTIONS = APP_STORE?.constants?.ACTIONS;
-  Logger.info(`init_settings ${task.renderMethod}`);
+  Logger.info(`init_settings for ${task.renderMethod}`);
   switch (task.renderMethod) {
-    case ACTIONS.Custom:
+    case ACTIONS.CUSTOM:
       task.settings = new Custom();
       break;
-    case ACTIONS.Cut:
+    case ACTIONS.CUT:
       task.settings = new Cut();
       break;
-    case ACTIONS.Speedup:
+    case ACTIONS.SPEEDUP:
       task.settings = new Speedup();
       break;
-    case ACTIONS.Jumpcut:
+    case ACTIONS.JUMPCUT:
       task.settings = new Jumpcut();
       break;
-    case ACTIONS.CutSilence:
+    case ACTIONS.CUT_SILENCE:
       task.settings = new CutSilence();
       break;
-    case ACTIONS.CutMotionless:
+    case ACTIONS.CUT_MOTIONLESS:
       task.settings = new CutMotionless();
       break;
     default:

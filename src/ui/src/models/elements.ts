@@ -6,12 +6,12 @@ export class Button extends BaseClass {
     label: string;
     icon?: string;
     action?: () => any;
-    visible?: boolean;
+    visible?: () => boolean;
   }) {
     // merge defaults and user-supplied props
     const normalizedData = {
       id: crypto.randomUUID(),
-      visible: true,
+      visible: () => true,
       ...data,
     };
     super(normalizedData);

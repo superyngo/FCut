@@ -1,27 +1,39 @@
 <template>
   <div class="task-list">
     <ul>
-      <li v-for="task in tasks" :key="task.id" class="task-item">
-        <div class="task-preview">
-          <!-- Placeholder for video preview -->
-          <img
-            v-if="task.previewUrl"
-            :src="task.previewUrl"
-            alt="Preview"
-            class="preview-image"
+      <li v-for="task in task_store.tasks" :key="task.id" class="task-item">
+        <!-- Wrap preview in a container for positioning and hover detection -->
+        <div class="preview-container">
+          <!-- Checkbox positioned at the top-left -->
+          <input
+            type="checkbox"
+            v-model="task.selected"
+            @change="Logger.info(`Task ${task.id} selected: ${task.selected}`)"
+            class="select-checkbox"
+            :class="{ 'is-selected': task.selected }"
+            title="Select Task"
           />
-          <div v-else class="preview-placeholder">No Preview</div>
+          <div class="task-preview">
+            <!-- Placeholder for video preview -->
+            <img
+              v-if="task.previewUrl"
+              :src="task.previewUrl"
+              alt="Preview"
+              class="preview-image"
+            />
+            <div v-else class="preview-placeholder">No Preview</div>
+          </div>
         </div>
         <div class="task-details">
-          <span class="task-filename">{{ task.name }}</span>
+          <span class="task-filename">{{ task.video_name }}</span>
           <div class="task-actions">
             <select
               v-model="task.renderMethod"
               class="render-select"
-              @change="init_settings(task)"
+              @change="chage_settings(task)"
             >
               <option value="" disabled selected>Please select</option>
-              <option v-for="method in ACTIONS" :key="method" :value="method">
+              <option v-for="method of ACTIONS" :key="method" :value="method">
                 {{ method }}
               </option>
             </select>
@@ -46,16 +58,21 @@
 
 <script setup lang="ts">
 import { Logger } from "../utils/logger";
-import { useCONSTANTS, useTASKS } from "../stores/app";
+import { useTASKS } from "../stores/stores";
 import { init_settings } from "../models/task_setting"; // Import the init_settings function
 import { TASK_STATUS } from "../models/tasks"; // Import the TASK_STATUS enum
+import { ACTIONS } from "../models/task_setting";
 
-const APP_STORE = useCONSTANTS();
-const ACTIONS = APP_STORE?.constants?.ACTIONS;
-const TASKS_STORE = useTASKS();
+const task_store = useTASKS();
 
 // Create tasks using the Task class
-let tasks = TASKS_STORE.tasks;
+// const tasks = storeToRefs(task_store.tasks);
+
+const chage_settings = (task: any) => {
+  init_settings(task);
+  task.status = 1;
+  task_store.saveTasks();
+};
 
 const openSettings = (task: any) => {
   Logger.info(`Opening settings for task: ${task.id}`);
@@ -85,10 +102,34 @@ const openSettings = (task: any) => {
   border-bottom: none;
 }
 
-.task-preview {
+/* New container for preview and checkbox */
+.preview-container {
+  position: relative; /* Needed for absolute positioning of the checkbox */
   flex-shrink: 0;
-  width: 80px; /* Adjust size as needed */
-  height: 50px; /* Adjust size as needed */
+  width: 80px; /* Match task-preview width */
+  height: 50px; /* Match task-preview height */
+}
+
+/* Style for the checkbox */
+.select-checkbox {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 10; /* Ensure checkbox is above the preview */
+  opacity: 0; /* Hidden by default */
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out; /* Smooth transition */
+}
+
+/* Show checkbox on container hover OR if it's selected */
+.preview-container:hover .select-checkbox,
+.select-checkbox.is-selected {
+  opacity: 1;
+}
+
+.task-preview {
+  width: 100%; /* Take full width of container */
+  height: 100%; /* Take full height of container */
   background-color: #f0f0f0;
   display: flex;
   align-items: center;

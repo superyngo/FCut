@@ -9,11 +9,12 @@ export enum TASK_STATUS {
 export class Task extends BaseClass {
   constructor(data: {
     id?: string;
-    video_path?: string;
+    video_path: string;
     previewUrl?: string;
     renderMethod?: string;
     settings?: TaskSettings;
     status?: TASK_STATUS;
+    selected?: boolean;
   }) {
     // merge defaults and user-supplied props
     const normalizedData = {
@@ -21,8 +22,17 @@ export class Task extends BaseClass {
       renderMethod: "",
       settings: {},
       status: TASK_STATUS.Preparing,
+      selected: false,
       ...data,
     };
     super(normalizedData);
+  }
+  get video_name(): string {
+    if (!this.video_path) {
+      return "";
+    }
+    // Get the last part of the path (filename with extension)
+    const parts = this.video_path.split(/[\/\\]/);
+    return parts[parts.length - 1];
   }
 }
