@@ -10,8 +10,8 @@
 <script setup lang="ts">
 import MainView from "./views/MainView.vue";
 // import SettingsPanel from "./components/SettingsPanel.vue";
-import { useAPP_STORE } from "./stores/app";
-const store = useAPP_STORE();
+import { useCONSTANTS } from "./stores/app";
+const store = useCONSTANTS();
 </script>
 
 <style>

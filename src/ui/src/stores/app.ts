@@ -1,12 +1,13 @@
 import { defineStore } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
-// import type { Task } from "../components/TaskList.vue"; // Import Task type if needed, adjust path as necessary
+import { ref } from "vue";
+import { Task, TASK_STATUS } from "../models/tasks";
 
-const CACHE_KEY = "app_constants";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
-export const useAPP_STORE = defineStore("app", {
+export const useCONSTANTS = defineStore(crypto.randomUUID(), {
   state: () => ({
+    store_id: "app_constants",
     constants: null as null | Record<string, any>,
     error: false,
     loading: true,
@@ -17,7 +18,7 @@ export const useAPP_STORE = defineStore("app", {
     async initFromPython() {
       this.loading = true;
 
-      const cached = localStorage.getItem(CACHE_KEY);
+      const cached = localStorage.getItem(this.store_id);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -27,10 +28,10 @@ export const useAPP_STORE = defineStore("app", {
             this.loading = false;
             return;
           } else {
-            localStorage.removeItem(CACHE_KEY);
+            localStorage.removeItem(this.store_id);
           }
         } catch {
-          localStorage.removeItem(CACHE_KEY);
+          localStorage.removeItem(this.store_id);
         }
       }
 
@@ -45,7 +46,7 @@ export const useAPP_STORE = defineStore("app", {
         const data = await window.pywebview.api.get_constants();
         this.constants = data;
         localStorage.setItem(
-          CACHE_KEY,
+          this.store_id,
           JSON.stringify({
             data,
             expiresAt: Date.now() + CACHE_TTL_MS,
@@ -59,7 +60,7 @@ export const useAPP_STORE = defineStore("app", {
     },
 
     clearConstantsCache() {
-      localStorage.removeItem(CACHE_KEY);
+      localStorage.removeItem(this.store_id);
       this.constants = null;
     },
 
@@ -72,5 +73,51 @@ export const useAPP_STORE = defineStore("app", {
     //   this.isSettingsPanelOpen = false;
     //   this.currentTaskForSettings = null;
     // },
+  },
+});
+
+// Define the new store for tasks
+export const useTASKS = defineStore(crypto.randomUUID(), {
+  state: () => ({
+    store_id: "app_tasks",
+    tasks: ref<Task[]>([
+      // Keep ref here for reactivity within the store state
+      new Task({
+        video_path: "video1.mp4",
+        status: TASK_STATUS.Ready, // Use enum value
+      }),
+      new Task({
+        video_path: "another_clip.mov",
+        status: TASK_STATUS.Preparing, // Use enum value
+      }),
+      new Task({
+        video_path: "final_render.avi",
+        status: TASK_STATUS.Done, // Use enum value
+      }),
+      // Add more tasks as needed
+    ]),
+  }),
+  actions: {
+    // Add actions to manage tasks if needed, e.g., addTask, removeTask
+    addTask(video_path: string) {
+      this.tasks.push(
+        new Task({
+          video_path,
+        })
+      );
+    },
+    removeTask(taskData: Task) {
+      const index = this.tasks.findIndex((task) => task === taskData);
+      if (index !== -1) {
+        this.tasks.splice(index, 1);
+      }
+    },
+    updateTASK_STATUS(taskData: Task, status: TASK_STATUS) {
+      const task = this.tasks.find((task) => task === taskData);
+      if (task) {
+        task.status = status;
+      }
+    },
+    // Add other actions like updateTASK_STATUS, etc.
   },
 });

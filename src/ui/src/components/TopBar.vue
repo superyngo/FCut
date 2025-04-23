@@ -18,9 +18,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Button } from "../models/elements";
+import { Logger } from "../utils/logger";
+import { useTASKS } from "../stores/app";
+import { pywebview } from "../services/pywebview";
 import MenuOptions from "./MenuOptions.vue";
 
 const isMenuVisible = ref(false);
+const tasks_store = useTASKS();
 
 // Use a Map for buttons_data
 const buttons_data = new Map<string, Button>([
@@ -38,7 +42,7 @@ const buttons_data = new Map<string, Button>([
       label: "➕",
       icon: "fas fa-plus",
       // Assuming addTask should be called here instead of updateDeleteButtonVisibility
-      action: () => updateDeleteButtonVisibility(true),
+      action: () => addTask(),
     }),
   ],
   [
@@ -72,25 +76,31 @@ const buttons_data = new Map<string, Button>([
 const buttons = ref<Map<string, Button>>(buttons_data);
 
 const toggleMenu = () => {
+  Logger.info("Menu toggled");
   isMenuVisible.value = !isMenuVisible.value;
 };
 
-const addTask = () => {
-  console.log("Task added");
+const addTask = async () => {
+  const video_paths = await pywebview.api.open_file_dialog();
+  for (const video_path in video_paths) {
+    Logger.info(`Adding video: ${video_path}`);
+    tasks_store.addTask(video_path);
+  }
+  Logger.info("Task added");
   // Logic to add a new task
   // Maybe you want to show the delete button when a task is added?
   // updateDeleteButtonVisibility(true);
 };
 
 const deleteTask = () => {
-  console.log("Task deleted");
+  Logger.info("Task deleted");
   // Logic to delete selected tasks
   // Maybe hide the delete button if no tasks are left selected?
   // updateDeleteButtonVisibility(false);
 };
 
 const clearCompletedTasks = () => {
-  console.log("Completed tasks cleared");
+  Logger.info("Completed tasks cleared");
   // Logic to clear all completed tasks
   // Hide delete button after clearing
   updateDeleteButtonVisibility(false);

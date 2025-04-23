@@ -12,7 +12,7 @@ class Api:
         return "pong"
 
     def open_file_dialog(self) -> Sequence[str] | None:
-        file_types = ("Image Files (*.bmp;*.jpg;*.gif)", "All files (*.*)")
+        file_types = ("Video Files (*.mpeg;*.mpg;*.avi;*.mkv)", "All files (*.*)")
 
         result = webview.windows[0].create_file_dialog(
             webview.OPEN_DIALOG, allow_multiple=True, file_types=file_types

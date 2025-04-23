@@ -1,6 +1,8 @@
 import threading
 import subprocess
 import os
+from src.shared import logger
+import ffmpeg_toolkit
 
 # from src.backend.services.ui_flask import run_flask  # Import the FastAPI app
 from src.backend.services.windows_webview import (
@@ -8,8 +10,7 @@ from src.backend.services.windows_webview import (
 )
 
 if __name__ == "__main__":
-    print("Starting backend server...")
-    # Start the backend server in a separate thread
+    logger.info("Starting ui server...")
     # ui_server_thread = threading.Thread(target=run_flask, daemon=True)
     # ui_server_thread.start()
 
@@ -34,6 +35,29 @@ if __name__ == "__main__":
     ui_dev_thread = threading.Thread(target=run_ui_dev_server, daemon=True)
     ui_dev_thread.start()
 
+    logger.info("Starting backend server...")
     windows_webview_server()
+
+    # --- Cleanup ---
+    logger.info("Closing UI development server...")
+    stop_ui_thread.set()  # Signal the UI server thread to stop
+
+    if ui_dev_process and ui_dev_process.poll() is None:
+        try:
+            print(f"Terminating UI dev process (PID: {ui_dev_process.pid})...")
+            # On Windows, terminate() is an alias for kill()
+            ui_dev_process.terminate()
+            ui_dev_process.wait(timeout=1)  # Wait up to 5 seconds
+            print("UI dev process terminated.")
+        except subprocess.TimeoutExpired:
+            print("UI dev process did not terminate gracefully, killing...")
+            ui_dev_process.kill()
+            ui_dev_process.wait()  # Wait for kill
+            print("UI dev process killed.")
+        except Exception as e:
+            print(f"Error terminating UI dev process: {e}")
+
+    # Wait for the UI server thread to finish
+    ui_dev_thread.join()
 
     print("Application closed.")

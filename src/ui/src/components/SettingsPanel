@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useAPP_STORE } from "../stores/app";
+import { useCONSTANTS } from "../stores/app";
 import { Logger } from "../utils/logger";
 import type { Task } from "./TaskList.vue"; // Ensure Task type is imported
 
-const store = useAPP_STORE();
+const store = useCONSTANTS();
 
 // Use computed for reactivity
 const isPanelOpen = computed(() => store.isSettingsPanelOpen);

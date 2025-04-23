@@ -34,9 +34,9 @@
           <span
             :class="[
               'status-badge',
-              `status-${TaskStatus[task.status].toLowerCase()}`,
+              `status-${TASK_STATUS[task.status].toLowerCase()}`,
             ]"
-            >{{ TaskStatus[task.status] }}</span
+            >{{ TASK_STATUS[task.status] }}</span
           >
         </div>
       </li>
@@ -45,59 +45,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { BaseClass, Required } from "../models/BaseModel";
 import { Logger } from "../utils/logger";
-import { useAPP_STORE } from "../stores/app";
-import { init_settings } from "../models/taksks_setting"; // Import the init_settings function
+import { useCONSTANTS, useTASKS } from "../stores/app";
+import { init_settings } from "../models/task_setting"; // Import the init_settings function
+import { TASK_STATUS } from "../models/tasks"; // Import the TASK_STATUS enum
 
-const APP_STORE = useAPP_STORE();
+const APP_STORE = useCONSTANTS();
 const ACTIONS = APP_STORE?.constants?.ACTIONS;
-
-enum TaskStatus {
-  Preparing,
-  Ready,
-  Done,
-}
-
-class Task extends BaseClass {
-  id: string = crypto.randomUUID(); // Optional property with a default value
-  name: string | Symbol = Required;
-  previewUrl?: string = undefined; // Optional preview image URL
-  renderMethod: string = "";
-  settings?: Record<string, any> = {}; // Initialize settings as an empty object
-  status: TaskStatus = TaskStatus.Preparing; // Default status
-
-  constructor(data: Record<string, any>) {
-    super();
-    this._init(data);
-    // Ensure settings is initialized if not provided
-    if (!this.settings) {
-      this.settings = {};
-    }
-  }
-}
+const TASKS_STORE = useTASKS();
 
 // Create tasks using the Task class
-let tasks = ref<Task[]>([
-  new Task({
-    name: "video1.mp4",
-    status: TaskStatus.Ready, // Use enum value
-  }),
-  new Task({
-    name: "another_clip.mov",
-    status: TaskStatus.Preparing, // Use enum value
-  }),
-  new Task({
-    name: "final_render.avi",
-    status: TaskStatus.Done, // Use enum value
-  }),
-  // Add more tasks as needed
-]);
+let tasks = TASKS_STORE.tasks;
 
 const openSettings = (task: any) => {
   Logger.info(`Opening settings for task: ${task.id}`);
-  Logger.info(JSON.stringify(task.settings));
+  Logger.info(JSON.stringify(task));
   // Assuming APP_STORE has an action/mutation to open the panel and set the current task
   // APP_STORE.openSettingsPanel(task);
 };
