@@ -3,6 +3,8 @@ import { TaskSettings } from "./task_setting";
 export enum TASK_STATUS {
   Preparing,
   Ready,
+  Queued,
+  Rendering,
   Done,
 }
 

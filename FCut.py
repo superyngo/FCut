@@ -22,7 +22,7 @@ if __name__ == "__main__":
         global ui_dev_process
         ui_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src", "ui")
         ui_dev_process = subprocess.Popen(
-            ["pnpm", "run", "dev"], cwd=ui_dir, shell=True
+            ["pnpm", "run", "dev", "--host", "0.0.0.0"], cwd=ui_dir, shell=True
         )
 
         # Wait for stop signal

@@ -3,15 +3,17 @@ import { BaseClass } from "./BaseModel";
 export class Button extends BaseClass {
   constructor(data: {
     id?: string;
-    label: string;
+    label: string | (() => String);
     icon?: string;
     action?: () => any;
-    visible?: () => boolean;
+    visible?: boolean | (() => boolean);
+    disabled?: boolean | (() => boolean);
   }) {
     // merge defaults and user-supplied props
     const normalizedData = {
       id: crypto.randomUUID(),
-      visible: () => true,
+      visible: true,
+      disabled: false,
       ...data,
     };
     super(normalizedData);

@@ -8,12 +8,12 @@
           <input
             type="checkbox"
             v-model="task.selected"
-            @change="Logger.info(`Task ${task.id} selected: ${task.selected}`)"
+            @change=""
             class="select-checkbox"
             :class="{ 'is-selected': task.selected }"
             title="Select Task"
           />
-          <div class="task-preview">
+          <div class="task-preview" @click="toggleTaskSelection(task)">
             <!-- Placeholder for video preview -->
             <img
               v-if="task.previewUrl"
@@ -62,7 +62,6 @@ import { useTASKS } from "../stores/stores";
 import { init_settings } from "../models/task_setting"; // Import the init_settings function
 import { TASK_STATUS } from "../models/tasks"; // Import the TASK_STATUS enum
 import { ACTIONS } from "../models/task_setting";
-
 const task_store = useTASKS();
 
 // Create tasks using the Task class
@@ -70,7 +69,7 @@ const task_store = useTASKS();
 
 const chage_settings = (task: any) => {
   init_settings(task);
-  task.status = 1;
+  task.status = TASK_STATUS.Ready;
   task_store.saveTasks();
 };
 
@@ -79,6 +78,10 @@ const openSettings = (task: any) => {
   Logger.info(JSON.stringify(task));
   // Assuming APP_STORE has an action/mutation to open the panel and set the current task
   // APP_STORE.openSettingsPanel(task);
+};
+
+const toggleTaskSelection = (task: any) => {
+  task.selected = !task.selected;
 };
 </script>
 
@@ -127,6 +130,18 @@ const openSettings = (task: any) => {
   opacity: 1;
 }
 
+/* Add hover effect to task-preview */
+.preview-container:hover .task-preview {
+  box-shadow: 0 0 0 3px #3498db;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Add persistent highlight effect for selected tasks */
+.select-checkbox:checked ~ .task-preview {
+  box-shadow: 0 0 0 3px #3498db; /* Green highlight for selected items */
+  transition: box-shadow 0.2s ease-in-out;
+}
+
 .task-preview {
   width: 100%; /* Take full width of container */
   height: 100%; /* Take full height of container */
@@ -135,6 +150,8 @@ const openSettings = (task: any) => {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  border-radius: 4px; /* Rounded corners */
+  transition: box-shadow 0.2s ease-in-out; /* Smooth transition for hover effect */
 }
 
 .preview-image {
@@ -198,6 +215,14 @@ const openSettings = (task: any) => {
 
 .status-ready {
   background-color: #5bc0de; /* Blue */
+}
+
+.status-queued {
+  background-color: #9370db; /* Medium Purple */
+}
+
+.status-rendering {
+  background-color: #ff6347; /* Tomato Red */
 }
 
 .status-done {

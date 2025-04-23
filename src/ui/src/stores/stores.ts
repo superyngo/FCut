@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
 import { Task } from "../models/tasks";
 import { Logger } from "../utils/logger";
+import { TASK_STATUS } from "../models/tasks";
 
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
@@ -57,7 +58,18 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
   getters: {
     selected_tasks: (state) =>
       state.tasks.filter((task) => task.selected === true),
-    rendered_tasks: (state) => state.tasks.filter((task) => task.status === 2),
+    ready_tasks: (state) =>
+      state.tasks.filter((task) => task.status === TASK_STATUS.Ready),
+    selected_and_ready_tasks: (state) =>
+      state.tasks.filter(
+        (task) => task.selected === true && task.status === TASK_STATUS.Ready
+      ),
+    queued_tasks: (state) =>
+      state.tasks.filter((task) => task.status === TASK_STATUS.Queued),
+    rendering_tasks: (state) =>
+      state.tasks.filter((task) => task.status === TASK_STATUS.Rendering),
+    done_tasks: (state) =>
+      state.tasks.filter((task) => task.status === TASK_STATUS.Done),
     has_selected_tasks: (state) =>
       state.tasks.some((task) => task.selected === true),
   },

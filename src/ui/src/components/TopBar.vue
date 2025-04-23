@@ -4,12 +4,24 @@
     <button
       v-for="button in buttons.values()"
       :key="button.id"
-      :class="{ hidden: !button.visible() }"
+      :class="{
+        hidden:
+          typeof button.visible === 'boolean'
+            ? !button.visible
+            : !button.visible(),
+      }"
       @click="button.action"
       class="icon-button"
+      :disabled="
+        typeof button.disabled === 'boolean'
+          ? button.disabled
+          : button.disabled()
+      "
     >
       <i :class="button.icon"></i>
-      <span>{{ button.label }}</span>
+      <span>{{
+        typeof button.label === "string" ? button.label : button.label()
+      }}</span>
     </button>
   </div>
 </template>
@@ -20,6 +32,7 @@ import { Button } from "../models/elements";
 import { Logger } from "../utils/logger";
 import { useTASKS, useAPP_STATE } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
+import { TASK_STATUS } from "../models/tasks";
 
 const tasks_store = useTASKS();
 const app_state = useAPP_STATE();
@@ -43,28 +56,23 @@ const buttons_data = new Map<string, Button>([
     }),
   ],
   [
-    "Delete",
+    "Render",
     new Button({
-      label: "➖",
-      icon: "fas fa-minus",
-      action: () => deleteTask(),
-      visible: () => tasks_store.has_selected_tasks, // Keep initial visibility state
-    }),
-  ],
-  [
-    "Start",
-    new Button({
-      label: "Start",
+      label: "Render",
       icon: "fas fa-trash",
       action: () => startRender(),
+      disabled: () =>
+        tasks_store.queued_tasks.length + tasks_store.rendering_tasks.length !=
+        0,
     }),
   ],
   [
-    "Clear",
+    "Remove",
     new Button({
-      label: "Clear",
+      label: () => (tasks_store.has_selected_tasks ? "Remove" : "Clean"),
       icon: "fas fa-trash",
-      action: () => clearCompletedTasks(),
+      action: () =>
+        tasks_store.has_selected_tasks ? deleteTask() : clearCompletedTasks(),
     }),
   ],
 ]);
@@ -83,7 +91,6 @@ const addTask = async () => {
     Logger.info(`Adding video: ${video_path}`);
     tasks_store.addTask(video_path);
   }
-  Logger.info("Task added");
 };
 
 const deleteTask = () => {
@@ -95,14 +102,28 @@ const deleteTask = () => {
 };
 
 const clearCompletedTasks = () => {
-  Logger.info("Completed tasks cleared");
-  // Logic to clear all completed tasks
-  // Hide delete button after clearing
+  const done_tasks = [...tasks_store.done_tasks];
+  for (const task of done_tasks) {
+    Logger.info(`Deleting done task: ${task.id}`);
+    tasks_store.removeTask(task);
+  }
 };
 
-const startRender = () => {
-  console.log("Render started");
-  // Logic to start rendering tasks
+const startRender = async () => {
+  const ready_tasks = [...tasks_store.ready_tasks];
+  for (const task of ready_tasks) {
+    Logger.info(`Queue task: ${task.id}`);
+    task.status = TASK_STATUS.Queued;
+  }
+
+  const queued_tasks = [...tasks_store.queued_tasks];
+  for (const task of queued_tasks) {
+    Logger.info(`Rendering task: ${task.id}`);
+    task.status = TASK_STATUS.Rendering;
+    // Add a delay to simulate the rendering process
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    task.status = TASK_STATUS.Done;
+  }
 };
 </script>
 
@@ -137,6 +158,16 @@ const startRender = () => {
 
 .icon-button:hover {
   color: #1a73e8;
+}
+
+.icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #9aa0a6;
+}
+
+.icon-button:disabled:hover {
+  color: #9aa0a6;
 }
 
 .hidden {
