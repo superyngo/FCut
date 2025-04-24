@@ -44,7 +44,11 @@
               alt="Preview"
               class="preview-image"
             />
-            <div v-else class="preview-placeholder">No Preview</div>
+            <div v-else class="preview-placeholder">
+              {{ index }}
+              {{ task_store.shift_hover_range }}
+              {{ index in task_store.shift_hover_range }}
+            </div>
           </div>
         </div>
         <div class="task-details">
@@ -130,6 +134,9 @@ const handleKeyDown = (event: KeyboardEvent) => {
   if (event.key === "Shift") {
     // 當 Shift 鍵按下時，找出滑鼠最近的任務索引
     findNearestTaskToMouse();
+    Logger.info(`Last index: ${task_store.last_selected_index}`);
+    Logger.info(`最近的任務索引: ${task_store.mouse_nearest_index}`);
+    Logger.info(task_store.shift_hover_range.toString());
   }
 };
 
@@ -137,6 +144,9 @@ const handleKeyUp = (event: KeyboardEvent) => {
   if (event.key === "Shift") {
     // 當 Shift 鍵釋放時，重置 mouse_nearest_index
     task_store.mouse_nearest_index = -1;
+    Logger.info(`Last index: ${task_store.last_selected_index}`);
+    Logger.info(`最近的任務索引: ${task_store.mouse_nearest_index}`);
+    Logger.info(task_store.shift_hover_range.toString());
   }
 };
 
@@ -163,8 +173,6 @@ const findNearestTaskToMouse = () => {
   });
 
   task_store.mouse_nearest_index = closestTask;
-  Logger.info(`最近的任務索引: ${closestTask}, 距離: ${minDistance}`);
-  Logger.info(task_store.shift_hover_range.toString());
 };
 
 // 追蹤滑鼠位置
@@ -245,6 +253,7 @@ onUnmounted(() => {
 }
 .shifted {
   background-color: #e74c3c;
+  box-shadow: 0 0 0 3px #3498db;
 }
 
 .preview-placeholder {
