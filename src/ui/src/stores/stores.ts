@@ -53,6 +53,8 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
   state: () => ({
     store_id: "app_tasks",
     tasks: [] as Task[],
+    last_selected_index: -1 as number,
+    mouse_nearest_index: -1 as number,
   }),
 
   getters: {
@@ -72,6 +74,38 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
       state.tasks.filter((task) => task.status === TASK_STATUS.Done),
     has_selected_tasks: (state) =>
       state.tasks.some((task) => task.selected === true),
+    shift_hover_range: (state) => {
+      const start = Math.min(
+        state.last_selected_index,
+        state.mouse_nearest_index
+      );
+      const end = Math.max(
+        state.last_selected_index,
+        state.mouse_nearest_index
+      );
+
+      // 如果任一索引為 -1，返回空數組
+      if (
+        state.last_selected_index === -1 ||
+        state.mouse_nearest_index === -1
+      ) {
+        return [];
+      }
+
+      // 創建包含範圍內所有數字的數組
+      const range: number[] = [];
+      for (let i = start; i <= end; i++) {
+        range.push(i);
+      }
+      return range;
+    },
+    indexed_tasks: (state) => {
+      const taskObj: Record<number, Task> = {};
+      state.tasks.forEach((task, index) => {
+        taskObj[index] = task;
+      });
+      return taskObj;
+    },
   },
 
   actions: {

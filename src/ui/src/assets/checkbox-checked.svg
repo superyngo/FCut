@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <style>
+    .checkbox-circle { fill: #3498db; stroke: #3498db; stroke-width: 1.5; }
+    .checkbox-check { stroke: white; stroke-width: 2; fill: none; }
+  </style>
+  <circle cx="12" cy="12" r="10" class="checkbox-circle"/>
+  <path d="M8 12 L11 15 L16 9" class="checkbox-check"/>
+</svg>

@@ -17,6 +17,7 @@ export class Task extends BaseClass {
     settings?: TaskSettings;
     status?: TASK_STATUS;
     selected?: boolean;
+    shift_hovered?: boolean;
   }) {
     // merge defaults and user-supplied props
     const normalizedData = {
@@ -25,6 +26,7 @@ export class Task extends BaseClass {
       settings: {},
       status: TASK_STATUS.Preparing,
       selected: false,
+      shift_hovered: false,
       ...data,
     };
     super(normalizedData);

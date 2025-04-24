@@ -1,19 +1,42 @@
 <template>
-  <div class="task-list">
+  <div
+    class="task-list"
+    :class="{ 'has-selected': task_store.has_selected_tasks }"
+  >
+    <!-- 新增取消選取按鈕 -->
+    <div v-if="task_store.has_selected_tasks" class="clear-selection-wrapper">
+      <button
+        @click="clearAllSelections"
+        class="clear-selection-button"
+        title="取消所有選取"
+      >
+        <span>X</span>
+      </button>
+    </div>
     <ul>
-      <li v-for="task in task_store.tasks" :key="task.id" class="task-item">
+      <li
+        v-for="(task, index) in task_store.indexed_tasks"
+        :key="task.id"
+        class="task-item"
+      >
         <!-- Wrap preview in a container for positioning and hover detection -->
         <div class="preview-container">
           <!-- Checkbox positioned at the top-left -->
-          <input
-            type="checkbox"
-            v-model="task.selected"
-            @change=""
-            class="select-checkbox"
-            :class="{ 'is-selected': task.selected }"
-            title="Select Task"
-          />
-          <div class="task-preview" @click="toggleTaskSelection(task)">
+          <div class="checkbox-wrapper">
+            <input
+              type="checkbox"
+              v-model="task.selected"
+              @change="change_selected(task, index)"
+              class="select-checkbox"
+              :class="{ 'is-selected': task.selected }"
+              title="Select Task"
+            />
+          </div>
+          <div
+            class="task-preview"
+            :class="{ shifted: index in task_store.shift_hover_range }"
+            @click="toggleTaskSelection(task)"
+          >
             <!-- Placeholder for video preview -->
             <img
               v-if="task.previewUrl"
@@ -30,7 +53,8 @@
             <select
               v-model="task.renderMethod"
               class="render-select"
-              @change="chage_settings(task)"
+              @change="change_settings(task)"
+              :disabled="false"
             >
               <option value="" disabled selected>Please select</option>
               <option v-for="method of ACTIONS" :key="method" :value="method">
@@ -57,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from "vue";
 import { Logger } from "../utils/logger";
 import { useTASKS } from "../stores/stores";
 import { init_settings } from "../models/task_setting"; // Import the init_settings function
@@ -66,8 +91,14 @@ const task_store = useTASKS();
 
 // Create tasks using the Task class
 // const tasks = storeToRefs(task_store.tasks);
+const change_selected = (task: any, index: number) => {
+  task_store.saveTasks();
+  task_store.last_selected_index = task.selected ? index : -1;
+  Logger.info(task_store.last_selected_index.toString());
+  Logger.info("mouse " + task_store.mouse_nearest_index.toString());
+};
 
-const chage_settings = (task: any) => {
+const change_settings = (task: any) => {
   init_settings(task);
   task.status = TASK_STATUS.Ready;
   task_store.saveTasks();
@@ -81,77 +112,130 @@ const openSettings = (task: any) => {
 };
 
 const toggleTaskSelection = (task: any) => {
-  task.selected = !task.selected;
+  if (task_store.has_selected_tasks) {
+    task.selected = !task.selected;
+  }
 };
+
+const clearAllSelections = () => {
+  task_store.tasks.forEach((task: any) => {
+    task.selected = false;
+  });
+  task_store.saveTasks(); // 保存狀態
+  Logger.info("已取消所有任務選取");
+};
+
+// 添加 Shift 鍵事件處理
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === "Shift") {
+    // 當 Shift 鍵按下時，找出滑鼠最近的任務索引
+    findNearestTaskToMouse();
+  }
+};
+
+const handleKeyUp = (event: KeyboardEvent) => {
+  if (event.key === "Shift") {
+    // 當 Shift 鍵釋放時，重置 mouse_nearest_index
+    task_store.mouse_nearest_index = -1;
+  }
+};
+
+// 找出滑鼠最近的任務索引
+const findNearestTaskToMouse = () => {
+  const taskItems = document.querySelectorAll(".task-item");
+  let closestTask = -1;
+  let minDistance = Infinity;
+
+  taskItems.forEach((taskItem, index) => {
+    const rect = taskItem.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // 計算滑鼠與任務中心點的距離
+    const distX = centerX - mouseX;
+    const distY = centerY - mouseY;
+    const distance = Math.sqrt(distX * distX + distY * distY);
+
+    if (distance < minDistance) {
+      minDistance = distance;
+      closestTask = index;
+    }
+  });
+
+  task_store.mouse_nearest_index = closestTask;
+  Logger.info(`最近的任務索引: ${closestTask}, 距離: ${minDistance}`);
+  Logger.info(task_store.shift_hover_range.toString());
+};
+
+// 追蹤滑鼠位置
+let mouseX = 0;
+let mouseY = 0;
+
+const handleMouseMove = (event: MouseEvent) => {
+  mouseX = event.clientX;
+  mouseY = event.clientY;
+
+  // 如果 Shift 鍵被按下，更新最近的任務索引
+  if (event.shiftKey) {
+    findNearestTaskToMouse();
+  }
+};
+
+// 組件掛載時添加事件監聽器
+onMounted(() => {
+  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keyup", handleKeyUp);
+  document.addEventListener("mousemove", handleMouseMove);
+});
+
+// 組件卸載時移除事件監聽器
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeyDown);
+  window.removeEventListener("keyup", handleKeyUp);
+  document.removeEventListener("mousemove", handleMouseMove);
+});
 </script>
 
 <style scoped>
+/* 主容器樣式 */
 .task-list {
-  max-height: 400px; /* Adjust height as needed */
+  max-height: 400px;
   overflow-y: auto;
   border: 1px solid #ccc;
   padding: 10px;
 }
 
+/* 任務項目基本布局 */
 .task-item {
   display: flex;
   align-items: center;
-  padding: 10px 5px; /* Adjusted padding */
+  padding: 10px 5px;
   border-bottom: 1px solid #eee;
-  gap: 10px; /* Add space between elements */
+  gap: 10px;
 }
 
 .task-item:last-child {
   border-bottom: none;
 }
 
-/* New container for preview and checkbox */
+/* 預覽區域相關樣式 */
 .preview-container {
-  position: relative; /* Needed for absolute positioning of the checkbox */
+  position: relative;
   flex-shrink: 0;
-  width: 80px; /* Match task-preview width */
-  height: 50px; /* Match task-preview height */
-}
-
-/* Style for the checkbox */
-.select-checkbox {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  z-index: 10; /* Ensure checkbox is above the preview */
-  opacity: 0; /* Hidden by default */
-  cursor: pointer;
-  transition: opacity 0.2s ease-in-out; /* Smooth transition */
-}
-
-/* Show checkbox on container hover OR if it's selected */
-.preview-container:hover .select-checkbox,
-.select-checkbox.is-selected {
-  opacity: 1;
-}
-
-/* Add hover effect to task-preview */
-.preview-container:hover .task-preview {
-  box-shadow: 0 0 0 3px #3498db;
-  transition: box-shadow 0.2s ease-in-out;
-}
-
-/* Add persistent highlight effect for selected tasks */
-.select-checkbox:checked ~ .task-preview {
-  box-shadow: 0 0 0 3px #3498db; /* Green highlight for selected items */
-  transition: box-shadow 0.2s ease-in-out;
+  width: 80px;
+  height: 50px;
 }
 
 .task-preview {
-  width: 100%; /* Take full width of container */
-  height: 100%; /* Take full height of container */
+  width: 100%;
+  height: 100%;
   background-color: #f0f0f0;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 4px; /* Rounded corners */
-  transition: box-shadow 0.2s ease-in-out; /* Smooth transition for hover effect */
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease-in-out;
 }
 
 .preview-image {
@@ -159,12 +243,93 @@ const toggleTaskSelection = (task: any) => {
   max-height: 100%;
   object-fit: cover;
 }
+.shifted {
+  background-color: #e74c3c;
+}
 
 .preview-placeholder {
   font-size: 12px;
-  color: #888;
+  color: #fff;
+  background-color: lightslategray;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
 }
 
+/* 預覽區域懸停效果 */
+.preview-container:hover .task-preview {
+  box-shadow: 0 0 0 3px #3498db;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* 選擇框相關樣式 */
+.checkbox-wrapper {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  z-index: 10;
+}
+
+.select-checkbox {
+  position: relative;
+  cursor: pointer;
+  transition: opacity 0.2s ease-in-out;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 16px !important;
+  height: 16px !important;
+  display: inline-block !important;
+  border: none !important;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+
+  /* 默認狀態下透明不可見 */
+  background-image: url("../assets/checkbox-default.svg");
+  opacity: 0;
+}
+
+/* hover 狀態下顯示白色圓圈帶簍空勾選 */
+.select-checkbox:hover {
+  background-image: url("../assets/checkbox-hover.svg");
+  opacity: 1 !important;
+  scale: 1.2;
+  transition: scale 0.2s ease-in-out;
+}
+
+/* 選中狀態顯示藍色圓圈帶白色勾選 */
+.select-checkbox:checked {
+  background-image: url("../assets/checkbox-checked.svg") !important;
+  background-color: transparent !important;
+  opacity: 1 !important;
+}
+
+/* 當有任何任務被選中時，所有的 checkbox 都會顯示 */
+.task-list.has-selected .select-checkbox {
+  opacity: 1 !important;
+}
+
+/* 選擇框狀態與交互效果 */
+.select-checkbox:hover,
+.task-list.has-selected .preview-container:hover .select-checkbox {
+  background-image: url("../assets/checkbox-hover.svg");
+  opacity: 1 !important;
+}
+
+.preview-container:hover .select-checkbox {
+  opacity: 1 !important;
+}
+
+/* 選中項目高亮效果 */
+.preview-container:has(.select-checkbox:checked) .task-preview {
+  box-shadow: 0 0 0 3px #3498db;
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* 任務詳情與操作區域 */
 .task-details {
   flex-grow: 1;
   display: flex;
@@ -186,7 +351,7 @@ const toggleTaskSelection = (task: any) => {
 .render-select {
   padding: 3px 5px;
   font-size: 12px;
-  max-width: 100px; /* Limit width */
+  max-width: 100px;
 }
 
 .settings-button {
@@ -195,9 +360,10 @@ const toggleTaskSelection = (task: any) => {
   cursor: pointer;
 }
 
+/* 任務狀態樣式 */
 .task-status {
   flex-shrink: 0;
-  margin-left: auto; /* Push status to the right */
+  margin-left: auto;
 }
 
 .status-badge {
@@ -205,27 +371,62 @@ const toggleTaskSelection = (task: any) => {
   border-radius: 12px;
   font-size: 12px;
   color: white;
-  min-width: 70px; /* Ensure consistent width */
+  min-width: 70px;
   text-align: center;
 }
 
+/* 不同狀態的顏色 */
 .status-preparing {
-  background-color: #f0ad4e; /* Orange */
+  background-color: #f0ad4e; /* 橙色 */
 }
 
 .status-ready {
-  background-color: #5bc0de; /* Blue */
+  background-color: #5bc0de; /* 藍色 */
 }
 
 .status-queued {
-  background-color: #9370db; /* Medium Purple */
+  background-color: #9370db; /* 紫色 */
 }
 
 .status-rendering {
-  background-color: #ff6347; /* Tomato Red */
+  background-color: #ff6347; /* 番茄紅 */
 }
 
 .status-done {
-  background-color: #5cb85c; /* Green */
+  background-color: #5cb85c; /* 綠色 */
+}
+
+/* 取消選取按鈕樣式 */
+.clear-selection-wrapper {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 100;
+}
+
+.clear-selection-button {
+  background-color: #ff6347;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+.clear-selection-button:hover {
+  background-color: #e74c3c;
+  transform: scale(1.1);
+}
+
+.clear-selection-button:active {
+  transform: scale(0.95);
 }
 </style>

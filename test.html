@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Shift 連續多選</title>
+    <style>
+      .checkbox-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 20px;
+      }
+      label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 16px;
+      }
+      input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+      }
+      input[type="checkbox"]:checked {
+        background-color: #007bff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="checkbox-container">
+      <label><input type="checkbox" class="checkbox" /> 選項 1</label>
+      <label><input type="checkbox" class="checkbox" /> 選項 2</label>
+      <label><input type="checkbox" class="checkbox" /> 選項 3</label>
+      <label><input type="checkbox" class="checkbox" /> 選項 4</label>
+      <label><input type="checkbox" class="checkbox" /> 選項 5</label>
+    </div>
+
+    <script>
+      const checkboxes = document.querySelectorAll(".checkbox");
+      let lastChecked = null;
+
+      checkboxes.forEach((checkbox) => {
+        checkbox.addEventListener("click", function (event) {
+          if (event.shiftKey && lastChecked) {
+            const currentIndex = Array.from(checkboxes).indexOf(this);
+            const lastIndex = Array.from(checkboxes).indexOf(lastChecked);
+            const start = Math.min(currentIndex, lastIndex);
+            const end = Math.max(currentIndex, lastIndex);
+
+            // 選中範圍內的所有 checkbox
+            for (let i = start; i <= end; i++) {
+              checkboxes[i].checked = true;
+            }
+          }
+          lastChecked = this; // 更新上次點擊的 checkbox
+        });
+      });
+    </script>
+  </body>
+</html>
