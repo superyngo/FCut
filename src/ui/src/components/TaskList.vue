@@ -15,7 +15,7 @@
     </div>
     <ul>
       <li
-        v-for="(task, index) in task_store.indexed_tasks"
+        v-for="(task, index) in task_store.tasks"
         :key="task.id"
         class="task-item"
       >
@@ -34,8 +34,8 @@
           </div>
           <div
             class="task-preview"
-            :class="{ shifted: index in task_store.shift_hover_range }"
-            @click="toggleTaskSelection(task)"
+            :class="{ shifted: task_store.shift_hover_range.includes(index) }"
+            @click="toggleTaskSelection(task, index)"
           >
             <!-- Placeholder for video preview -->
             <img
@@ -44,11 +44,7 @@
               alt="Preview"
               class="preview-image"
             />
-            <div v-else class="preview-placeholder">
-              {{ index }}
-              {{ task_store.shift_hover_range }}
-              {{ index in task_store.shift_hover_range }}
-            </div>
+            <div v-else class="preview-placeholder">No Preview</div>
           </div>
         </div>
         <div class="task-details">
@@ -58,7 +54,11 @@
               v-model="task.renderMethod"
               class="render-select"
               @change="change_settings(task)"
-              :disabled="false"
+              :disabled="
+                [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
+                  task.status
+                )
+              "
             >
               <option value="" disabled selected>Please select</option>
               <option v-for="method of ACTIONS" :key="method" :value="method">
@@ -85,21 +85,16 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
 import { Logger } from "../utils/logger";
-import { useTASKS } from "../stores/stores";
-import { init_settings } from "../models/task_setting"; // Import the init_settings function
-import { TASK_STATUS } from "../models/tasks"; // Import the TASK_STATUS enum
+import { use_tasks_with_shift } from "../stores/stores";
+import { init_settings } from "../models/task_setting";
+import { TASK_STATUS } from "../models/tasks";
 import { ACTIONS } from "../models/task_setting";
-const task_store = useTASKS();
+const task_store = use_tasks_with_shift();
 
 // Create tasks using the Task class
-// const tasks = storeToRefs(task_store.tasks);
 const change_selected = (task: any, index: number) => {
-  task_store.saveTasks();
-  task_store.last_selected_index = task.selected ? index : -1;
-  Logger.info(task_store.last_selected_index.toString());
-  Logger.info("mouse " + task_store.mouse_nearest_index.toString());
+  toggleTaskSelection(task, index, false);
 };
 
 const change_settings = (task: any) => {
@@ -111,103 +106,47 @@ const change_settings = (task: any) => {
 const openSettings = (task: any) => {
   Logger.info(`Opening settings for task: ${task.id}`);
   Logger.info(JSON.stringify(task));
-  // Assuming APP_STORE has an action/mutation to open the panel and set the current task
-  // APP_STORE.openSettingsPanel(task);
 };
 
-const toggleTaskSelection = (task: any) => {
-  if (task_store.has_selected_tasks) {
+const toggleTaskSelection = (
+  task: any,
+  index: number,
+  toggle: boolean = true
+) => {
+  if ((task_store.has_selected_tasks || task_store.shift_on) && toggle) {
     task.selected = !task.selected;
   }
+  if (
+    !task.selected &&
+    task_store.shift_hover_range.length > 0 &&
+    task_store.shift_hover_range_handle
+  ) {
+    task_store.shift_hover_range.forEach((index: number) => {
+      task_store.tasks[index].selected = false;
+    });
+  } else if (task_store.shift_hover_range.length > 0) {
+    task_store.shift_hover_range.forEach((index: number) => {
+      task_store.tasks[index].selected = true;
+    });
+  }
+  task_store.last_selected_index = task.selected ? index : -1;
+  task_store.saveTasks();
 };
 
 const clearAllSelections = () => {
   task_store.tasks.forEach((task: any) => {
     task.selected = false;
   });
-  task_store.saveTasks(); // 保存狀態
+  task_store.saveTasks();
+  task_store.last_selected_index = -1;
   Logger.info("已取消所有任務選取");
 };
-
-// 添加 Shift 鍵事件處理
-const handleKeyDown = (event: KeyboardEvent) => {
-  if (event.key === "Shift") {
-    // 當 Shift 鍵按下時，找出滑鼠最近的任務索引
-    findNearestTaskToMouse();
-    Logger.info(`Last index: ${task_store.last_selected_index}`);
-    Logger.info(`最近的任務索引: ${task_store.mouse_nearest_index}`);
-    Logger.info(task_store.shift_hover_range.toString());
-  }
-};
-
-const handleKeyUp = (event: KeyboardEvent) => {
-  if (event.key === "Shift") {
-    // 當 Shift 鍵釋放時，重置 mouse_nearest_index
-    task_store.mouse_nearest_index = -1;
-    Logger.info(`Last index: ${task_store.last_selected_index}`);
-    Logger.info(`最近的任務索引: ${task_store.mouse_nearest_index}`);
-    Logger.info(task_store.shift_hover_range.toString());
-  }
-};
-
-// 找出滑鼠最近的任務索引
-const findNearestTaskToMouse = () => {
-  const taskItems = document.querySelectorAll(".task-item");
-  let closestTask = -1;
-  let minDistance = Infinity;
-
-  taskItems.forEach((taskItem, index) => {
-    const rect = taskItem.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-
-    // 計算滑鼠與任務中心點的距離
-    const distX = centerX - mouseX;
-    const distY = centerY - mouseY;
-    const distance = Math.sqrt(distX * distX + distY * distY);
-
-    if (distance < minDistance) {
-      minDistance = distance;
-      closestTask = index;
-    }
-  });
-
-  task_store.mouse_nearest_index = closestTask;
-};
-
-// 追蹤滑鼠位置
-let mouseX = 0;
-let mouseY = 0;
-
-const handleMouseMove = (event: MouseEvent) => {
-  mouseX = event.clientX;
-  mouseY = event.clientY;
-
-  // 如果 Shift 鍵被按下，更新最近的任務索引
-  if (event.shiftKey) {
-    findNearestTaskToMouse();
-  }
-};
-
-// 組件掛載時添加事件監聽器
-onMounted(() => {
-  window.addEventListener("keydown", handleKeyDown);
-  window.addEventListener("keyup", handleKeyUp);
-  document.addEventListener("mousemove", handleMouseMove);
-});
-
-// 組件卸載時移除事件監聽器
-onUnmounted(() => {
-  window.removeEventListener("keydown", handleKeyDown);
-  window.removeEventListener("keyup", handleKeyUp);
-  document.removeEventListener("mousemove", handleMouseMove);
-});
 </script>
 
 <style scoped>
 /* 主容器樣式 */
 .task-list {
-  max-height: 400px;
+  max-height: 100vh;
   overflow-y: auto;
   border: 1px solid #ccc;
   padding: 10px;
@@ -251,10 +190,6 @@ onUnmounted(() => {
   max-height: 100%;
   object-fit: cover;
 }
-.shifted {
-  background-color: #e74c3c;
-  box-shadow: 0 0 0 3px #3498db;
-}
 
 .preview-placeholder {
   font-size: 12px;
@@ -268,10 +203,27 @@ onUnmounted(() => {
   border-radius: 4px;
 }
 
+/* 當 checkbox 被勾選時，preview-placeholder 的 scale 變成 0.9 */
+.preview-container:has(.select-checkbox:checked)
+  .task-preview
+  .preview-placeholder {
+  scale: 0.9;
+  transition: scale 0.2s ease-in-out;
+}
+
 /* 預覽區域懸停效果 */
 .preview-container:hover .task-preview {
   box-shadow: 0 0 0 3px #3498db;
   transition: box-shadow 0.2s ease-in-out;
+}
+
+.shifted {
+  box-shadow: 0 0 0 3px #3498db;
+}
+
+/* 待修改 */
+.shifted ~ .checkbox-wrapper .select-checkbox {
+  background-image: url("../assets/checkbox-hover.svg");
 }
 
 /* 選擇框相關樣式 */
@@ -330,12 +282,6 @@ onUnmounted(() => {
 
 .preview-container:hover .select-checkbox {
   opacity: 1 !important;
-}
-
-/* 選中項目高亮效果 */
-.preview-container:has(.select-checkbox:checked) .task-preview {
-  box-shadow: 0 0 0 3px #3498db;
-  transition: box-shadow 0.2s ease-in-out;
 }
 
 /* 任務詳情與操作區域 */
