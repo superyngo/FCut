@@ -1,11 +1,10 @@
-import { defineStore } from "pinia";
+import { defineStore, Store } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
 import { Task } from "../models/tasks";
 import { Logger } from "../utils/logger";
 import { TASK_STATUS } from "../models/tasks";
 import { onMounted, onUnmounted } from "vue";
-import { useMouseTracking } from "../stores/mouseXY";
-import { on_shift, on_mousemove, on_ctrl_a } from "../utils/on_events"; // 引入 on_shift 工具函數
+import { on_mousemove, on_keys, modifier_keys } from "../utils/on_events"; // 引入 on_shift 工具函數
 
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
@@ -97,10 +96,10 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
       }
 
       // 創建包含範圍內所有數字的數組
-      const range: number[] = [];
-      for (let i = start; i <= end; i++) {
-        range.push(i);
-      }
+      const range = Array.from(
+        { length: end - start + 1 },
+        (_, i) => start + i
+      );
       return range;
     },
     shift_hover_range_handle(state) {
@@ -122,10 +121,10 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
       }
 
       // 創建包含範圍內所有數字的數組
-      const shift_hover_range: number[] = [];
-      for (let i = start; i <= end; i++) {
-        shift_hover_range.push(i);
-      }
+      const shift_hover_range = Array.from(
+        { length: end - start + 1 },
+        (_, i) => start + i
+      );
 
       // If no selection range exists, return null
       if (shift_hover_range.length === 0) {
@@ -188,12 +187,27 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
       localStorage.removeItem(this.store_id);
       this.tasks = [];
     },
+    select_all_tasks() {
+      this.tasks.forEach((task) => {
+        task.selected = true;
+      });
+      this.saveTasks();
+    },
+    unselect_all_tasks() {
+      this.tasks.forEach((task) => {
+        task.selected = false;
+      });
+      this.saveTasks();
+    },
   },
 });
 
 export function use_tasks_with_shift() {
-  const mouseStore = useMouseTracking();
   const tasks_state = useTASKS();
+
+  // 存儲清理函數  // 存儲滑鼠位置的對象
+  let mouse_cleaner_with_coordinate: on_mousemove | null = null;
+
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = () => {
     const taskItems = document.querySelectorAll(".task-item");
@@ -206,8 +220,10 @@ export function use_tasks_with_shift() {
       const centerY = rect.top + rect.height / 2;
 
       // 計算滑鼠與任務中心點的距離
-      const distX = centerX - mouseStore.mouseX;
-      const distY = centerY - mouseStore.mouseY;
+      const distX =
+        centerX - (mouse_cleaner_with_coordinate as on_mousemove).mouseX;
+      const distY =
+        centerY - (mouse_cleaner_with_coordinate as on_mousemove).mouseY;
       const distance = Math.sqrt(distX * distX + distY * distY);
 
       if (distance < minDistance) {
@@ -219,47 +235,51 @@ export function use_tasks_with_shift() {
     tasks_state.mouse_nearest_index = closestTask;
   };
 
-  // 存儲清理函數
-  let mousemove_cleanup: (() => void) | null = null;
-
   // 創建 shift 鍵按下和釋放的回調函數
   const onShiftPress = () => {
     tasks_state.shift_on = true;
+    // mouse_coordinate.startTracking(); // 開始追蹤滑鼠位置
+    mouse_cleaner_with_coordinate = on_mousemove([findNearestTaskToMouse]);
     findNearestTaskToMouse();
-    mousemove_cleanup = on_mousemove([findNearestTaskToMouse]);
   };
 
   const onShiftRelease = () => {
     tasks_state.shift_on = false;
-    if (mousemove_cleanup) {
-      mousemove_cleanup();
+    if (mouse_cleaner_with_coordinate) {
+      mouse_cleaner_with_coordinate();
     }
-    mousemove_cleanup = null;
+    mouse_cleaner_with_coordinate = null;
     tasks_state.mouse_nearest_index = -1;
   };
 
   // 清理函數，用於移除事件監聽器
   let cleaner: (() => void)[] = [];
-  let cleanupShiftListener: (() => void) | null = null;
-  let cleanupCtlA: (() => void) | null = null;
 
   // 組件掛載時設置事件監聽
   onMounted(() => {
-    // 使用新的 on_shift 工具函數
     cleaner.push(
-      on_shift({
-        onPress: [onShiftPress],
-        onRelease: [onShiftRelease],
-      })
-    );
-    cleaner.push(
-      on_ctrl_a([
-        () => {
-          tasks_state.tasks.forEach((task, index) => {
-            task.selected = true;
-          });
+      on_keys({
+        Shift: {
+          onPress: [onShiftPress],
+          onRelease: [onShiftRelease],
         },
-      ])
+        // use Ctrl+A 鍵全選任務
+        a: {
+          onPress: [
+            () => {
+              tasks_state.select_all_tasks();
+            },
+          ],
+          withControl: [modifier_keys.Control],
+        },
+        Escape: {
+          onPress: [
+            () => {
+              tasks_state.unselect_all_tasks();
+            },
+          ],
+        },
+      })
     );
   });
 

@@ -92,20 +92,31 @@ import { TASK_STATUS } from "../models/tasks";
 import { ACTIONS } from "../models/task_setting";
 const task_store = use_tasks_with_shift();
 
-// Create tasks using the Task class
-const change_selected = (task: any, index: number) => {
-  toggleTaskSelection(task, index, false);
-};
-
 const change_settings = (task: any) => {
-  init_settings(task);
-  task.status = TASK_STATUS.Ready;
+  if (task_store.has_selected_tasks) {
+    const method = task.renderMethod;
+    task_store.selected_tasks.forEach((task: any) => {
+      if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
+        return;
+      }
+      task.renderMethod = method;
+      init_settings(task);
+      task.status = TASK_STATUS.Ready;
+    });
+  } else {
+    init_settings(task);
+    task.status = TASK_STATUS.Ready;
+  }
   task_store.saveTasks();
 };
 
 const openSettings = (task: any) => {
   Logger.info(`Opening settings for task: ${task.id}`);
   Logger.info(JSON.stringify(task));
+};
+// Create tasks using the Task class
+const change_selected = (task: any, index: number) => {
+  toggleTaskSelection(task, index, false);
 };
 
 const toggleTaskSelection = (
@@ -221,9 +232,12 @@ const clearAllSelections = () => {
   box-shadow: 0 0 0 3px #3498db;
 }
 
-/* 待修改 */
-.shifted ~ .checkbox-wrapper .select-checkbox {
+/* 當 task-preview 有 shifted 類時，讓同一個 preview-container 中的 checkbox 顯示 hover 狀態 */
+.preview-container:has(.task-preview.shifted)
+  .checkbox-wrapper
+  .select-checkbox {
   background-image: url("../assets/checkbox-hover.svg");
+  opacity: 1 !important;
 }
 
 /* 選擇框相關樣式 */

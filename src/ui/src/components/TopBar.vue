@@ -96,6 +96,9 @@ const addTask = async () => {
 const deleteTask = () => {
   const selected_tasks = [...tasks_store.selected_tasks];
   for (const task of selected_tasks) {
+    if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
+      return;
+    }
     Logger.info(`Deleting task: ${task.id}`);
     tasks_store.removeTask(task);
   }
