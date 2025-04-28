@@ -30,12 +30,12 @@
 import { ref } from "vue";
 import { Button } from "../models/elements";
 import { Logger } from "../utils/logger";
-import { useTASKS, useAPP_STATE } from "../stores/stores";
+import { useAPP_STATE_inited, use_tasks_with_shift } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
 
-const tasks_store = useTASKS();
-const app_state = useAPP_STATE();
+const tasks_store = use_tasks_with_shift();
+const app_state = useAPP_STATE_inited();
 
 // Use a Map for buttons_data
 const buttons_data = new Map<string, Button>([

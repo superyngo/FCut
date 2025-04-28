@@ -12,10 +12,9 @@
 import MainView from "./views/MainView.vue";
 // import SettingsPanel from "./components/SettingsPanel.vue";
 import MenuOptions from "./components/MenuOptions.vue";
-import { useAPP_STATE, useTASKS } from "./stores/stores";
-const app_state = useAPP_STATE();
-app_state.initFromPython();
-useTASKS().initTasks();
+import { useAPP_STATE_inited } from "./stores/stores";
+const app_state = useAPP_STATE_inited();
+// app_state.initFromPython();
 </script>
 
 <style>

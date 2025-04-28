@@ -177,7 +177,30 @@ export enum modifier_keys {
   Control = "Control",
   Alt = "Alt",
 }
-let a: modifier_keys = modifier_keys.Shift;
+
+// 檢查修飾鍵是否匹配
+const checkModifiers = (
+  event: KeyboardEvent,
+  config?: modifier_keys[]
+): boolean => {
+  if (!config || config.length === 0) return true; // 無需檢查
+
+  const required = {
+    [modifier_keys.Shift]: config.includes(modifier_keys.Shift),
+    [modifier_keys.Control]: config.includes(modifier_keys.Control),
+    [modifier_keys.Alt]: config.includes(modifier_keys.Alt),
+  };
+
+  // Meta key (Cmd on Mac, Win on Windows) counts as Control for simplicity here
+  const ctrlOrMeta = event.ctrlKey || event.metaKey;
+
+  return (
+    required[modifier_keys.Shift] === event.shiftKey &&
+    required[modifier_keys.Control] === ctrlOrMeta &&
+    required[modifier_keys.Alt] === event.altKey
+  );
+};
+
 export function on_keys(key_callbacks: key_callbacks) {
   // 執行按下回調函數
   const handleKeyDown = (event: KeyboardEvent) => {

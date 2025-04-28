@@ -3,12 +3,12 @@ import { waitForPyWebviewApi } from "../services/pywebview";
 import { Task } from "../models/tasks";
 import { Logger } from "../utils/logger";
 import { TASK_STATUS } from "../models/tasks";
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { on_mousemove, on_keys, modifier_keys } from "../utils/on_events"; // 引入 on_shift 工具函數
 
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
-export const useAPP_STATE = defineStore(crypto.randomUUID(), {
+const useAPP_STATE = defineStore(crypto.randomUUID(), {
   state: () => ({
     store_id: "app_constants" as string,
     error: false as boolean,
@@ -49,9 +49,29 @@ export const useAPP_STATE = defineStore(crypto.randomUUID(), {
     // },
   },
 });
+const useAPP_STATE_started = ref(false);
+export function useAPP_STATE_inited() {
+  const app_state = useAPP_STATE();
+  // 使用 ref 確保只在客戶端 onMounted 中執行
+
+  // 組件掛載時設置事件監聽
+  onMounted(async () => {
+    if (!useAPP_STATE_started.value) {
+      await app_state.initFromPython();
+      useAPP_STATE_started.value = true;
+    }
+  });
+
+  // 組件卸載時清理事件監聽
+  onUnmounted(() => {
+    useAPP_STATE_started.value = false;
+  });
+
+  return app_state;
+}
 
 // Define the new store for tasks
-export const useTASKS = defineStore(crypto.randomUUID(), {
+const useTASKS = defineStore(crypto.randomUUID(), {
   state: () => ({
     store_id: "app_tasks",
     tasks: [] as Task[],
@@ -201,12 +221,13 @@ export const useTASKS = defineStore(crypto.randomUUID(), {
     },
   },
 });
-
+const useTASKS_started = ref(false);
 export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
 
   // 存儲清理函數  // 存儲滑鼠位置的對象
   let mouse_cleaner_with_coordinate: on_mousemove | null = null;
+  // 使用 ref 確保只在客戶端 onMounted 中執行
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = () => {
@@ -257,34 +278,39 @@ export function use_tasks_with_shift() {
 
   // 組件掛載時設置事件監聽
   onMounted(() => {
-    cleaner.push(
-      on_keys({
-        Shift: {
-          onPress: [onShiftPress],
-          onRelease: [onShiftRelease],
-        },
-        // use Ctrl+A 鍵全選任務
-        a: {
-          onPress: [
-            () => {
-              tasks_state.select_all_tasks();
-            },
-          ],
-          withControl: [modifier_keys.Control],
-        },
-        Escape: {
-          onPress: [
-            () => {
-              tasks_state.unselect_all_tasks();
-            },
-          ],
-        },
-      })
-    );
+    if (!useTASKS_started.value) {
+      tasks_state.initTasks();
+      cleaner.push(
+        on_keys({
+          Shift: {
+            onPress: [onShiftPress],
+            onRelease: [onShiftRelease],
+          },
+          // use Ctrl+A 鍵全選任務
+          a: {
+            onPress: [
+              () => {
+                tasks_state.select_all_tasks();
+              },
+            ],
+            withControl: [modifier_keys.Control],
+          },
+          Escape: {
+            onPress: [
+              () => {
+                tasks_state.unselect_all_tasks();
+              },
+            ],
+          },
+        })
+      );
+      useTASKS_started.value = true;
+    }
   });
 
   // 組件卸載時清理事件監聽
   onUnmounted(() => {
+    useTASKS_started.value = false;
     // 清理事件監聽
     cleaner.forEach((cleanup) => cleanup());
     cleaner = [];

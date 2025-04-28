@@ -1,6 +1,6 @@
 // filepath: f:\FCut\src\ui\src\stores\mouseXY.ts
 import { defineStore } from "pinia";
-import { onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 import { Logger } from "../utils/logger";
 
 export const useMouseXY = defineStore("mouseXY", {
@@ -40,14 +40,19 @@ export const useMouseXY = defineStore("mouseXY", {
 });
 
 // 建立一個 composable 來自動啟動追蹤
+const started = ref(false);
 export function useMouseTracking() {
   const mouse_coordinate = useMouseXY();
-
+  // 使用 ref 確保只在客戶端 onMounted 中執行
   onMounted(() => {
-    mouse_coordinate.startTracking();
+    if (!started.value) {
+      mouse_coordinate.startTracking();
+      started.value = true;
+    }
   });
 
   onUnmounted(() => {
+    started.value = false;
     mouse_coordinate.stopTracking();
   });
 
