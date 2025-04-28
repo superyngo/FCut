@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="../public/vite.svg" />
+    <title>KeyStore 測試頁面</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background-color: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #333;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+      }
+      .key-display {
+        background-color: #eee;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+        font-family: monospace;
+      }
+      .instructions {
+        background-color: #e8f4f8;
+        padding: 15px;
+        border-left: 4px solid #3498db;
+        margin: 20px 0;
+      }
+      .test-section {
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 5px;
+      }
+      button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      .modifier-state {
+        display: inline-block;
+        margin-right: 10px;
+        padding: 5px 10px;
+        border-radius: 3px;
+      }
+      .active {
+        background-color: #2ecc71;
+        color: white;
+      }
+      .inactive {
+        background-color: #e74c3c;
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>KeyStore 測試頁面</h1>
+
+      <div class="instructions">
+        <h3>使用說明：</h3>
+        <p>這個頁面用於測試 KeyStore 功能。您可以按下各種按鍵並觀察反應。</p>
+        <p>下方會顯示按鍵狀態、修飾鍵狀態以及註冊的各種按鍵事件回調。</p>
+      </div>
+
+      <div id="app">
+        <!-- Vue 應用將掛載在這裡 -->
+      </div>
+    </div>
+
+    <!-- 引入 Vue, Pinia 和 Lodash-es -->
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+          "pinia": "https://unpkg.com/pinia@2/dist/pinia.esm-browser.js",
+          "lodash-es": "https://unpkg.com/lodash-es@4/lodash.js"
+        }
+      }
+    </script>
+
+    <!-- 主應用腳本 -->
+    <script type="module">
+      import { createApp } from "vue";
+      import { createPinia } from "pinia";
+      import "../src/style.css";
+
+      // 注意：這裡我們需要引入 App_test.vue，但瀏覽器不能直接引入 .vue 文件
+      // 所以我們將在下面直接定義組件
+
+      // 直接定義一個應用來掛載我們的測試組件
+      const app = createApp({
+        template: `
+          <div class="test-app">
+            <h2>KeyStore 功能測試</h2>
+            <p>請使用 Vite 開發服務器來運行此測試！</p>
+            <p>推薦方式：</p>
+            <ol>
+              <li>在終端中執行: <code>cd src/ui && npx vite --port 3000</code></li>
+              <li>然後訪問: <a href="http://localhost:3000/test/">http://localhost:3000/test/</a></li>
+            </ol>
+            <p>這是因為 .vue 檔案需要被 Vite 編譯後才能在瀏覽器中正確運行</p>
+          </div>
+        `,
+      });
+
+      const pinia = createPinia();
+      app.use(pinia);
+      app.mount("#app");
+    </script>
+  </body>
+</html>
