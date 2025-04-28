@@ -204,6 +204,7 @@ const checkModifiers = (
 export function on_keys(key_callbacks: key_callbacks) {
   // 執行按下回調函數
   const handleKeyDown = (event: KeyboardEvent) => {
+    const key = event.key;
     if (!(event.key in key_callbacks) || !key_callbacks[event.key]?.onPress) {
       return;
     }
