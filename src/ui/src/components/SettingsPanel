@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { computed } from "vue";
   import { useAPP_STATE } from "../stores/app";
-  import { Logger } from "../utils/logger";
+  import { logger } from "../utils/logger";
   import type { Task } from "./TaskList.vue"; // Ensure Task type is imported
 
   const app_state = useAPP_STATE();
@@ -23,7 +23,7 @@
       // If deep reactivity is an issue, consider replacing the settings object:
       // task.value.settings = { ...task.value.settings, [key]: value };
 
-      Logger.info(`Updated setting ${key} for task ${task.value.id}:`, value);
+      logger.debug(`Updated setting ${key} for task ${task.value.id}:`, value);
       // NOTE: Changes are currently only in the frontend state.
       // Implement saving logic here if needed (e.g., call a store action or API).
     }

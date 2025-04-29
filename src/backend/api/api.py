@@ -28,6 +28,9 @@ class Api:
     def logger_error(self, message) -> None:
         logger.error(message)
 
+    def logger_debug(self, message) -> None:
+        logger.debug(message)
+
     def get_constants(self) -> dict[str, Any]:
         # 1️⃣ Names → values
         all_enum_dicts = {

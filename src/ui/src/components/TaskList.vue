@@ -85,7 +85,7 @@
 </template>
 
 <script setup lang="ts">
-import { Logger } from "../utils/logger";
+import { logger } from "../utils/logger";
 import { use_tasks_with_shift } from "../stores/stores";
 import { init_settings } from "../models/task_setting";
 import { TASK_STATUS } from "../models/tasks";
@@ -111,8 +111,8 @@ const change_settings = (task: any) => {
 };
 
 const openSettings = (task: any) => {
-  Logger.info(`Opening settings for task: ${task.id}`);
-  Logger.info(JSON.stringify(task));
+  logger.debug(`Opening settings for task: ${task.id}`);
+  logger.debug(JSON.stringify(task));
 };
 // Create tasks using the Task class
 const change_selected = (task: any, index: number) => {
@@ -150,7 +150,7 @@ const clearAllSelections = () => {
   });
   task_store.saveTasks();
   task_store.last_selected_index = -1;
-  Logger.info("已取消所有任務選取");
+  logger.debug("已取消所有任務選取");
 };
 </script>
 

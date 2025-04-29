@@ -29,7 +29,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Button } from "../models/elements";
-import { Logger } from "../utils/logger";
+import { logger } from "../utils/logger";
 import { useAPP_STATE_inited, use_tasks_with_shift } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
@@ -81,14 +81,14 @@ const buttons_data = new Map<string, Button>([
 const buttons = ref<Map<string, Button>>(buttons_data);
 
 const toggleMenu = () => {
-  Logger.info("Menu toggled");
+  logger.debug("Menu toggled");
   app_state.isMenuVisible = !app_state.isMenuVisible;
 };
 
 const addTask = async () => {
   const video_paths = await pywebview.api.open_file_dialog();
   for (const video_path of video_paths) {
-    Logger.info(`Adding video: ${video_path}`);
+    logger.debug(`Adding video: ${video_path}`);
     tasks_store.addTask(video_path);
   }
 };
@@ -99,7 +99,7 @@ const deleteTask = () => {
     if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
       return;
     }
-    Logger.info(`Deleting task: ${task.id}`);
+    logger.debug(`Deleting task: ${task.id}`);
     tasks_store.removeTask(task);
   }
 };
@@ -107,7 +107,7 @@ const deleteTask = () => {
 const clearCompletedTasks = () => {
   const done_tasks = [...tasks_store.done_tasks];
   for (const task of done_tasks) {
-    Logger.info(`Deleting done task: ${task.id}`);
+    logger.debug(`Deleting done task: ${task.id}`);
     tasks_store.removeTask(task);
   }
 };
@@ -115,13 +115,13 @@ const clearCompletedTasks = () => {
 const startRender = async () => {
   const ready_tasks = [...tasks_store.ready_tasks];
   for (const task of ready_tasks) {
-    Logger.info(`Queue task: ${task.id}`);
+    logger.debug(`Queue task: ${task.id}`);
     task.status = TASK_STATUS.Queued;
   }
 
   const queued_tasks = [...tasks_store.queued_tasks];
   for (const task of queued_tasks) {
-    Logger.info(`Rendering task: ${task.id}`);
+    logger.debug(`Rendering task: ${task.id}`);
     task.status = TASK_STATUS.Rendering;
     // Add a delay to simulate the rendering process
     await new Promise((resolve) => setTimeout(resolve, 2000));

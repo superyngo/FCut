@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { onMounted, onUnmounted, ref } from "vue";
-import { Logger } from "../utils/logger";
-import { modifier_keys } from "../utils/on_events";
+import { logger } from "../utils/logger";
+import { modifier_keys } from "../utils/key_events";
 import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
 
 // --- Types ---
@@ -9,23 +9,21 @@ import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
 type CallbackFunction = () => any;
 
 // 擴展的回調配置
-interface KeyCallbackConfig {
+type KeyCallbackConfig = {
   id?: string; // 唯一標識符
   type: "onPress" | "onRelease"; // 保留 type 屬性，用於區分事件類型
   callback: CallbackFunction | CallbackFunction[];
-  withControl?: modifier_keys[];
+  modifiers?: modifier_keys[];
   preventDefault?: boolean;
   throttle?: number; // 節流間隔 (ms)
   debounce?: number; // 防抖間隔 (ms)
   ignoreWhenInputFocused?: boolean; // 是否在輸入框聚焦時忽略
   // 內部使用：存儲包裝後的回調
   _wrappedCallback?: CallbackFunction | CallbackFunction[];
-}
+};
 
 // 監聽器操作句柄
-interface KeyListenerHandle {
-  remove: () => void; // 移除監聽器
-}
+type KeyListenerHandle = () => void; // 移除監聽器
 
 // --- Store Definition ---
 
@@ -36,32 +34,22 @@ const useKey = defineStore("key", () => {
   const isListening = ref(false);
   const isInputFocused = ref(false); // 輸入框是否聚焦
 
-  // 修飾鍵狀態
-  const isShiftPressed = ref(false);
-  const isCtrlPressed = ref(false);
-  const isAltPressed = ref(false);
-  const isMetaPressed = ref(false); // Command key on Mac
-
   // --- Getters ---
   const keys_on = () => keys.value; // 返回當前所有被監聽按鍵的狀態
-  const shiftPressed = () => isShiftPressed.value;
-  const ctrlPressed = () => isCtrlPressed.value;
-  const altPressed = () => isAltPressed.value;
-  const metaPressed = () => isMetaPressed.value;
 
   // --- Private Helpers ---
 
   // 檢查修飾鍵是否匹配
   const checkModifiers = (
     event: KeyboardEvent,
-    config?: modifier_keys[]
+    modifiers?: modifier_keys[]
   ): boolean => {
-    if (!config || config.length === 0) return true; // 無需檢查
+    if (!modifiers || modifiers.length === 0) return true; // 無需檢查
 
     const required = {
-      [modifier_keys.Shift]: config.includes(modifier_keys.Shift),
-      [modifier_keys.Control]: config.includes(modifier_keys.Control),
-      [modifier_keys.Alt]: config.includes(modifier_keys.Alt),
+      [modifier_keys.Shift]: modifiers.includes(modifier_keys.Shift),
+      [modifier_keys.Control]: modifiers.includes(modifier_keys.Control),
+      [modifier_keys.Alt]: modifiers.includes(modifier_keys.Alt),
     };
 
     // Meta key (Cmd on Mac, Win on Windows) counts as Control for simplicity here
@@ -98,12 +86,6 @@ const useKey = defineStore("key", () => {
   const handleKeyDown = (event: KeyboardEvent) => {
     const key = event.key;
 
-    // 更新修飾鍵狀態
-    if (key === "Shift") isShiftPressed.value = true;
-    if (key === "Control") isCtrlPressed.value = true;
-    if (key === "Alt") isAltPressed.value = true;
-    if (key === "Meta") isMetaPressed.value = true;
-
     if (!keyConfigs.value[key]) return; // 沒有監聽此按鍵
 
     // 處理每個註冊的回調配置
@@ -116,7 +98,7 @@ const useKey = defineStore("key", () => {
       }
 
       // 檢查修飾鍵
-      if (!checkModifiers(event, config.withControl)) {
+      if (!checkModifiers(event, config.modifiers)) {
         return;
       }
 
@@ -125,12 +107,12 @@ const useKey = defineStore("key", () => {
 
       // 更新按鍵狀態
       keys.value[key] = true;
-      Logger.info(`${key} 鍵被按下`);
+      logger.debug(`${key} 鍵被按下`);
 
       // 阻止默認行為
       if (config.preventDefault) {
         event.preventDefault();
-        Logger.info(`阻止了 ${key} 的默認行為`);
+        logger.debug(`阻止了 ${key} 的默認行為`);
       }
 
       // 執行回調 (因為已經統一轉換為數組，所以只需處理數組情況)
@@ -139,19 +121,13 @@ const useKey = defineStore("key", () => {
           callback();
         });
       } catch (error) {
-        Logger.error(`執行 ${key} 按壓回調時發生錯誤: ${error}`);
+        logger.error(`執行 ${key} 按壓回調時發生錯誤: ${error}`);
       }
     });
   };
 
   const handleKeyUp = (event: KeyboardEvent) => {
     const key = event.key;
-
-    // 更新修飾鍵狀態
-    if (key === "Shift") isShiftPressed.value = false;
-    if (key === "Control") isCtrlPressed.value = false;
-    if (key === "Alt") isAltPressed.value = false;
-    if (key === "Meta") isMetaPressed.value = false;
 
     // 更新按鍵狀態 (即使沒有 release 回調也要更新)
     if (key in keys.value) {
@@ -164,7 +140,7 @@ const useKey = defineStore("key", () => {
     keyConfigs.value[key].forEach((config) => {
       if (config.type !== "onRelease") return; // 只處理 onRelease
 
-      Logger.info(`${key} 鍵被釋放`);
+      logger.debug(`${key} 鍵被釋放`);
 
       // 阻止默認行為 (keyup 時阻止通常意義不大，但保留選項)
       if (config.preventDefault) {
@@ -177,7 +153,7 @@ const useKey = defineStore("key", () => {
           callback();
         });
       } catch (error) {
-        Logger.error(`執行 ${key} 釋放回調時發生錯誤: ${error}`);
+        logger.error(`執行 ${key} 釋放回調時發生錯誤: ${error}`);
       }
     });
   };
@@ -197,7 +173,7 @@ const useKey = defineStore("key", () => {
     const target = event.target as HTMLElement;
     if (isInputElement(target)) {
       isInputFocused.value = true;
-      Logger.info("輸入框獲得焦點"); // Changed from debug to info
+      logger.debug("輸入框獲得焦點"); // Changed from debug to info
     }
   };
 
@@ -209,69 +185,72 @@ const useKey = defineStore("key", () => {
         // 再次檢查當前焦點元素是否還是輸入元素
         if (!isInputElement(document.activeElement)) {
           isInputFocused.value = false;
-          Logger.info("輸入框失去焦點"); // Changed from debug to info
+          logger.debug("輸入框失去焦點"); // Changed from debug to info
         }
       }, 0);
     }
   };
 
-  // 窗口失焦時重置修飾鍵狀態
+  // 窗口失焦時重置按鍵狀態
   const handleBlur = () => {
-    Logger.info("窗口失去焦點，重置修飾鍵狀態"); // Changed from debug to info
-    isShiftPressed.value = false;
-    isCtrlPressed.value = false;
-    isAltPressed.value = false;
-    isMetaPressed.value = false;
+    logger.debug("窗口失去焦點，重置按鍵狀態"); // Changed from debug to info
     // 添加完整的按鍵重置，保持一致性
     Object.keys(keys.value).forEach((key) => (keys.value[key] = false));
   };
 
   // --- Actions ---
 
-  // 使用 KeyCallbackConfig 作為直接輸入
+  // 使用 Record<string, KeyCallbackConfig | KeyCallbackConfig[]> 作為輸入
   const on_keys = (
-    key: string,
-    config: KeyCallbackConfig | KeyCallbackConfig[]
+    key_config: Record<string, KeyCallbackConfig | KeyCallbackConfig[]>
   ): KeyListenerHandle => {
-    const addedConfigs: KeyCallbackConfig[] = [];
+    const allAddedConfigs: Record<string, KeyCallbackConfig[]> = {};
 
-    // 初始化按鍵狀態
-    if (!(key in keys.value)) {
-      keys.value[key] = false;
-    }
-
-    // 統一轉為數組處理
-    const configArray = Array.isArray(config) ? config : [config];
-
-    configArray.forEach((inputConfig) => {
-      // 確保 type 屬性存在
-      if (!inputConfig.type) {
-        Logger.error(`為 ${key} 註冊的配置缺少 type 屬性`);
-        return;
+    // 處理每個鍵的配置
+    Object.entries(key_config).forEach(([key, config]) => {
+      // 初始化按鍵狀態
+      if (!(key in keys.value)) {
+        keys.value[key] = false;
       }
 
-      // 為每個配置設定唯一 ID
-      inputConfig.id = crypto.randomUUID();
-
-      // 統一將 callback 轉換成數組形式，簡化後續邏輯
-      inputConfig.callback = Array.isArray(inputConfig.callback)
-        ? inputConfig.callback
-        : [inputConfig.callback];
-
-      // 創建包裝後的回調
-      inputConfig._wrappedCallback = wrapCallback(inputConfig);
-
-      // 添加到 store
-      if (!keyConfigs.value[key]) {
-        keyConfigs.value[key] = [];
+      // 初始化這個按鍵的已添加配置數組
+      if (!allAddedConfigs[key]) {
+        allAddedConfigs[key] = [];
       }
 
-      keyConfigs.value[key].push(inputConfig);
-      addedConfigs.push(inputConfig);
+      // 統一轉為數組處理
+      const configArray = Array.isArray(config) ? config : [config];
 
-      Logger.info(
-        `已為 ${key} 添加 ${inputConfig.type} 監聽器 (ID: ${inputConfig.id})`
-      );
+      configArray.forEach((inputConfig) => {
+        // 確保 type 屬性存在
+        if (!inputConfig.type) {
+          logger.error(`為 ${key} 註冊的配置缺少 type 屬性`);
+          return;
+        }
+
+        // 為每個配置設定唯一 ID
+        inputConfig.id = crypto.randomUUID();
+
+        // 統一將 callback 轉換成數組形式，簡化後續邏輯
+        inputConfig.callback = Array.isArray(inputConfig.callback)
+          ? inputConfig.callback
+          : [inputConfig.callback];
+
+        // 創建包裝後的回調
+        inputConfig._wrappedCallback = wrapCallback(inputConfig);
+
+        // 添加到 store
+        if (!keyConfigs.value[key]) {
+          keyConfigs.value[key] = [];
+        }
+
+        keyConfigs.value[key].push(inputConfig);
+        allAddedConfigs[key].push(inputConfig);
+
+        logger.debug(
+          `已為 ${key} 添加 ${inputConfig.type} 監聽器 (ID: ${inputConfig.id})`
+        );
+      });
     });
 
     // 如果尚未監聽，則啟動
@@ -280,44 +259,42 @@ const useKey = defineStore("key", () => {
     }
 
     // 返回用於移除所有添加的監聽器的句柄
-    return {
-      remove: () => {
-        // 移除為這個按鍵所有添加的回調
-        addedConfigs.forEach((config) => {
-          remove_key_callback(key, config.type, config.id as string);
+    return () => {
+      // 移除為每個按鍵添加的所有回調
+      Object.entries(allAddedConfigs).forEach(([key, configs]) => {
+        configs.forEach((config) => {
+          remove_key_callback(key, config);
         });
-      },
+      });
     };
   };
 
   // 精確移除回調
-  const remove_key_callback = (
-    key: string,
-    type: "onPress" | "onRelease",
-    id: string
-  ) => {
+  const remove_key_callback = (key: string, config: KeyCallbackConfig) => {
     if (!keyConfigs.value[key]) return;
 
     const initialLength = keyConfigs.value[key].length;
 
     keyConfigs.value[key] = keyConfigs.value[key].filter(
-      (config) => config.id !== id
+      (_config) => config !== config
     );
     if (keyConfigs.value[key].length < initialLength) {
-      Logger.info(`已從 ${key} 移除 ID 為 ${id} 的 ${type} 監聽器`);
+      logger.debug(
+        `已從 ${key} 移除 ID 為 ${config.id} 的 ${config.type} 監聽器`
+      );
     }
 
     // 如果一個鍵的所有監聽器都被移除了，則從 keys 中移除狀態
     if (keyConfigs.value[key].length === 0) {
       delete keyConfigs.value[key];
       delete keys.value[key]; // 移除狀態
-      Logger.info(`已移除 ${key} 的所有監聽器和狀態`);
+      logger.debug(`已移除 ${key} 的所有監聽器和狀態`);
     }
 
     // 如果所有監聽器都沒了，可選擇停止全局監聽
     if (Object.keys(keyConfigs.value).length === 0) {
       stopListening();
-      Logger.info("所有按鍵監聽器已移除，停止全局監聽");
+      logger.debug("所有按鍵監聽器已移除，停止全局監聽");
     }
   };
 
@@ -331,7 +308,7 @@ const useKey = defineStore("key", () => {
     window.addEventListener("blur", handleBlur); // 監聽窗口失焦
 
     isListening.value = true;
-    Logger.info("全局按鍵事件監聽器已啟動");
+    logger.debug("全局按鍵事件監聽器已啟動");
   };
 
   const stopListening = () => {
@@ -345,12 +322,7 @@ const useKey = defineStore("key", () => {
 
     isListening.value = false;
     isInputFocused.value = false; // 重置焦點狀態
-    // 重置修飾鍵狀態
-    isShiftPressed.value = false;
-    isCtrlPressed.value = false;
-    isAltPressed.value = false;
-    isMetaPressed.value = false;
-    Logger.info("全局按鍵事件監聽器已停止");
+    logger.debug("全局按鍵事件監聽器已停止");
   };
 
   // --- Return Store API ---
@@ -360,17 +332,9 @@ const useKey = defineStore("key", () => {
     // keyConfigs, // 避免直接暴露內部狀態細節
     isListening,
     isInputFocused,
-    isShiftPressed,
-    isCtrlPressed,
-    isAltPressed,
-    isMetaPressed,
 
     // Getters (作為函數返回，確保響應性)
     keys_on,
-    shiftPressed,
-    ctrlPressed,
-    altPressed,
-    metaPressed,
 
     // Actions
     on_keys,

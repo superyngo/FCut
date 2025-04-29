@@ -7,6 +7,7 @@ import configparser
 from pathlib import Path
 from .config import logging_config
 
+
 runtime_pth = Path(os.path.abspath(sys.argv[0])).parent
 # Get the current date for the log filename
 datestamp: str = datetime.now().strftime("%Y-%m-%d")

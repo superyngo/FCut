@@ -1,11 +1,11 @@
-import { defineStore, Store } from "pinia";
+import { defineStore } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
 import { Task } from "../models/tasks";
-import { Logger } from "../utils/logger";
+import { logger } from "../utils/logger";
 import { TASK_STATUS } from "../models/tasks";
 import { onMounted, onUnmounted, ref } from "vue";
-import { on_mousemove, on_keys, modifier_keys } from "../utils/on_events"; // 引入 on_shift 工具函數
-
+import { on_keys, modifier_keys } from "../utils/key_events"; // 引入 on_shift 工具函數
+import { on_mousemove, MouseMoveTrackerHandle } from "../utils/mouse_events"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 const useAPP_STATE = defineStore(crypto.randomUUID(), {
@@ -226,7 +226,7 @@ export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
 
   // 存儲清理函數  // 存儲滑鼠位置的對象
-  let mouse_cleaner_with_coordinate: on_mousemove | null = null;
+  let mouse_cleaner_with_coordinate: MouseMoveTrackerHandle | null = null;
   // 使用 ref 確保只在客戶端 onMounted 中執行
 
   // 找出滑鼠最近的任務索引
@@ -242,9 +242,11 @@ export function use_tasks_with_shift() {
 
       // 計算滑鼠與任務中心點的距離
       const distX =
-        centerX - (mouse_cleaner_with_coordinate as on_mousemove).mouseX;
+        centerX -
+        (mouse_cleaner_with_coordinate as MouseMoveTrackerHandle).mouseX;
       const distY =
-        centerY - (mouse_cleaner_with_coordinate as on_mousemove).mouseY;
+        centerY -
+        (mouse_cleaner_with_coordinate as MouseMoveTrackerHandle).mouseY;
       const distance = Math.sqrt(distX * distX + distY * distY);
 
       if (distance < minDistance) {
@@ -282,25 +284,22 @@ export function use_tasks_with_shift() {
       tasks_state.initTasks();
       cleaner.push(
         on_keys({
-          Shift: {
-            onPress: [onShiftPress],
-            onRelease: [onShiftRelease],
-          },
-          // use Ctrl+A 鍵全選任務
+          Shift: [
+            { type: "onPress", callback: onShiftPress },
+            { type: "onRelease", callback: onShiftRelease },
+          ],
           a: {
-            onPress: [
-              () => {
-                tasks_state.select_all_tasks();
-              },
-            ],
-            withControl: [modifier_keys.Control],
+            type: "onPress",
+            callback: () => {
+              tasks_state.select_all_tasks();
+            },
+            modifiers: [modifier_keys.Control],
           },
           Escape: {
-            onPress: [
-              () => {
-                tasks_state.unselect_all_tasks();
-              },
-            ],
+            type: "onPress",
+            callback: () => {
+              tasks_state.unselect_all_tasks();
+            },
           },
         })
       );

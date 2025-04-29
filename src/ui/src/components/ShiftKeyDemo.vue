@@ -17,7 +17,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import { on_shift } from "../utils/on_events";
+import { on_shift } from "../utils/key_events";
 
 // 反應性狀態
 const isShiftPressed = ref(false);

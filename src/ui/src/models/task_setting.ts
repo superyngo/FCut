@@ -1,4 +1,4 @@
-import { Logger } from "../utils/logger";
+import { logger } from "../utils/logger";
 import { InputRange, InputText } from "./elements";
 
 export enum ACTIONS {
@@ -59,7 +59,7 @@ export type TaskSettings =
   | {};
 
 export function init_settings(task: any) {
-  Logger.info(`init_settings for ${task.renderMethod}`);
+  logger.debug(`init_settings for ${task.renderMethod}`);
   switch (task.renderMethod) {
     case ACTIONS.CUSTOM:
       task.settings = new Custom();
