@@ -226,7 +226,7 @@ export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
 
   // 存儲清理函數  // 存儲滑鼠位置的對象
-  let mouse_cleaner_with_coordinate: MouseMoveTrackerHandle | null = null;
+  let mouse_tracker_handle: MouseMoveTrackerHandle | null = null;
   // 使用 ref 確保只在客戶端 onMounted 中執行
 
   // 找出滑鼠最近的任務索引
@@ -242,11 +242,9 @@ export function use_tasks_with_shift() {
 
       // 計算滑鼠與任務中心點的距離
       const distX =
-        centerX -
-        (mouse_cleaner_with_coordinate as MouseMoveTrackerHandle).mouseX;
+        centerX - (mouse_tracker_handle as MouseMoveTrackerHandle).mouseX;
       const distY =
-        centerY -
-        (mouse_cleaner_with_coordinate as MouseMoveTrackerHandle).mouseY;
+        centerY - (mouse_tracker_handle as MouseMoveTrackerHandle).mouseY;
       const distance = Math.sqrt(distX * distX + distY * distY);
 
       if (distance < minDistance) {
@@ -261,17 +259,16 @@ export function use_tasks_with_shift() {
   // 創建 shift 鍵按下和釋放的回調函數
   const onShiftPress = () => {
     tasks_state.shift_on = true;
-    // mouse_coordinate.startTracking(); // 開始追蹤滑鼠位置
-    mouse_cleaner_with_coordinate = on_mousemove([findNearestTaskToMouse]);
+    mouse_tracker_handle = on_mousemove([findNearestTaskToMouse]);
     findNearestTaskToMouse();
   };
 
   const onShiftRelease = () => {
     tasks_state.shift_on = false;
-    if (mouse_cleaner_with_coordinate) {
-      mouse_cleaner_with_coordinate();
+    if (mouse_tracker_handle) {
+      mouse_tracker_handle();
     }
-    mouse_cleaner_with_coordinate = null;
+    mouse_tracker_handle = null;
     tasks_state.mouse_nearest_index = -1;
   };
 
