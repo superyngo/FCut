@@ -5,7 +5,7 @@ import { logger } from "../utils/logger";
 import { TASK_STATUS } from "../models/tasks";
 import { onMounted, onUnmounted, ref } from "vue";
 import { on_keys, modifier_keys } from "../utils/key_events"; // 引入 on_shift 工具函數
-import { on_mousemove, MouseMoveTrackerHandle } from "../utils/mouse_events"; // 引入 on_shift 工具函數
+import { on_mousemove, coordinate } from "../utils/mouse_events"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 const useAPP_STATE = defineStore(crypto.randomUUID(), {
@@ -224,10 +224,8 @@ const useTASKS = defineStore(crypto.randomUUID(), {
 const useTASKS_started = ref(false);
 export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
-
   // 存儲清理函數  // 存儲滑鼠位置的對象
-  let mouse_tracker_handle: MouseMoveTrackerHandle | null = null;
-  // 使用 ref 確保只在客戶端 onMounted 中執行
+  let mouse_tracker_handle: (() => void) | null = null;
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = () => {
@@ -241,10 +239,8 @@ export function use_tasks_with_shift() {
       const centerY = rect.top + rect.height / 2;
 
       // 計算滑鼠與任務中心點的距離
-      const distX =
-        centerX - (mouse_tracker_handle as MouseMoveTrackerHandle).mouseX;
-      const distY =
-        centerY - (mouse_tracker_handle as MouseMoveTrackerHandle).mouseY;
+      const distX = centerX - coordinate().clientX;
+      const distY = centerY - coordinate().clientY;
       const distance = Math.sqrt(distX * distX + distY * distY);
 
       if (distance < minDistance) {
