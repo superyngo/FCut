@@ -239,6 +239,7 @@ export function use_tasks_with_shift() {
       const centerY = rect.top + rect.height / 2;
 
       // 計算滑鼠與任務中心點的距離
+      logger.info(coordinate());
       const distX = centerX - coordinate().clientX;
       const distY = centerY - coordinate().clientY;
       const distance = Math.sqrt(distX * distX + distY * distY);

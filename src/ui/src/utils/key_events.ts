@@ -29,8 +29,8 @@ type KeyListenerHandle = () => void; // 移除監聽器
 
 // 內部狀態管理
 const _keyState = {
-  keys: {} as Record<string, boolean>, // 按鍵按下狀態
-  keyConfigs: {} as Record<string, KeyCallbackConfig[]>, // 存儲所有註冊的配置
+  keys: new Map<string, boolean>(), // 按鍵按下狀態
+  keyConfigs: new Map<string, KeyCallbackConfig[]>(), // 存儲所有註冊的配置
   isListening: false,
   isInputFocused: false, // 輸入框是否聚焦
 };
@@ -81,10 +81,10 @@ const wrapCallback = (config: KeyCallbackConfig): CallbackFunction[] => {
 const handleKeyDown = (event: KeyboardEvent) => {
   const key = event.key;
 
-  if (!_keyState.keyConfigs[key]) return; // 沒有監聽此按鍵
+  if (!_keyState.keyConfigs.has(key)) return; // 沒有監聽此按鍵
 
   // 處理每個註冊的回調配置
-  _keyState.keyConfigs[key].forEach((config) => {
+  _keyState.keyConfigs.get(key)?.forEach((config) => {
     if (config.type !== "onPress") return; // 只處理 onPress
 
     // 檢查輸入框焦點
@@ -101,7 +101,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     if (event.repeat) return;
 
     // 更新按鍵狀態
-    _keyState.keys[key] = true;
+    _keyState.keys.set(key, true);
     logger.debug(`${key} 鍵被按下`);
 
     // 阻止默認行為
@@ -125,14 +125,14 @@ const handleKeyUp = (event: KeyboardEvent) => {
   const key = event.key;
 
   // 更新按鍵狀態 (即使沒有 release 回調也要更新)
-  if (key in _keyState.keys) {
-    _keyState.keys[key] = false;
+  if (_keyState.keys.has(key)) {
+    _keyState.keys.set(key, false);
   }
 
-  if (!_keyState.keyConfigs[key]) return; // 沒有監聽此按鍵
+  if (!_keyState.keyConfigs.has(key)) return; // 沒有監聽此按鍵
 
   // 處理每個註冊的回調配置
-  _keyState.keyConfigs[key].forEach((config) => {
+  _keyState.keyConfigs.get(key)?.forEach((config) => {
     if (config.type !== "onRelease") return; // 只處理 onRelease
 
     logger.debug(`${key} 鍵被釋放`);
@@ -190,7 +190,7 @@ const handleFocusOut = (event: FocusEvent) => {
 const handleBlur = () => {
   logger.debug("窗口失去焦點，重置按鍵狀態");
   // 添加完整的按鍵重置，保持一致性
-  Object.keys(_keyState.keys).forEach((key) => (_keyState.keys[key] = false));
+  _keyState.keys.forEach((_, key) => _keyState.keys.set(key, false));
 };
 
 // 啟動監聽
@@ -222,35 +222,47 @@ const stopListening = () => {
   logger.debug("全局按鍵事件監聽器已停止");
 };
 
+// -------------- 公共 API --------------
+
 // 獲取當前按鍵狀態
 export function keys_on(): Record<string, boolean> {
-  return { ..._keyState.keys }; // 返回一個副本以防止外部修改
+  const keys: Record<string, boolean> = {};
+  _keyState.keys.forEach((value, key) => {
+    keys[key] = value;
+  });
+  return keys; // 返回一個副本以防止外部修改
 }
 
 // 精確移除回調
-export function remove_key_callback(key: string, config: KeyCallbackConfig) {
-  if (!_keyState.keyConfigs[key]) return;
+export function remove_key_callback(obj: Record<string, string | string[]>) {
+  Object.entries(obj).forEach(([key, id]) => {
+    if (!_keyState.keyConfigs.has(key)) return;
 
-  const initialLength = _keyState.keyConfigs[key].length;
+    const ids = Array.isArray(id) ? id : [id];
+    const initialLength = _keyState.keyConfigs.get(key)?.length || 0;
 
-  _keyState.keyConfigs[key] = _keyState.keyConfigs[key].filter(
-    (_config) => _config !== config
-  );
-  if (_keyState.keyConfigs[key].length < initialLength) {
-    logger.debug(
-      `已從 ${key} 移除 ID 為 ${config.id} 的 ${config.type} 監聽器`
+    const updatedConfigs = (_keyState.keyConfigs.get(key) || []).filter(
+      (config) => !ids.includes(config.id || "")
     );
-  }
 
-  // 如果一個鍵的所有監聽器都被移除了，則從 keys 中移除狀態
-  if (_keyState.keyConfigs[key].length === 0) {
-    delete _keyState.keyConfigs[key];
-    delete _keyState.keys[key]; // 移除狀態
-    logger.debug(`已移除 ${key} 的所有監聽器和狀態`);
-  }
+    if (updatedConfigs.length < initialLength) {
+      const removedCount = initialLength - updatedConfigs.length;
+      logger.debug(
+        `已從 ${key} 移除 ${removedCount} 個監聽器 (ID: ${ids.join(", ")})`
+      );
+    }
+
+    if (updatedConfigs.length === 0) {
+      _keyState.keyConfigs.delete(key);
+      _keyState.keys.delete(key); // 移除狀態
+      logger.debug(`已移除 ${key} 的所有監聽器和狀態`);
+    } else {
+      _keyState.keyConfigs.set(key, updatedConfigs);
+    }
+  });
 
   // 如果所有監聽器都沒了，可選擇停止全局監聽
-  if (Object.keys(_keyState.keyConfigs).length === 0) {
+  if (_keyState.keyConfigs.size === 0) {
     stopListening();
     logger.debug("所有按鍵監聽器已移除，停止全局監聽");
   }
@@ -265,8 +277,8 @@ export function on_keys(
   // 處理每個鍵的配置
   Object.entries(key_config).forEach(([key, config]) => {
     // 初始化按鍵狀態
-    if (!(key in _keyState.keys)) {
-      _keyState.keys[key] = false;
+    if (!_keyState.keys.has(key)) {
+      _keyState.keys.set(key, false);
     }
 
     // 初始化這個按鍵的已添加配置數組
@@ -296,11 +308,11 @@ export function on_keys(
       inputConfig._wrappedCallback = wrapCallback(inputConfig);
 
       // 添加到 store
-      if (!_keyState.keyConfigs[key]) {
-        _keyState.keyConfigs[key] = [];
+      if (!_keyState.keyConfigs.has(key)) {
+        _keyState.keyConfigs.set(key, []);
       }
 
-      _keyState.keyConfigs[key].push(inputConfig);
+      _keyState.keyConfigs.get(key)?.push(inputConfig);
       allAddedConfigs[key].push(inputConfig);
 
       logger.debug(
@@ -315,12 +327,14 @@ export function on_keys(
   }
 
   // 返回用於移除所有添加的監聽器的句柄
-  return () => {
-    // 移除為每個按鍵添加的所有回調
-    Object.entries(allAddedConfigs).forEach(([key, configs]) => {
-      configs.forEach((config) => {
-        remove_key_callback(key, config);
-      });
-    });
-  };
+  return Object.assign(() => {
+    remove_key_callback(
+      Object.fromEntries(
+        // 移除為每個按鍵添加的所有回調
+        Object.entries(allAddedConfigs).map(([key, configs]) => {
+          return [key, configs.map((config) => config.id) as string[]];
+        })
+      )
+    );
+  }, Object.fromEntries(Object.entries(allAddedConfigs).map(([key, configs]) => [key, configs.map((config) => config.id)])));
 }
