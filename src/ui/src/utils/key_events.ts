@@ -234,7 +234,7 @@ export function keys_on(): Record<string, boolean> {
 }
 
 // 精確移除回調
-export function remove_key_callback(obj: Record<string, string | string[]>) {
+export function remove_key_callbacks(obj: Record<string, string | string[]>) {
   Object.entries(obj).forEach(([key, id]) => {
     if (!_keyState.keyConfigs.has(key)) return;
 
@@ -328,7 +328,7 @@ export function on_keys(
 
   // 返回用於移除所有添加的監聽器的句柄
   return Object.assign(() => {
-    remove_key_callback(
+    remove_key_callbacks(
       Object.fromEntries(
         // 移除為每個按鍵添加的所有回調
         Object.entries(allAddedConfigs).map(([key, configs]) => {

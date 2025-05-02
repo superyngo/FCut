@@ -221,14 +221,14 @@ const useTASKS = defineStore(crypto.randomUUID(), {
     },
   },
 });
+
 const useTASKS_started = ref(false);
 export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
-  // 存儲清理函數  // 存儲滑鼠位置的對象
-  let mouse_tracker_handle: (() => void) | null = null;
+  let mousemove_event: null | (() => void) = null;
 
   // 找出滑鼠最近的任務索引
-  const findNearestTaskToMouse = () => {
+  const findNearestTaskToMouse = (event: any) => {
     const taskItems = document.querySelectorAll(".task-item");
     let closestTask = -1;
     let minDistance = Infinity;
@@ -239,9 +239,8 @@ export function use_tasks_with_shift() {
       const centerY = rect.top + rect.height / 2;
 
       // 計算滑鼠與任務中心點的距離
-      logger.info(coordinate());
-      const distX = centerX - coordinate().clientX;
-      const distY = centerY - coordinate().clientY;
+      const distX = centerX - (event || coordinate()).clientX;
+      const distY = centerY - (event || coordinate()).clientY;
       const distance = Math.sqrt(distX * distX + distY * distY);
 
       if (distance < minDistance) {
@@ -256,17 +255,19 @@ export function use_tasks_with_shift() {
   // 創建 shift 鍵按下和釋放的回調函數
   const onShiftPress = () => {
     tasks_state.shift_on = true;
-    mouse_tracker_handle = on_mousemove([findNearestTaskToMouse]);
-    findNearestTaskToMouse();
+    findNearestTaskToMouse(null);
+    mousemove_event = on_mousemove({
+      callbacks: (mouseEvent) => findNearestTaskToMouse(mouseEvent),
+    });
   };
 
   const onShiftRelease = () => {
     tasks_state.shift_on = false;
-    if (mouse_tracker_handle) {
-      mouse_tracker_handle();
-    }
-    mouse_tracker_handle = null;
     tasks_state.mouse_nearest_index = -1;
+    if (mousemove_event) {
+      mousemove_event();
+      mousemove_event = null;
+    }
   };
 
   // 清理函數，用於移除事件監聽器
@@ -304,6 +305,7 @@ export function use_tasks_with_shift() {
   // 組件卸載時清理事件監聽
   onUnmounted(() => {
     useTASKS_started.value = false;
+
     // 清理事件監聽
     cleaner.forEach((cleanup) => cleanup());
     cleaner = [];
