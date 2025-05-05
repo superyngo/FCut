@@ -30,12 +30,17 @@
 import { ref } from "vue";
 import { Button } from "../models/elements";
 import { logger } from "../utils/logger";
-import { useAPP_STATE_inited, use_tasks_with_shift } from "../stores/stores";
+import {
+  useAPP_STATE_inited,
+  use_tasks_with_shift,
+  useModalStore,
+} from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
 
 const tasks_store = use_tasks_with_shift();
 const app_state = useAPP_STATE_inited();
+const modalStore = useModalStore();
 
 // Use a Map for buttons_data
 const buttons_data = new Map<string, Button>([
@@ -82,7 +87,7 @@ const buttons = ref<Map<string, Button>>(buttons_data);
 
 const toggleMenu = () => {
   logger.debug("Menu toggled");
-  app_state.isMenuVisible = !app_state.isMenuVisible;
+  modalStore.openMenu();
 };
 
 const addTask = async () => {

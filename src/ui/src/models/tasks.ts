@@ -10,8 +10,8 @@ export enum TASK_STATUS {
 
 export class Task extends BaseClass {
   constructor(data: {
-    id?: string;
-    video_path: string;
+    readonly id?: string;
+    readonly video_path: string;
     previewUrl?: string;
     renderMethod?: string;
     settings?: TaskSettings;

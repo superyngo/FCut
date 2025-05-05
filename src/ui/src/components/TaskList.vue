@@ -86,11 +86,13 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { use_tasks_with_shift } from "../stores/stores";
+import { use_tasks_with_shift, useModalStore } from "../stores/stores";
 import { init_settings } from "../models/task_setting";
 import { TASK_STATUS } from "../models/tasks";
 import { ACTIONS } from "../models/task_setting";
+
 const task_store = use_tasks_with_shift();
+const modalStore = useModalStore();
 
 const change_settings = (task: any) => {
   if (task_store.has_selected_tasks) {
@@ -112,9 +114,9 @@ const change_settings = (task: any) => {
 
 const openSettings = (task: any) => {
   logger.debug(`Opening settings for task: ${task.id}`);
-  logger.debug(JSON.stringify(task));
+  modalStore.openTaskSettings(task);
 };
-// Create tasks using the Task class
+
 const change_selected = (task: any, index: number) => {
   toggleTaskSelection(task, index, false);
 };

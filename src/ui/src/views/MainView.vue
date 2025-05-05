@@ -4,12 +4,15 @@
     <div class="task-list-container">
       <TaskList />
     </div>
+    <!-- 添加集中式的模態框組件 -->
+    <AppModals />
   </div>
 </template>
 
 <script setup lang="ts">
 import TopBar from "../components/TopBar.vue";
 import TaskList from "../components/TaskList.vue";
+import AppModals from "../components/AppModals.vue";
 </script>
 
 <style scoped>

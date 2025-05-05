@@ -13,10 +13,7 @@ const useAPP_STATE = defineStore(crypto.randomUUID(), {
     store_id: "app_constants" as string,
     error: false as boolean,
     loading: true as boolean,
-    isMenuVisible: false as boolean,
     constants: null as null | Record<string, any>,
-    // isSettingsPanelOpen: false, // State for settings panel visibility
-    // currentTaskForSettings: null as Task | null, // State for the task being edited
   }),
   actions: {
     async initFromPython() {
@@ -217,6 +214,7 @@ const useTASKS = defineStore(crypto.randomUUID(), {
       this.tasks.forEach((task) => {
         task.selected = false;
       });
+      this.last_selected_index = -1;
       this.saveTasks();
     },
   },
@@ -225,7 +223,7 @@ const useTASKS = defineStore(crypto.randomUUID(), {
 const useTASKS_started = ref(false);
 export function use_tasks_with_shift() {
   const tasks_state = useTASKS();
-  let mousemove_event: null | (() => void) = null;
+  let mouse_events: (() => void)[] = [];
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = (event: any) => {
@@ -256,17 +254,19 @@ export function use_tasks_with_shift() {
   const onShiftPress = () => {
     tasks_state.shift_on = true;
     findNearestTaskToMouse(null);
-    mousemove_event = on_mousemove({
-      callbacks: (mouseEvent) => findNearestTaskToMouse(mouseEvent),
-    });
+    mouse_events.push(
+      on_mousemove({
+        callbacks: [(event: any) => findNearestTaskToMouse(event)],
+      })
+    );
   };
 
   const onShiftRelease = () => {
     tasks_state.shift_on = false;
     tasks_state.mouse_nearest_index = -1;
-    if (mousemove_event) {
-      mousemove_event();
-      mousemove_event = null;
+    if (mouse_events) {
+      mouse_events.forEach((event) => event());
+      mouse_events = [];
     }
   };
 
@@ -313,3 +313,53 @@ export function use_tasks_with_shift() {
 
   return tasks_state;
 }
+
+// Modal Store - 管理所有模態框的狀態
+export const useModalStore = defineStore("modalStore", {
+  state: () => ({
+    activeModals: {
+      taskSettings: {
+        isOpen: false,
+        taskData: null as Task | null,
+      },
+      menu: {
+        isOpen: false,
+      },
+      // 可以在此添加其他模態框的狀態
+    },
+  }),
+
+  actions: {
+    // Task Settings Modal
+    openTaskSettings(task: Task) {
+      this.activeModals.taskSettings.taskData = task;
+      this.activeModals.taskSettings.isOpen = true;
+      logger.debug(`Opening settings modal for task: ${task.id}`);
+    },
+
+    closeTaskSettings() {
+      this.activeModals.taskSettings.isOpen = false;
+      this.activeModals.taskSettings.taskData = null;
+    },
+
+    // Menu Modal
+    openMenu() {
+      this.activeModals.menu.isOpen = true;
+      logger.debug("Opening menu modal");
+    },
+
+    closeMenu() {
+      this.activeModals.menu.isOpen = false;
+    },
+
+    // 通用關閉所有模態框的方法
+    closeAllModals() {
+      Object.keys(this.activeModals).forEach((key) => {
+        const modalKey = key as keyof typeof this.activeModals;
+        if (typeof this.activeModals[modalKey].isOpen === "boolean") {
+          this.activeModals[modalKey].isOpen = false;
+        }
+      });
+    },
+  },
+});

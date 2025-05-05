@@ -1004,6 +1004,7 @@ export function createVirtualMouseEvent(
 // -------------- 初始化 --------------
 if (window && !(typeof window === "undefined")) {
   // 註冊特定事件類型的監聽器
+  logger.debug("初始化鼠標事件監聽器");
   window.addEventListener(
     MouseEventType.Move,
     (event) => {

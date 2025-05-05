@@ -1,6 +1,5 @@
 import webview
 from src.shared import logger, constants
-from pathlib import Path
 from typing import Sequence, Any
 
 import inspect
@@ -28,7 +27,7 @@ class Api:
     def logger_error(self, message) -> None:
         logger.error(message)
 
-    def logger_debug(self, message) -> None:
+    def logger_debug(self, message: str) -> None:
         logger.debug(message)
 
     def get_constants(self) -> dict[str, Any]:
