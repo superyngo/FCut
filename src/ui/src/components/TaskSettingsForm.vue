@@ -1,6 +1,6 @@
 <template>
   <div class="task-settings-form">
-    <h4>設定 "{{ task.video_name }}" 的轉檔參數</h4>
+    <h4>設定 "{{ task.videoName }}" 的轉檔參數</h4>
 
     <div class="form-group">
       <label for="renderMethod">渲染方式</label>
@@ -52,36 +52,32 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { Task, TASK_STATUS } from "../models/tasks";
-import { ACTIONS } from "../models/task_setting";
-import { init_settings } from "../models/task_setting";
+import { useTasksBoundEvents } from "../stores/stores";
+import { Task, TASK_STATUS, TaskType } from "../models/tasks";
+import { TaskSettingType } from "../models/taskSetting";
+import { ACTIONS, initTaskSettings } from "../models/taskSetting";
 import { logger } from "../utils/logger";
-import { use_tasks_with_shift } from "../stores/stores";
+const taskStore = useTasksBoundEvents();
 
 const props = defineProps<{
   task: Task;
 }>();
 
 const emit = defineEmits(["close", "save"]);
-const task_store = use_tasks_with_shift();
 
 // 創建本地數據的副本，以便在保存之前進行修改
-const taskData = ref<Task>(new Task(props.task));
-
+const taskData = ref<TaskType>(props.task.toClonedObject() as TaskType);
 // 檢查任務是否在進行中（排隊或正在渲染）
 const isTaskInProgress = computed(() => {
   return [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-    props.task.status
+    taskData.value.status as TASK_STATUS
   );
 });
 
 // 當組件掛載時，確保設置已初始化
 onMounted(() => {
-  if (
-    !taskData.value.settings ||
-    Object.keys(taskData.value.settings).length === 0
-  ) {
-    init_settings(taskData.value);
+  if (props.task.renderMethod && !props.task.settings) {
+    initTaskSettings(props.task);
   }
 });
 
@@ -97,10 +93,10 @@ const saveSettings = () => {
   }
 
   // 如果還有其他選中的任務，詢問是否將相同的設置應用於它們
-  if (task_store.has_selected_tasks && task_store.selected_tasks.length > 1) {
+  if (taskStore.hasTasksSelected && taskStore.selectedTasks.length > 1) {
     const applyToAll = confirm("是否要將相同的設置應用於所有選中的任務？");
     if (applyToAll) {
-      task_store.selected_tasks.forEach((selectedTask) => {
+      taskStore.selectedTasks.forEach((selectedTask) => {
         if (
           selectedTask.id !== props.task.id &&
           ![TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
@@ -116,7 +112,7 @@ const saveSettings = () => {
   }
 
   // 保存更改到本地存儲
-  task_store.saveTasks();
+  taskStore.saveTasks();
 
   logger.debug(`Settings saved for task: ${props.task.id}`);
   emit("save");

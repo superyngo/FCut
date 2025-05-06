@@ -1,228 +1,246 @@
 import { defineStore } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
-import { Task } from "../models/tasks";
+import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
-import { TASK_STATUS } from "../models/tasks";
-import { onMounted, onUnmounted, ref } from "vue";
-import { on_keys, modifier_keys } from "../utils/key_events"; // 引入 on_shift 工具函數
-import { on_mousemove, coordinate } from "../utils/mouse_events"; // 引入 on_shift 工具函數
+import { onMounted, onUnmounted, ref, computed } from "vue";
+import { onKeys, MODIFIER_KEYS } from "../utils/keyEvents"; // 引入 on_shift 工具函數
+import { onMousemove, coordinate } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
-const useAPP_STATE = defineStore(crypto.randomUUID(), {
-  state: () => ({
-    store_id: "app_constants" as string,
-    error: false as boolean,
-    loading: true as boolean,
-    constants: null as null | Record<string, any>,
-  }),
-  actions: {
-    async initFromPython() {
-      this.loading = true;
-      try {
-        const isReady = await waitForPyWebviewApi();
-        if (!isReady) {
-          this.error = true;
-          this.loading = false;
-          return;
-        }
+// 使用組合式 API 定義 AppState store
+const useAppState = defineStore(crypto.randomUUID(), () => {
+  const storeId = ref("app_constants");
+  const error = ref(false);
+  const loading = ref(true);
+  const constants = ref<null | Record<string, any>>(null);
 
-        this.constants = await window.pywebview.api.get_constants();
-      } catch (error) {
-        console.error("Failed to fetch constants:", error);
-        this.error = true;
-      } finally {
-        this.loading = false;
+  // Actions
+  async function initFromPython() {
+    loading.value = true;
+    try {
+      const isReady = await waitForPyWebviewApi();
+      if (!isReady) {
+        error.value = true;
+        loading.value = false;
+        return;
       }
-    },
 
-    // openSettingsPanel(task: Task) {
-    //   this.currentTaskForSettings = task;
-    //   this.isSettingsPanelOpen = true;
-    // },
+      constants.value = await window.pywebview.api.get_constants();
+    } catch (err) {
+      console.error("Failed to fetch constants:", err);
+      error.value = true;
+    } finally {
+      loading.value = false;
+    }
+  }
 
-    // closeSettingsPanel() {
-    //   this.isSettingsPanelOpen = false;
-    //   this.currentTaskForSettings = null;
-    // },
-  },
+  // 返回所有需要暴露的狀態和方法
+  return {
+    storeId,
+    error,
+    loading,
+    constants,
+    initFromPython,
+  };
 });
-const useAPP_STATE_started = ref(false);
-export function useAPP_STATE_inited() {
-  const app_state = useAPP_STATE();
+const isUseAppStateStarted = ref(false);
+export function useAppStateInit() {
+  const appState = useAppState();
   // 使用 ref 確保只在客戶端 onMounted 中執行
 
   // 組件掛載時設置事件監聽
   onMounted(async () => {
-    if (!useAPP_STATE_started.value) {
-      await app_state.initFromPython();
-      useAPP_STATE_started.value = true;
+    if (!isUseAppStateStarted.value) {
+      await appState.initFromPython();
+      isUseAppStateStarted.value = true;
     }
   });
 
   // 組件卸載時清理事件監聽
   onUnmounted(() => {
-    useAPP_STATE_started.value = false;
+    isUseAppStateStarted.value = false;
   });
 
-  return app_state;
+  return appState;
 }
 
-// Define the new store for tasks
-const useTASKS = defineStore(crypto.randomUUID(), {
-  state: () => ({
-    store_id: "app_tasks",
-    tasks: [] as Task[],
-    last_selected_index: -1 as number,
-    mouse_nearest_index: -1 as number,
-    shift_on: false as boolean,
-  }),
+// 使用組合式 API 定義 Tasks store
+const useTasks = defineStore(crypto.randomUUID(), () => {
+  // State
+  const storeId = ref("app_tasks");
+  const tasks = ref<Task[]>([]);
+  const lastSelectedIndex = ref(-1);
+  const mouseNearestIndex = ref(-1);
+  const isShiftOn = ref(false);
 
-  getters: {
-    selected_tasks: (state) =>
-      state.tasks.filter((task) => task.selected === true),
-    ready_tasks: (state) =>
-      state.tasks.filter((task) => task.status === TASK_STATUS.Ready),
-    selected_and_ready_tasks: (state) =>
-      state.tasks.filter(
-        (task) => task.selected === true && task.status === TASK_STATUS.Ready
-      ),
-    queued_tasks: (state) =>
-      state.tasks.filter((task) => task.status === TASK_STATUS.Queued),
-    rendering_tasks: (state) =>
-      state.tasks.filter((task) => task.status === TASK_STATUS.Rendering),
-    done_tasks: (state) =>
-      state.tasks.filter((task) => task.status === TASK_STATUS.Done),
-    has_selected_tasks: (state) =>
-      state.tasks.some((task) => task.selected === true),
-    shift_hover_range: (state) => {
-      const start = Math.min(
-        state.last_selected_index,
-        state.mouse_nearest_index
-      );
-      const end = Math.max(
-        state.last_selected_index,
-        state.mouse_nearest_index
-      );
+  // Getters
+  const selectedTasks = computed(() =>
+    tasks.value.filter((task) => task.selected === true)
+  );
 
-      // 如果任一索引為 -1，返回空數組
-      if (
-        state.last_selected_index === -1 ||
-        state.mouse_nearest_index === -1
-      ) {
-        return [];
+  const readyTasks = computed(() =>
+    tasks.value.filter((task) => task.status === TASK_STATUS.Ready)
+  );
+
+  const selectedReadyTasks = computed(() =>
+    tasks.value.filter(
+      (task) => task.selected === true && task.status === TASK_STATUS.Ready
+    )
+  );
+
+  const queuedTasks = computed(() =>
+    tasks.value.filter((task) => task.status === TASK_STATUS.Queued)
+  );
+
+  const renderingTasks = computed(() =>
+    tasks.value.filter((task) => task.status === TASK_STATUS.Rendering)
+  );
+
+  const doneTasks = computed(() =>
+    tasks.value.filter((task) => task.status === TASK_STATUS.Done)
+  );
+
+  const hasTasksSelected = computed(() =>
+    tasks.value.some((task) => task.selected === true)
+  );
+
+  const shiftHoverRange = computed(() => {
+    const start = Math.min(lastSelectedIndex.value, mouseNearestIndex.value);
+    const end = Math.max(lastSelectedIndex.value, mouseNearestIndex.value);
+
+    // 如果任一索引為 -1，返回空數組
+    if (lastSelectedIndex.value === -1 || mouseNearestIndex.value === -1) {
+      return [];
+    }
+
+    // 創建包含範圍內所有數字的數組
+    const range = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    return range;
+  });
+
+  const onlyOneSelectedInHoverRange = computed(() => {
+    // If no selection range exists, return null
+    if (shiftHoverRange.value.length === 0) {
+      return null;
+    }
+
+    // Check if all tasks in the range are selected
+    const unselected_count = shiftHoverRange.value.reduce((count, index) => {
+      if (!tasks.value[index].selected) {
+        return count + 1;
       }
+      return count;
+    }, 0);
 
-      // 創建包含範圍內所有數字的數組
-      const range = Array.from(
-        { length: end - start + 1 },
-        (_, i) => start + i
-      );
-      return range;
-    },
-    shift_hover_range_handle(state) {
-      const start = Math.min(
-        state.last_selected_index,
-        state.mouse_nearest_index
-      );
-      const end = Math.max(
-        state.last_selected_index,
-        state.mouse_nearest_index
-      );
+    // Return whether all tasks are selected or not
+    return unselected_count === 1;
+  });
 
-      // 如果任一索引為 -1，返回null
-      if (
-        state.last_selected_index === -1 ||
-        state.mouse_nearest_index === -1
-      ) {
-        return null;
+  // Actions
+  function initTasks() {
+    const cached = localStorage.getItem(storeId.value);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        // Convert plain objects back to Task instances
+        tasks.value = parsed.map((taskData: any) => new Task(taskData));
+      } catch (error) {
+        console.error("Failed to load tasks from cache:", error);
+        localStorage.removeItem(storeId.value);
       }
+    }
+  }
 
-      // 創建包含範圍內所有數字的數組
-      const shift_hover_range = Array.from(
-        { length: end - start + 1 },
-        (_, i) => start + i
-      );
+  function saveTasks() {
+    localStorage.setItem(storeId.value, JSON.stringify(tasks.value));
+  }
 
-      // If no selection range exists, return null
-      if (shift_hover_range.length === 0) {
-        return null;
-      }
+  function addTask(videoPath: string) {
+    tasks.value.push(
+      new Task({
+        videoPath,
+      })
+    );
+    saveTasks();
+  }
 
-      // Check if all tasks in the range are selected
-      const unselected_count = shift_hover_range.reduce((count, index) => {
-        if (!state.tasks[index].selected) {
-          return count + 1;
-        }
-        return count;
-      }, 0);
+  function removeTask(taskData: Task) {
+    const index = tasks.value.findIndex((task) => task === taskData);
+    if (index !== -1) {
+      tasks.value.splice(index, 1);
+      saveTasks();
+    }
+  }
 
-      // Return whether all tasks are selected or not
-      return unselected_count === 1;
-    },
-    indexed_tasks: (state) => {
-      return Object.fromEntries(state.tasks.entries());
-    },
-  },
+  function modifyTask(id: string, taskData: Omit<Task, "id" | "videoPath">) {
+    const index = tasks.value.findIndex((task) => task.id === id);
+    if (index !== -1) {
+      // 保留原始 id 和 videoPath，更新其他屬性
+      const updatedTask = {
+        ...tasks.value[index],
+        ...taskData,
+        id: tasks.value[index].id,
+        videoPath: tasks.value[index].videoPath,
+      };
 
-  actions: {
-    initTasks() {
-      const cached = localStorage.getItem(this.store_id);
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached);
-          // Convert plain objects back to Task instances
-          this.tasks = parsed.map((taskData: any) => new Task(taskData));
-        } catch (error) {
-          console.error("Failed to load tasks from cache:", error);
-          localStorage.removeItem(this.store_id);
-        }
-      }
-    },
+      // 直接替換任務物件
+      tasks.value[index] = updatedTask;
+      saveTasks();
+      return true;
+    }
+    return false;
+  }
 
-    saveTasks() {
-      localStorage.setItem(this.store_id, JSON.stringify(this.tasks));
-    },
+  function clearTasksCache() {
+    localStorage.removeItem(storeId.value);
+    tasks.value = [];
+  }
 
-    addTask(video_path: string) {
-      this.tasks.push(
-        new Task({
-          video_path,
-        })
-      );
-      this.saveTasks();
-    },
+  function select_all_tasks() {
+    tasks.value.forEach((task) => {
+      task.selected = true;
+    });
+    saveTasks();
+  }
 
-    removeTask(taskData: Task) {
-      const index = this.tasks.findIndex((task) => task === taskData);
-      if (index !== -1) {
-        this.tasks.splice(index, 1);
-        this.saveTasks();
-      }
-    },
+  function unselect_all_tasks() {
+    tasks.value.forEach((task) => {
+      task.selected = false;
+    });
+    lastSelectedIndex.value = -1;
+    saveTasks();
+  }
 
-    clearTasksCache() {
-      localStorage.removeItem(this.store_id);
-      this.tasks = [];
-    },
-    select_all_tasks() {
-      this.tasks.forEach((task) => {
-        task.selected = true;
-      });
-      this.saveTasks();
-    },
-    unselect_all_tasks() {
-      this.tasks.forEach((task) => {
-        task.selected = false;
-      });
-      this.last_selected_index = -1;
-      this.saveTasks();
-    },
-  },
+  return {
+    storeId,
+    tasks,
+    lastSelectedIndex,
+    mouseNearestIndex,
+    isShiftOn,
+    // getters
+    selectedTasks,
+    readyTasks,
+    selectedReadyTasks,
+    queuedTasks,
+    renderingTasks,
+    doneTasks,
+    hasTasksSelected,
+    shiftHoverRange,
+    onlyOneSelectedInHoverRange,
+    // actions
+    initTasks,
+    saveTasks,
+    addTask,
+    removeTask,
+    modifyTask,
+    clearTasksCache,
+    select_all_tasks,
+    unselect_all_tasks,
+  };
 });
-
-const useTASKS_started = ref(false);
-export function use_tasks_with_shift() {
-  const tasks_state = useTASKS();
+const isUseTasksStarted = ref(false);
+export function useTasksBoundEvents() {
+  const tasks_state = useTasks();
   let mouse_events: (() => void)[] = [];
 
   // 找出滑鼠最近的任務索引
@@ -247,23 +265,23 @@ export function use_tasks_with_shift() {
       }
     });
 
-    tasks_state.mouse_nearest_index = closestTask;
+    tasks_state.mouseNearestIndex = closestTask;
   };
 
   // 創建 shift 鍵按下和釋放的回調函數
   const onShiftPress = () => {
-    tasks_state.shift_on = true;
+    tasks_state.isShiftOn = true;
     findNearestTaskToMouse(null);
     mouse_events.push(
-      on_mousemove({
+      onMousemove({
         callbacks: [(event: any) => findNearestTaskToMouse(event)],
       })
     );
   };
 
   const onShiftRelease = () => {
-    tasks_state.shift_on = false;
-    tasks_state.mouse_nearest_index = -1;
+    tasks_state.isShiftOn = false;
+    tasks_state.mouseNearestIndex = -1;
     if (mouse_events) {
       mouse_events.forEach((event) => event());
       mouse_events = [];
@@ -275,10 +293,10 @@ export function use_tasks_with_shift() {
 
   // 組件掛載時設置事件監聽
   onMounted(() => {
-    if (!useTASKS_started.value) {
+    if (!isUseTasksStarted.value) {
       tasks_state.initTasks();
       cleaner.push(
-        on_keys({
+        onKeys({
           Shift: [
             { type: "onPress", callback: onShiftPress },
             { type: "onRelease", callback: onShiftRelease },
@@ -288,7 +306,7 @@ export function use_tasks_with_shift() {
             callback: () => {
               tasks_state.select_all_tasks();
             },
-            modifiers: [modifier_keys.Control],
+            modifiers: [MODIFIER_KEYS.Control],
           },
           Escape: {
             type: "onPress",
@@ -298,13 +316,13 @@ export function use_tasks_with_shift() {
           },
         })
       );
-      useTASKS_started.value = true;
+      isUseTasksStarted.value = true;
     }
   });
 
   // 組件卸載時清理事件監聽
   onUnmounted(() => {
-    useTASKS_started.value = false;
+    isUseTasksStarted.value = false;
 
     // 清理事件監聽
     cleaner.forEach((cleanup) => cleanup());
@@ -314,52 +332,59 @@ export function use_tasks_with_shift() {
   return tasks_state;
 }
 
-// Modal Store - 管理所有模態框的狀態
-export const useModalStore = defineStore("modalStore", {
-  state: () => ({
-    activeModals: {
-      taskSettings: {
-        isOpen: false,
-        taskData: null as Task | null,
-      },
-      menu: {
-        isOpen: false,
-      },
-      // 可以在此添加其他模態框的狀態
+// 使用組合式 API 定義 Modal store
+export const useModalStore = defineStore("modalStore", () => {
+  // State
+  const activeModals = ref({
+    taskSettings: {
+      isOpen: false,
+      taskData: null as Task | null,
     },
-  }),
+    menu: {
+      isOpen: false,
+    },
+    // 可以在此添加其他模態框的狀態
+  });
 
-  actions: {
-    // Task Settings Modal
-    openTaskSettings(task: Task) {
-      this.activeModals.taskSettings.taskData = task;
-      this.activeModals.taskSettings.isOpen = true;
-      logger.debug(`Opening settings modal for task: ${task.id}`);
-    },
+  // Actions
+  // Task Settings Modal
+  function openTaskSettings(task: Task) {
+    activeModals.value.taskSettings.taskData = task;
+    activeModals.value.taskSettings.isOpen = true;
+    logger.debug(`Opening settings modal for task: ${task.id}`);
+  }
 
-    closeTaskSettings() {
-      this.activeModals.taskSettings.isOpen = false;
-      this.activeModals.taskSettings.taskData = null;
-    },
+  function closeTaskSettings() {
+    activeModals.value.taskSettings.isOpen = false;
+    activeModals.value.taskSettings.taskData = null;
+  }
 
-    // Menu Modal
-    openMenu() {
-      this.activeModals.menu.isOpen = true;
-      logger.debug("Opening menu modal");
-    },
+  // Menu Modal
+  function openMenu() {
+    activeModals.value.menu.isOpen = true;
+    logger.debug("Opening menu modal");
+  }
 
-    closeMenu() {
-      this.activeModals.menu.isOpen = false;
-    },
+  function closeMenu() {
+    activeModals.value.menu.isOpen = false;
+  }
 
-    // 通用關閉所有模態框的方法
-    closeAllModals() {
-      Object.keys(this.activeModals).forEach((key) => {
-        const modalKey = key as keyof typeof this.activeModals;
-        if (typeof this.activeModals[modalKey].isOpen === "boolean") {
-          this.activeModals[modalKey].isOpen = false;
-        }
-      });
-    },
-  },
+  // 通用關閉所有模態框的方法
+  function closeAllModals() {
+    Object.keys(activeModals.value).forEach((key) => {
+      const modalKey = key as keyof typeof activeModals.value;
+      if (typeof activeModals.value[modalKey].isOpen === "boolean") {
+        activeModals.value[modalKey].isOpen = false;
+      }
+    });
+  }
+
+  return {
+    activeModals,
+    openTaskSettings,
+    closeTaskSettings,
+    openMenu,
+    closeMenu,
+    closeAllModals,
+  };
 });

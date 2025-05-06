@@ -1,4 +1,5 @@
 import { BaseClass } from "./BaseModel";
+import { ref } from "vue";
 
 export class Button extends BaseClass {
   constructor(data: {
@@ -22,20 +23,20 @@ export class Button extends BaseClass {
 
 export class InputRange extends BaseClass {
   constructor(data: {
+    type?: string;
     value?: number;
     min?: number;
     max?: number;
     step?: number;
-    type?: string;
     label?: string;
   }) {
     // merge defaults and user-supplied props
     const normalizedData = {
-      value: 2,
+      type: "range",
+      value: ref(2),
       min: 1,
       max: 100,
       step: 1,
-      type: "range",
       ...data,
     };
     super(normalizedData);
@@ -45,7 +46,7 @@ export class InputRange extends BaseClass {
 export class InputText extends BaseClass {
   constructor(data: { value?: string; type?: string; label: string }) {
     // merge defaults and user-supplied props
-    const normalizedData = { value: "", type: "text", ...data };
+    const normalizedData = { value: ref(""), type: "text", ...data };
     super(normalizedData);
   }
 }

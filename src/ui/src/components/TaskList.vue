@@ -1,10 +1,10 @@
 <template>
   <div
     class="task-list"
-    :class="{ 'has-selected': task_store.has_selected_tasks }"
+    :class="{ 'has-selected': taskStore.hasTasksSelected }"
   >
     <!-- 新增取消選取按鈕 -->
-    <div v-if="task_store.has_selected_tasks" class="clear-selection-wrapper">
+    <div v-if="taskStore.hasTasksSelected" class="clear-selection-wrapper">
       <button
         @click="clearAllSelections"
         class="clear-selection-button"
@@ -15,7 +15,7 @@
     </div>
     <ul>
       <li
-        v-for="(task, index) in task_store.tasks"
+        v-for="(task, index) in taskStore.tasks"
         :key="task.id"
         class="task-item"
       >
@@ -26,7 +26,7 @@
             <input
               type="checkbox"
               v-model="task.selected"
-              @change="change_selected(task, index)"
+              @change="changeSelected(task, index)"
               class="select-checkbox"
               :class="{ 'is-selected': task.selected }"
               title="Select Task"
@@ -34,7 +34,7 @@
           </div>
           <div
             class="task-preview"
-            :class="{ shifted: task_store.shift_hover_range.includes(index) }"
+            :class="{ shifted: taskStore.shiftHoverRange.includes(index) }"
             @click="toggleTaskSelection(task, index)"
           >
             <!-- Placeholder for video preview -->
@@ -48,7 +48,7 @@
           </div>
         </div>
         <div class="task-details">
-          <span class="task-filename">{{ task.video_name }}</span>
+          <span class="task-filename">{{ task.videoName }}</span>
           <div class="task-actions">
             <select
               v-model="task.renderMethod"
@@ -74,9 +74,9 @@
           <span
             :class="[
               'status-badge',
-              `status-${TASK_STATUS[task.status].toLowerCase()}`,
+              `status-${TASK_STATUS[task.status as TASK_STATUS]}`,
             ]"
-            >{{ TASK_STATUS[task.status] }}</span
+            >{{ TASK_STATUS[task.status as TASK_STATUS] }}</span
           >
         </div>
       </li>
@@ -86,38 +86,39 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { use_tasks_with_shift, useModalStore } from "../stores/stores";
-import { init_settings } from "../models/task_setting";
+import { useTasksBoundEvents, useModalStore } from "../stores/stores";
+import { initTaskSettings } from "../models/taskSetting";
 import { TASK_STATUS } from "../models/tasks";
-import { ACTIONS } from "../models/task_setting";
+import { ACTIONS } from "../models/taskSetting";
 
-const task_store = use_tasks_with_shift();
+const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
 
 const change_settings = (task: any) => {
-  if (task_store.has_selected_tasks) {
+  if (taskStore.hasTasksSelected) {
     const method = task.renderMethod;
-    task_store.selected_tasks.forEach((task: any) => {
+    taskStore.selectedTasks.forEach((task: any) => {
       if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
         return;
       }
       task.renderMethod = method;
-      init_settings(task);
+      initTaskSettings(task);
       task.status = TASK_STATUS.Ready;
     });
   } else {
-    init_settings(task);
+    initTaskSettings(task);
     task.status = TASK_STATUS.Ready;
   }
-  task_store.saveTasks();
+  taskStore.saveTasks();
 };
 
 const openSettings = (task: any) => {
   logger.debug(`Opening settings for task: ${task.id}`);
+
   modalStore.openTaskSettings(task);
 };
 
-const change_selected = (task: any, index: number) => {
+const changeSelected = (task: any, index: number) => {
   toggleTaskSelection(task, index, false);
 };
 
@@ -126,32 +127,34 @@ const toggleTaskSelection = (
   index: number,
   toggle: boolean = true
 ) => {
-  if ((task_store.has_selected_tasks || task_store.shift_on) && toggle) {
+  // 確認是否有任務被選取或 Shift 鍵是否被按下
+  if ((taskStore.hasTasksSelected || taskStore.isShiftOn) && toggle) {
     task.selected = !task.selected;
   }
+  // 判斷是否全勾選或取消勾選
   if (
     !task.selected &&
-    task_store.shift_hover_range.length > 0 &&
-    task_store.shift_hover_range_handle
+    taskStore.shiftHoverRange.length > 0 &&
+    taskStore.onlyOneSelectedInHoverRange
   ) {
-    task_store.shift_hover_range.forEach((index: number) => {
-      task_store.tasks[index].selected = false;
+    taskStore.shiftHoverRange.forEach((index: number) => {
+      taskStore.tasks[index].selected = false;
     });
-  } else if (task_store.shift_hover_range.length > 0) {
-    task_store.shift_hover_range.forEach((index: number) => {
-      task_store.tasks[index].selected = true;
+  } else if (taskStore.shiftHoverRange.length > 0) {
+    taskStore.shiftHoverRange.forEach((index: number) => {
+      taskStore.tasks[index].selected = true;
     });
   }
-  task_store.last_selected_index = task.selected ? index : -1;
-  task_store.saveTasks();
+  taskStore.lastSelectedIndex = task.selected ? index : -1;
+  taskStore.saveTasks();
 };
 
 const clearAllSelections = () => {
-  task_store.tasks.forEach((task: any) => {
+  taskStore.tasks.forEach((task: any) => {
     task.selected = false;
   });
-  task_store.saveTasks();
-  task_store.last_selected_index = -1;
+  taskStore.saveTasks();
+  taskStore.lastSelectedIndex = -1;
   logger.debug("已取消所有任務選取");
 };
 </script>

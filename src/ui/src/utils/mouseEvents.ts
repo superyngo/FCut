@@ -2,7 +2,7 @@ import { logger } from "./logger";
 import { throttle, debounce } from "lodash-es";
 
 // 流程控制說明:
-// 1. on_mousemove, on_click, on_mousedown, on_mouseup, on_wheel 註冊 addEventListeners 事件監聽器, on_drag 會拆成 on_mousemove, on_mousedown, on_mouseup 分別註冊
+// 1. onMousemove, onClick, onMousedown, onMouseup, onWheel 註冊 addEventListeners 事件監聽器, onDrag 會拆成 onMousemove, onMousedown, onMouseup 分別註冊
 // 2. addEventListeners 產生 WrappedCallbackConfig 並存入 _mouseState.allRegisteredCallbacks[eventType].push(callbackConfig);
 // 3. addEventListeners 啟動 startListening 並回傳 當下監聽器移除句柄, 且可查詢註冊事件
 // 4. startListening 將 handleMouseEvent 註冊到 eventListner 並啟動 startAnimationLoop
@@ -11,7 +11,7 @@ import { throttle, debounce } from "lodash-es";
 // -------------- 類型定義 --------------
 
 // 鼠標事件類型
-export enum MouseEventType {
+export enum MOUSE_EVENT_TYPE {
   Move = "mousemove",
   Down = "mousedown",
   Up = "mouseup",
@@ -26,7 +26,7 @@ export enum MouseEventType {
 }
 
 // 拖拽狀態
-enum DragState {
+enum DRAG_STATE {
   Idle = "idle",
   Start = "start",
   Dragging = "dragging",
@@ -35,7 +35,7 @@ enum DragState {
 
 // 拖拽信息
 type DragInfo = {
-  state: DragState;
+  state: DRAG_STATE;
   startX: number;
   startY: number;
   currentX: number;
@@ -77,7 +77,7 @@ type WrappedCallbackConfig = Omit<CallbackConfig, "callbakcs"> & {
   wrappedCallbacks?: MouseCallbackFunction[]; // 包裝後的回調數組
 };
 
-type RegisteredCallback = Map<MouseEventType, WrappedCallbackConfig>;
+type RegisteredCallback = Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig>;
 
 // 鼠標事件監聽器句柄
 type MouseListenerHandle = (() => void) & {
@@ -113,9 +113,9 @@ const _dragState = {
 };
 
 const _callbackRegistry = {
-  allRegisteredCallbacks: new Map<MouseEventType, WrappedCallbackConfig[]>(),
-  registeredEvents: new Set<MouseEventType>(),
-  pendingEvents: new Map<MouseEventType, (MouseEvent | WheelEvent)[]>(),
+  allRegisteredCallbacks: new Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>(),
+  registeredEvents: new Set<MOUSE_EVENT_TYPE>(),
+  pendingEvents: new Map<MOUSE_EVENT_TYPE, (MouseEvent | WheelEvent)[]>(),
 };
 
 const _performance = {
@@ -250,7 +250,7 @@ const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
   // 更新滑鼠狀態 (僅針對 MouseEvent)
   if (event instanceof MouseEvent) {
     // 更新滑鼠按鍵狀態
-    if (event.type === MouseEventType.Click) {
+    if (event.type === MOUSE_EVENT_TYPE.Click) {
       updateMouseButtons(event);
     }
 
@@ -259,7 +259,7 @@ const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
   }
 
   // 獲取事件類型並確保事件隊列初始化
-  const eventType = event.type as MouseEventType;
+  const eventType = event.type as MOUSE_EVENT_TYPE;
   if (!_callbackRegistry.pendingEvents.has(eventType)) {
     _callbackRegistry.pendingEvents.set(eventType, []);
   }
@@ -274,7 +274,7 @@ const updateDragState = (event: MouseEvent) => {
 
   // 處理拖拽開始
   if (
-    event.type === MouseEventType.Down &&
+    event.type === MOUSE_EVENT_TYPE.Down &&
     _mouseButtons.left &&
     !drag.isDragging
   ) {
@@ -285,7 +285,7 @@ const updateDragState = (event: MouseEvent) => {
     drag.lastY = event.clientY;
 
     // 處理所有拖拽回調 - 開始狀態
-    processDragCallbacks(event, DragState.Start);
+    processDragCallbacks(event, DRAG_STATE.Start);
     return;
   }
 
@@ -293,9 +293,9 @@ const updateDragState = (event: MouseEvent) => {
   if (!drag.isDragging) return;
 
   // 處理拖拽移動
-  if (event.type === MouseEventType.Move) {
+  if (event.type === MOUSE_EVENT_TYPE.Move) {
     // 處理所有拖拽回調 - 拖拽狀態
-    processDragCallbacks(event, DragState.Dragging);
+    processDragCallbacks(event, DRAG_STATE.Dragging);
 
     drag.lastX = event.clientX;
     drag.lastY = event.clientY;
@@ -303,9 +303,9 @@ const updateDragState = (event: MouseEvent) => {
   }
 
   // 處理拖拽結束
-  if (event.type === MouseEventType.Up) {
+  if (event.type === MOUSE_EVENT_TYPE.Up) {
     // 處理所有拖拽回調 - 結束狀態
-    processDragCallbacks(event, DragState.End);
+    processDragCallbacks(event, DRAG_STATE.End);
 
     // 重置狀態
     drag.isDragging = false;
@@ -366,7 +366,7 @@ const startAnimationLoop = () => {
       }
 
       // 優化移動事件處理：只處理最後一個移動事件
-      if (eventType === MouseEventType.Move && events.length > 1) {
+      if (eventType === MOUSE_EVENT_TYPE.Move && events.length > 1) {
         const lastEvent = events[events.length - 1];
         events.length = 0;
         events.push(lastEvent);
@@ -389,7 +389,7 @@ const startAnimationLoop = () => {
 // 處理特定類型的事件
 const processEventsForType = (
   events: (MouseEvent | WheelEvent)[],
-  eventType: MouseEventType
+  eventType: MOUSE_EVENT_TYPE
 ) => {
   const callbacks = _callbackRegistry.allRegisteredCallbacks.get(eventType);
   if (!callbacks) return;
@@ -425,7 +425,7 @@ const processEventsForType = (
 
 // 移除一次性回調
 const removeOneTimeCallback = (
-  eventType: MouseEventType,
+  eventType: MOUSE_EVENT_TYPE,
   callbackToRemove: WrappedCallbackConfig
 ) => {
   const callbacks = _callbackRegistry.allRegisteredCallbacks.get(eventType);
@@ -451,7 +451,7 @@ const scheduleNextFrame = (processFrame: (timestamp: number) => void) => {
 };
 
 // 開始全局事件監聽
-const startListening = (eventType: MouseEventType) => {
+const startListening = (eventType: MOUSE_EVENT_TYPE) => {
   if (typeof window === "undefined") return;
   if (_callbackRegistry.registeredEvents.has(eventType)) return;
 
@@ -471,7 +471,7 @@ const startListening = (eventType: MouseEventType) => {
 };
 
 // 停止全局事件監聽
-const stopListening = (eventType?: MouseEventType) => {
+const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
   if (typeof window === "undefined") return;
 
   // 如果提供了特定事件類型，只移除該類型
@@ -510,15 +510,15 @@ const stopListening = (eventType?: MouseEventType) => {
 
 // -------------- 拖拽輔助函數 --------------
 // 處理拖拽回調
-const processDragCallbacks = (event: MouseEvent, state: DragState) => {
-  if (!_callbackRegistry.allRegisteredCallbacks.get(MouseEventType.Move))
+const processDragCallbacks = (event: MouseEvent, state: DRAG_STATE) => {
+  if (!_callbackRegistry.allRegisteredCallbacks.get(MOUSE_EVENT_TYPE.Move))
     return;
 
   const dragInfo = createDragInfo(state, event);
 
   // 找出專門用於拖拽的回調
   _callbackRegistry.allRegisteredCallbacks
-    .get(MouseEventType.Move)
+    .get(MOUSE_EVENT_TYPE.Move)
     ?.forEach((registeredCallback) => {
       if (
         !checkEventFilter(event, registeredCallback) ||
@@ -543,7 +543,7 @@ const processDragCallbacks = (event: MouseEvent, state: DragState) => {
  * @param event 鼠標事件
  * @returns DragInfo 拖拽信息對象
  */
-const createDragInfo = (state: DragState, event: MouseEvent): DragInfo => {
+const createDragInfo = (state: DRAG_STATE, event: MouseEvent): DragInfo => {
   const drag = _dragState;
   return {
     state,
@@ -584,12 +584,12 @@ const executeDragCallbacks = (
  * @param callbackConfig 配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_mousemove(
+export function onMousemove(
   callbackConfig: CallbackConfig
 ): MouseListenerHandle {
   // 添加監聽器
   return addEventListeners({
-    [MouseEventType.Move]: callbackConfig,
+    [MOUSE_EVENT_TYPE.Move]: callbackConfig,
   });
 }
 
@@ -598,10 +598,10 @@ export function on_mousemove(
  * @param callbackConfig 配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_click(callbackConfig: CallbackConfig): MouseListenerHandle {
+export function onClick(callbackConfig: CallbackConfig): MouseListenerHandle {
   // 添加監聽器
   return addEventListeners({
-    [MouseEventType.Click]: callbackConfig,
+    [MOUSE_EVENT_TYPE.Click]: callbackConfig,
   });
 }
 
@@ -610,12 +610,12 @@ export function on_click(callbackConfig: CallbackConfig): MouseListenerHandle {
  * @param callbackConfig 配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_mousedown(
+export function onMousedown(
   callbackConfig: CallbackConfig
 ): MouseListenerHandle {
   // 添加監聽器
   return addEventListeners({
-    [MouseEventType.Down]: callbackConfig,
+    [MOUSE_EVENT_TYPE.Down]: callbackConfig,
   });
 }
 
@@ -624,12 +624,10 @@ export function on_mousedown(
  * @param callbackConfig 配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_mouseup(
-  callbackConfig: CallbackConfig
-): MouseListenerHandle {
+export function onMouseup(callbackConfig: CallbackConfig): MouseListenerHandle {
   // 添加監聽器
   return addEventListeners({
-    [MouseEventType.Up]: callbackConfig,
+    [MOUSE_EVENT_TYPE.Up]: callbackConfig,
   });
 }
 
@@ -638,10 +636,10 @@ export function on_mouseup(
  * @param callbackConfig 配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_wheel(callbackConfig: CallbackConfig): MouseListenerHandle {
+export function onWheel(callbackConfig: CallbackConfig): MouseListenerHandle {
   // 添加監聽器
   return addEventListeners({
-    [MouseEventType.Wheel]: callbackConfig,
+    [MOUSE_EVENT_TYPE.Wheel]: callbackConfig,
   });
 }
 
@@ -650,7 +648,7 @@ export function on_wheel(callbackConfig: CallbackConfig): MouseListenerHandle {
  * @param dragCallbackConfig 拖拽配置參數，包含回調函數
  * @returns 監聽器句柄
  */
-export function on_drag(
+export function onDrag(
   dragCallbackConfig: DragCallbackConfig
 ): MouseListenerHandle {
   // 獲取回調函數並統一轉換為數組
@@ -666,19 +664,19 @@ export function on_drag(
   };
 
   // 鼠標按下處理 - 拖拽開始信號由通用拖拽處理器處理
-  const downHandle = on_mousedown({
+  const downHandle = onMousedown({
     ...callbackConfig,
     callbacks: () => {},
   });
 
   // 鼠標移動處理
-  const moveHandle = on_mousemove({
+  const moveHandle = onMousemove({
     ...callbackConfig,
     callbacks: (event) => {
       if (!_dragState.isDragging) return;
 
       // 創建拖拽信息並執行回調
-      const dragInfo = createDragInfo(DragState.Dragging, event);
+      const dragInfo = createDragInfo(DRAG_STATE.Dragging, event);
       executeDragCallbacks(dragInfo, dragCallbacks);
 
       // 更新最後位置
@@ -688,13 +686,13 @@ export function on_drag(
   });
 
   // 鼠標釋放處理
-  const upHandle = on_mouseup({
+  const upHandle = onMouseup({
     ...callbackConfig,
     callbacks: (event) => {
       if (!_dragState.isDragging) return;
 
       // 創建拖拽信息並執行回調
-      const dragInfo = createDragInfo(DragState.End, event);
+      const dragInfo = createDragInfo(DRAG_STATE.End, event);
       executeDragCallbacks(dragInfo, dragCallbacks);
     },
   });
@@ -740,7 +738,7 @@ export function coordinate(): {
  * 獲取當前滑鼠懸停到的所有元素
  * @returns 一個包含當前懸停元素的陣列
  */
-export function hovered_elements(): HTMLElement[] {
+export function hoveredElements(): HTMLElement[] {
   return Array.from(_hoverState.hoveredElements);
 }
 
@@ -749,7 +747,7 @@ export function hovered_elements(): HTMLElement[] {
  * @param element 要檢查的元素
  * @returns 是否懸停
  */
-export function is_hovering(element: HTMLElement | string): boolean {
+export function isHovering(element: HTMLElement | string): boolean {
   const targetElement = getElement(element);
   if (!targetElement) return false;
 
@@ -760,15 +758,15 @@ export function is_hovering(element: HTMLElement | string): boolean {
 
 /**
  * 獲取所有註冊的回調
- * @returns 所有註冊回調的唯讀副本 Map<MouseEventType, WrappedCallbackConfig[]>
+ * @returns 所有註冊回調的唯讀副本 Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>
  */
 export function allCallbacks(): Readonly<
-  Map<MouseEventType, readonly WrappedCallbackConfig[]>
+  Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>
 > {
-  const result = new Map<MouseEventType, readonly WrappedCallbackConfig[]>();
+  const result = new Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>();
 
   // 遍歷所有事件類型
-  Object.values(MouseEventType).forEach((eventType) => {
+  Object.values(MOUSE_EVENT_TYPE).forEach((eventType) => {
     if (!_callbackRegistry.allRegisteredCallbacks.has(eventType)) return;
 
     // 為每個事件類型創建回調數組的深拷貝
@@ -790,7 +788,7 @@ export function allCallbacks(): Readonly<
 
 // 添加事件監聽器（所有監聽函數的共享實現）
 function addEventListeners(
-  eventType_callbacks_config: Partial<Record<MouseEventType, CallbackConfig>>
+  eventType_callbacks_config: Partial<Record<MOUSE_EVENT_TYPE, CallbackConfig>>
 ): MouseListenerHandle {
   const registeredCallbacks: RegisteredCallback = new Map();
 
@@ -798,7 +796,7 @@ function addEventListeners(
   Object.entries(eventType_callbacks_config).forEach(
     ([eventTypeStr, callbackConfig]) => {
       // 設定事件類型
-      const eventType = eventTypeStr as MouseEventType;
+      const eventType = eventTypeStr as MOUSE_EVENT_TYPE;
 
       // 確保配置中包含必要的字段
       if (!callbackConfig.callbacks) {
@@ -867,7 +865,7 @@ function addEventListeners(
  */
 export function removeRegisteredCallbacks(
   registeredCallbacks: Map<
-    MouseEventType,
+    MOUSE_EVENT_TYPE,
     WrappedCallbackConfig | WrappedCallbackConfig[]
   >
 ): boolean {
@@ -877,7 +875,7 @@ export function removeRegisteredCallbacks(
 
   // 遍歷所有指定的事件類型
   registeredCallbacks.forEach((WrappedCallbackConfig, eventTypeStr) => {
-    const eventType = eventTypeStr as MouseEventType;
+    const eventType = eventTypeStr as MOUSE_EVENT_TYPE;
     if (!_callbackRegistry.allRegisteredCallbacks.has(eventType)) return;
 
     const WrappedCallbackConfigs = Array.isArray(WrappedCallbackConfig)
@@ -964,7 +962,7 @@ export function setLowPowerMode(enable: boolean, frequency: number = 30): void {
  * @param options 其他選項
  */
 export function createVirtualMouseEvent(
-  type: MouseEventType,
+  type: MOUSE_EVENT_TYPE,
   x: number,
   y: number,
   options: {
@@ -1006,7 +1004,7 @@ if (window && !(typeof window === "undefined")) {
   // 註冊特定事件類型的監聽器
   logger.debug("初始化鼠標事件監聽器");
   window.addEventListener(
-    MouseEventType.Move,
+    MOUSE_EVENT_TYPE.Move,
     (event) => {
       updateMousePosition(event);
       updateHoverState(event);

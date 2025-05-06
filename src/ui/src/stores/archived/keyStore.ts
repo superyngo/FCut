@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { onMounted, onUnmounted, ref } from "vue";
 import { logger } from "../utils/logger";
-import { modifier_keys } from "../utils/key_events";
+import { MODIFIER_KEYS } from "../utils/key_events";
 import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
 
 // --- Types ---
@@ -13,7 +13,7 @@ type KeyCallbackConfig = {
   id?: string; // 唯一標識符
   type: "onPress" | "onRelease"; // 保留 type 屬性，用於區分事件類型
   callback: CallbackFunction | CallbackFunction[];
-  modifiers?: modifier_keys[];
+  modifiers?: MODIFIER_KEYS[];
   preventDefault?: boolean;
   throttle?: number; // 節流間隔 (ms)
   debounce?: number; // 防抖間隔 (ms)
@@ -35,36 +35,36 @@ const useKey = defineStore("key", () => {
   const isInputFocused = ref(false); // 輸入框是否聚焦
 
   // --- Getters ---
-  const keys_on = () => keys.value; // 返回當前所有被監聽按鍵的狀態
+  const keysState = () => keys.value; // 返回當前所有被監聽按鍵的狀態
 
   // --- Private Helpers ---
 
   // 檢查修飾鍵是否匹配
   const checkModifiers = (
     event: KeyboardEvent,
-    modifiers?: modifier_keys[]
+    modifiers?: MODIFIER_KEYS[]
   ): boolean => {
     if (!modifiers || modifiers.length === 0) return true; // 無需檢查
 
     const required = {
-      [modifier_keys.Shift]: modifiers.includes(modifier_keys.Shift),
-      [modifier_keys.Control]: modifiers.includes(modifier_keys.Control),
-      [modifier_keys.Alt]: modifiers.includes(modifier_keys.Alt),
+      [MODIFIER_KEYS.Shift]: modifiers.includes(MODIFIER_KEYS.Shift),
+      [MODIFIER_KEYS.Control]: modifiers.includes(MODIFIER_KEYS.Control),
+      [MODIFIER_KEYS.Alt]: modifiers.includes(MODIFIER_KEYS.Alt),
     };
 
     // Meta key (Cmd on Mac, Win on Windows) counts as Control for simplicity here
     const ctrlOrMeta = event.ctrlKey || event.metaKey;
 
     return (
-      required[modifier_keys.Shift] === event.shiftKey &&
-      required[modifier_keys.Control] === ctrlOrMeta &&
-      required[modifier_keys.Alt] === event.altKey
+      required[MODIFIER_KEYS.Shift] === event.shiftKey &&
+      required[MODIFIER_KEYS.Control] === ctrlOrMeta &&
+      required[MODIFIER_KEYS.Alt] === event.altKey
     );
   };
 
   // 創建包裝後的回調（處理節流/防抖）
   const wrapCallback = (config: KeyCallbackConfig): CallbackFunction[] => {
-    // 此時 callback 已經在 on_keys 中被轉換為數組
+    // 此時 callback 已經在 onKeys 中被轉換為數組
     return (config.callback as CallbackFunction[]).map((fn) => {
       if (config.throttle && config.throttle > 0) {
         return throttle(fn, config.throttle, {
@@ -201,7 +201,7 @@ const useKey = defineStore("key", () => {
   // --- Actions ---
 
   // 使用 Record<string, KeyCallbackConfig | KeyCallbackConfig[]> 作為輸入
-  const on_keys = (
+  const onKeys = (
     key_config: Record<string, KeyCallbackConfig | KeyCallbackConfig[]>
   ): KeyListenerHandle => {
     const allAddedConfigs: Record<string, KeyCallbackConfig[]> = {};
@@ -334,10 +334,10 @@ const useKey = defineStore("key", () => {
     isInputFocused,
 
     // Getters (作為函數返回，確保響應性)
-    keys_on,
+    keysState,
 
     // Actions
-    on_keys,
+    onKeys,
     remove_key_callback, // 提供精確移除方法
     startListening,
     stopListening,

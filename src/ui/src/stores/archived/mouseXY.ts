@@ -136,7 +136,7 @@ export const useMouseXY = defineStore("mouseXY", {
     },
 
     // 註冊滑鼠移動回調函數
-    on_mousemove(
+    onMousemove(
       callback: MouseCallbackFunction | MouseCallbackFunction[],
       options: { throttle?: number; debounce?: number } = {}
     ): MouseListenerHandle {

@@ -30,20 +30,15 @@
 import { ref } from "vue";
 import { Button } from "../models/elements";
 import { logger } from "../utils/logger";
-import {
-  useAPP_STATE_inited,
-  use_tasks_with_shift,
-  useModalStore,
-} from "../stores/stores";
+import { useTasksBoundEvents, useModalStore } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
 
-const tasks_store = use_tasks_with_shift();
-const app_state = useAPP_STATE_inited();
+const tasksStore = useTasksBoundEvents();
 const modalStore = useModalStore();
 
-// Use a Map for buttons_data
-const buttons_data = new Map<string, Button>([
+// Use a Map for buttonsData
+const buttonsData = new Map<string, Button>([
   [
     "Menu",
     new Button({
@@ -67,23 +62,22 @@ const buttons_data = new Map<string, Button>([
       icon: "fas fa-trash",
       action: () => startRender(),
       disabled: () =>
-        tasks_store.queued_tasks.length + tasks_store.rendering_tasks.length !=
-        0,
+        tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0,
     }),
   ],
   [
     "Remove",
     new Button({
-      label: () => (tasks_store.has_selected_tasks ? "Remove" : "Clean"),
+      label: () => (tasksStore.hasTasksSelected ? "Remove" : "Clean"),
       icon: "fas fa-trash",
       action: () =>
-        tasks_store.has_selected_tasks ? deleteTask() : clearCompletedTasks(),
+        tasksStore.hasTasksSelected ? deleteTask() : clearCompletedTasks(),
     }),
   ],
 ]);
 
 // Update the type of the buttons ref
-const buttons = ref<Map<string, Button>>(buttons_data);
+const buttons = ref<Map<string, Button>>(buttonsData);
 
 const toggleMenu = () => {
   logger.debug("Menu toggled");
@@ -92,40 +86,40 @@ const toggleMenu = () => {
 
 const addTask = async () => {
   const video_paths = await pywebview.api.open_file_dialog();
-  for (const video_path of video_paths) {
-    logger.debug(`Adding video: ${video_path}`);
-    tasks_store.addTask(video_path);
+  for (const videoPath of video_paths) {
+    logger.debug(`Adding video: ${videoPath}`);
+    tasksStore.addTask(videoPath);
   }
 };
 
 const deleteTask = () => {
-  const selected_tasks = [...tasks_store.selected_tasks];
-  for (const task of selected_tasks) {
+  const selectedTasks = [...tasksStore.selectedTasks];
+  for (const task of selectedTasks) {
     if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
       return;
     }
     logger.debug(`Deleting task: ${task.id}`);
-    tasks_store.removeTask(task);
+    tasksStore.removeTask(task);
   }
 };
 
 const clearCompletedTasks = () => {
-  const done_tasks = [...tasks_store.done_tasks];
-  for (const task of done_tasks) {
+  const doneTasks = [...tasksStore.doneTasks];
+  for (const task of doneTasks) {
     logger.debug(`Deleting done task: ${task.id}`);
-    tasks_store.removeTask(task);
+    tasksStore.removeTask(task);
   }
 };
 
 const startRender = async () => {
-  const ready_tasks = [...tasks_store.ready_tasks];
-  for (const task of ready_tasks) {
+  const readyTasks = [...tasksStore.readyTasks];
+  for (const task of readyTasks) {
     logger.debug(`Queue task: ${task.id}`);
     task.status = TASK_STATUS.Queued;
   }
 
-  const queued_tasks = [...tasks_store.queued_tasks];
-  for (const task of queued_tasks) {
+  const queuedTasks = [...tasksStore.queuedTasks];
+  for (const task of queuedTasks) {
     logger.debug(`Rendering task: ${task.id}`);
     task.status = TASK_STATUS.Rendering;
     // Add a delay to simulate the rendering process

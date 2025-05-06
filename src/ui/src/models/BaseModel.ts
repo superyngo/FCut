@@ -1,12 +1,33 @@
-export const Required = Symbol("Required");
-
 export abstract class BaseClass {
   [key: string]: any; // allow any attributes
   // Constructor is now minimal or empty
-  constructor(data: Record<string, any>) {
+  constructor(data: Record<string, any> = {}) {
     for (const [key, value] of Object.entries(data)) {
       (this as any)[key] = value;
     }
+  }
+  toMap(): Map<string, any> {
+    return new Map(Object.entries(this));
+  }
+  toClonedObject(): Record<string, any> {
+    return structuredClone(this);
+  }
+}
+
+export class BaseMap extends Map {
+  [key: string]: any; // allow any attributes
+  // Constructor is now minimal or empty
+  constructor(data: Record<string, any> = {}) {
+    super();
+    for (const [key, value] of Object.entries(data)) {
+      (this as any).set(key, value);
+    }
+  }
+  toObject(): Record<string, any> {
+    return Object.fromEntries(this.entries());
+  }
+  toClonedObject(): Record<string, any> {
+    return Object.fromEntries(structuredClone(this.entries()));
   }
 }
 

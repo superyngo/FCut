@@ -166,7 +166,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import { useKey, useKeyListener } from "../src/stores/keyStore";
-import { modifier_keys } from "../src/utils/on_events";
+import { MODIFIER_KEYS } from "../src/utils/on_events";
 
 // 使用 KeyStore，自動啟動按鍵監聽
 const keyStore = useKeyListener();
@@ -197,13 +197,13 @@ const registeredKeys = ref<
 const keyEventLogs = ref<string[]>([]);
 
 // 格式化修飾鍵顯示
-const formatModifiers = (modifiers?: modifier_keys[]) => {
+const formatModifiers = (modifiers?: MODIFIER_KEYS[]) => {
   if (!modifiers || modifiers.length === 0) return "無";
 
-  const modifierMap: Record<modifier_keys, string> = {
-    [modifier_keys.Shift]: "Shift",
-    [modifier_keys.Control]: "Ctrl",
-    [modifier_keys.Alt]: "Alt",
+  const modifierMap: Record<MODIFIER_KEYS, string> = {
+    [MODIFIER_KEYS.Shift]: "Shift",
+    [MODIFIER_KEYS.Control]: "Ctrl",
+    [MODIFIER_KEYS.Alt]: "Alt",
   };
 
   return modifiers.map((mod) => modifierMap[mod]).join("+");
@@ -228,10 +228,10 @@ const registerKeyListener = () => {
   }
 
   // 構建修飾鍵配置
-  const modifiers: modifier_keys[] = [];
-  if (withShift.value) modifiers.push(modifier_keys.Shift);
-  if (withCtrl.value) modifiers.push(modifier_keys.Control);
-  if (withAlt.value) modifiers.push(modifier_keys.Alt);
+  const modifiers: MODIFIER_KEYS[] = [];
+  if (withShift.value) modifiers.push(MODIFIER_KEYS.Shift);
+  if (withCtrl.value) modifiers.push(MODIFIER_KEYS.Control);
+  if (withAlt.value) modifiers.push(MODIFIER_KEYS.Alt);
 
   // 構建配置對象
   const config = {
@@ -269,7 +269,7 @@ const registerKeyListener = () => {
   }
 
   // 註冊監聽器
-  const handle = keyStore.on_keys(newKeyName.value, config);
+  const handle = keyStore.onKeys(newKeyName.value, config);
 
   // 保存到已註冊列表
   registeredKeys.value.push({
