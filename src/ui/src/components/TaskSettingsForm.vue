@@ -66,7 +66,9 @@ const props = defineProps<{
 const emit = defineEmits(["close", "save"]);
 
 // 創建本地數據的副本，以便在保存之前進行修改
-const taskData = ref<TaskType>(props.task.toClonedObject() as TaskType);
+const taskData = ref<Required<TaskType>>(
+  props.task.toClonedObject() as Required<TaskType>
+);
 // 檢查任務是否在進行中（排隊或正在渲染）
 const isTaskInProgress = computed(() => {
   return [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
