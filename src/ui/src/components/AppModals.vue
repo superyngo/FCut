@@ -52,7 +52,7 @@
 <script setup lang="ts">
 import { useModalStore } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
-
+import { Task } from "../models/tasks";
 const modalStore = useModalStore();
 </script>
 
@@ -133,6 +133,7 @@ const modalStore = useModalStore();
 }
 
 .menu-item {
+  color: #555;
   padding: 12px;
   text-align: left;
   background: none;

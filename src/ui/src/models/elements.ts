@@ -1,7 +1,12 @@
 import { BaseClass } from "./BaseModel";
-import { ref } from "vue";
 
 export class Button extends BaseClass {
+  id: string = crypto.randomUUID();
+  label: string | (() => String) = "";
+  icon?: string;
+  action?: () => any;
+  visible: boolean | (() => boolean) = true;
+  disabled: boolean | (() => boolean) = false;
   constructor(data: {
     id?: string;
     label: string | (() => String);
@@ -10,19 +15,21 @@ export class Button extends BaseClass {
     visible?: boolean | (() => boolean);
     disabled?: boolean | (() => boolean);
   }) {
-    // merge defaults and user-supplied props
-    const normalizedData = {
-      id: crypto.randomUUID(),
-      visible: true,
-      disabled: false,
-      ...data,
-    };
-    super(normalizedData);
+    super();
+    this._init(data);
   }
 }
 
 export class InputRange extends BaseClass {
+  id: string = crypto.randomUUID();
+  type: string = "range";
+  value: number = 2;
+  min: number = 1;
+  max: number = 100;
+  step: number = 1;
+  label: string = "";
   constructor(data: {
+    id?: string;
     type?: string;
     value?: number;
     min?: number;
@@ -30,23 +37,17 @@ export class InputRange extends BaseClass {
     step?: number;
     label?: string;
   }) {
-    // merge defaults and user-supplied props
-    const normalizedData = {
-      type: "range",
-      value: ref(2),
-      min: 1,
-      max: 100,
-      step: 1,
-      ...data,
-    };
-    super(normalizedData);
+    super();
+    this._init(data);
   }
 }
 
 export class InputText extends BaseClass {
+  value: string = "";
+  type: string = "text";
+  label: string = "";
   constructor(data: { value?: string; type?: string; label: string }) {
-    // merge defaults and user-supplied props
-    const normalizedData = { value: ref(""), type: "text", ...data };
-    super(normalizedData);
+    super();
+    this._init(data);
   }
 }

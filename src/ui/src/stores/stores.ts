@@ -241,6 +241,8 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
 const isUseTasksStarted = ref(false);
 export function useTasksBoundEvents() {
   const tasks_state = useTasks();
+  // 清理函數，用於移除事件監聽器
+  let cleaner: (() => void)[] = [];
   let mouse_events: (() => void)[] = [];
 
   // 找出滑鼠最近的任務索引
@@ -287,9 +289,6 @@ export function useTasksBoundEvents() {
       mouse_events = [];
     }
   };
-
-  // 清理函數，用於移除事件監聽器
-  let cleaner: (() => void)[] = [];
 
   // 組件掛載時設置事件監聽
   onMounted(() => {

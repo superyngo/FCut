@@ -53,7 +53,7 @@
             <select
               v-model="task.renderMethod"
               class="render-select"
-              @change="change_settings(task)"
+              @change="change_settings(task as Task)"
               :disabled="
                 [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
                   task.status
@@ -65,7 +65,7 @@
                 {{ method }}
               </option>
             </select>
-            <button @click="openSettings(task)" class="settings-button">
+            <button @click="openSettings(task as Task)" class="settings-button">
               ...
             </button>
           </div>
@@ -74,9 +74,9 @@
           <span
             :class="[
               'status-badge',
-              `status-${TASK_STATUS[task.status as TASK_STATUS]}`,
+              `status-${TASK_STATUS[task.status].toLowerCase()}`,
             ]"
-            >{{ TASK_STATUS[task.status as TASK_STATUS] }}</span
+            >{{ TASK_STATUS[task.status] }}</span
           >
         </div>
       </li>
@@ -90,20 +90,24 @@ import { useTasksBoundEvents, useModalStore } from "../stores/stores";
 import { initTaskSettings } from "../models/taskSetting";
 import { TASK_STATUS } from "../models/tasks";
 import { ACTIONS } from "../models/taskSetting";
+import { Task } from "../models/tasks";
 
 const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
-
-const change_settings = (task: any) => {
+const change_settings = (task: Task) => {
   if (taskStore.hasTasksSelected) {
     const method = task.renderMethod;
-    taskStore.selectedTasks.forEach((task: any) => {
-      if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
+    taskStore.selectedTasks.forEach((selectedTask) => {
+      if (
+        [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
+          selectedTask.status
+        )
+      ) {
         return;
       }
-      task.renderMethod = method;
-      initTaskSettings(task);
-      task.status = TASK_STATUS.Ready;
+      selectedTask.renderMethod = method;
+      initTaskSettings(selectedTask as Task);
+      selectedTask.status = TASK_STATUS.Ready;
     });
   } else {
     initTaskSettings(task);
@@ -112,18 +116,18 @@ const change_settings = (task: any) => {
   taskStore.saveTasks();
 };
 
-const openSettings = (task: any) => {
+const openSettings = (task: Task) => {
   logger.debug(`Opening settings for task: ${task.id}`);
 
   modalStore.openTaskSettings(task);
 };
 
-const changeSelected = (task: any, index: number) => {
+const changeSelected = (task: Task, index: number) => {
   toggleTaskSelection(task, index, false);
 };
 
 const toggleTaskSelection = (
-  task: any,
+  task: Task,
   index: number,
   toggle: boolean = true
 ) => {
