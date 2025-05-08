@@ -12,7 +12,7 @@ export enum ACTIONS {
   CUT_MOTIONLESS = "CUT_MOTIONLESS",
 }
 
-class _InitTaskSetting<K, V> extends BaseMap<K, V> {
+class _InitTaskSetting extends BaseMap {
   constructor(data: Record<string, any> = {}) {
     super();
     this._init(data);
@@ -25,31 +25,31 @@ class _InitTaskSetting<K, V> extends BaseMap<K, V> {
 
 // 使用map來生產所有TaskSettingsType的實例
 const _initTaskSettings = {
-  [ACTIONS.CUSTOM]: (): _InitTaskSetting<string, InputRange> =>
+  [ACTIONS.CUSTOM]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       multiple: new InputRange({ value: 2 }),
     }),
-  [ACTIONS.CUT]: (): _InitTaskSetting<string, InputText> =>
+  [ACTIONS.CUT]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       multiple1: new InputText({ value: "00:00:00", label: "Start" }),
       multiple2: new InputText({ value: "00:00:00", label: "End" }),
     }),
-  [ACTIONS.SPEEDUP]: (): _InitTaskSetting<string, InputRange> =>
+  [ACTIONS.SPEEDUP]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       multiple: new InputRange({ value: 3, label: "Multiple" }),
     }),
-  [ACTIONS.JUMPCUT]: (): _InitTaskSetting<string, InputRange> =>
+  [ACTIONS.JUMPCUT]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       b1_duration: new InputRange({ value: 2, step: 0.1, min: 0 }),
       b2_duration: new InputRange({ value: 2, step: 0.1, min: 0 }),
       b1_multiple: new InputRange({ value: 2, step: 0.1 }),
       b2_multiple: new InputRange({ value: 2, step: 0.1 }),
     }),
-  [ACTIONS.CUT_SILENCE]: (): _InitTaskSetting<string, InputRange> =>
+  [ACTIONS.CUT_SILENCE]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       dB: new InputRange({ value: -23, min: -50, max: -5 }),
     }),
-  [ACTIONS.CUT_MOTIONLESS]: (): _InitTaskSetting<string, InputRange> =>
+  [ACTIONS.CUT_MOTIONLESS]: (): _InitTaskSetting =>
     new _InitTaskSetting({
       threshold: new InputRange({
         value: 0.00095,
@@ -68,4 +68,4 @@ export function initTaskSettings(task: Task) {
 }
 
 // 最終的TaskSettingType型別是TaskSettingsType屬性名稱與值的映射
-export type TaskSettingType = _InitTaskSetting<string, InputRange | InputText>;
+export type TaskSettingType = _InitTaskSetting;

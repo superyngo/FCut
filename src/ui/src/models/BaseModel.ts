@@ -1,32 +1,57 @@
-type ObjectKey = string | symbol | number | `${string}_event`;
+import {
+  ReflectMapToObject,
+  ReflectObjectToMap,
+  ReflectMapObject,
+} from "../utils/proxy";
 
-export abstract class BaseClass<K, V> {
-  _init(data: Record<ObjectKey, any> = {}) {
+export abstract class BaseClass {
+  _init(data: Record<PropertyKey, any> = {}): void {
     for (const [key, value] of Object.entries(data)) {
       (this as any)[key] = value;
     }
   }
-  toMap(): Map<ObjectKey, V> {
-    return new Map(Object.entries(this.clone()));
+  toMap() {
+    return new Proxy(this, ReflectObjectToMap);
   }
-  clone(): BaseClass<K, V> {
-    return structuredClone(this);
+  clone(): this {
+    return new (this.constructor as new (
+      data: Record<PropertyKey, any>
+    ) => this)({ ...this });
   }
 }
 
-export class BaseMap<K, V> extends Map<K, V> {
+export class MapObject {
+  constructor() {
+    const map = new Map();
+    const proxy = new Proxy(map, ReflectMapObject);
+    // Object.setPrototypeOf(proxy, MapObject.prototype);
+    return proxy;
+  }
+}
+
+export class BaseMap extends Map {
   constructor() {
     super();
   }
-  _init(data: Record<ObjectKey, any> = {}) {
+  _init(data: Record<PropertyKey, any> = {}): any {
     for (const [key, value] of Object.entries(data)) {
       (this as any).set(key, value);
     }
+    const proxy = new Proxy(this, ReflectMapObject);
+    // Object.setPrototypeOf(proxy, MapObject.prototype);
+    return proxy;
   }
-  toObject(): Record<ObjectKey, V> {
-    return Object.fromEntries(structuredClone(this).entries());
+  clone(): this {
+    return new (this.constructor as new (
+      data: Record<PropertyKey, any>
+    ) => this)(this);
   }
-  clone(): BaseMap<K, V> {
-    return structuredClone(this);
+}
+
+class Test extends BaseMap {
+  a: string = "";
+  constructor(data: { a: string }) {
+    super();
+    return this._init(data);
   }
 }

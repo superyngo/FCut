@@ -8,7 +8,7 @@ export enum TASK_STATUS {
   Done,
 }
 
-export class Task extends BaseClass<string, any> {
+export class Task extends BaseClass {
   readonly id: string = crypto.randomUUID();
   readonly videoPath: string = "";
   previewUrl?: string;
@@ -16,13 +16,13 @@ export class Task extends BaseClass<string, any> {
   settings?: TaskSettingType;
   status: TASK_STATUS = TASK_STATUS.Preparing;
   selected: boolean = false;
-  get videoName(): string {
-    if (!this.videoPath) {
-      return "";
-    }
-    const parts = this.videoPath.split(/[\/\\]/);
-    return parts[parts.length - 1];
-  }
+  // get videoName(): string {
+  //   if (!this.videoPath) {
+  //     return "";
+  //   }
+  //   const parts = this.videoPath.split(/[\/\\]/);
+  //   return parts[parts.length - 1];
+  // }
   constructor(data: {
     readonly id?: string;
     readonly videoPath: string;
