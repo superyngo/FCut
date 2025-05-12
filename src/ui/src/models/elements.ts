@@ -14,6 +14,7 @@ export class Button extends BaseClass {
     action?: () => any;
     visible?: boolean | (() => boolean);
     disabled?: boolean | (() => boolean);
+    [_: string]: any;
   }) {
     super();
     this._init(data);
@@ -22,7 +23,7 @@ export class Button extends BaseClass {
 
 export class InputRange extends BaseClass {
   id: string = crypto.randomUUID();
-  type: string = "range";
+  type: string = "InputRange";
   value: number = 2;
   min: number = 1;
   max: number = 100;
@@ -36,6 +37,7 @@ export class InputRange extends BaseClass {
     max?: number;
     step?: number;
     label?: string;
+    [_: string]: any;
   }) {
     super();
     this._init(data);
@@ -43,10 +45,16 @@ export class InputRange extends BaseClass {
 }
 
 export class InputText extends BaseClass {
+  id: string = crypto.randomUUID();
   value: string = "";
-  type: string = "text";
+  type: string = "InputText";
   label: string = "";
-  constructor(data: { value?: string; type?: string; label: string }) {
+  constructor(data: {
+    value?: string;
+    type?: string;
+    label: string;
+    [_: string]: any;
+  }) {
     super();
     this._init(data);
   }

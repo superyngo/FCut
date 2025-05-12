@@ -86,6 +86,10 @@ const toggleMenu = () => {
 
 const addTask = async () => {
   const video_paths = await pywebview.api.open_file_dialog();
+  if (!video_paths) {
+    logger.debug("No video paths selected");
+    return;
+  }
   for (const videoPath of video_paths) {
     logger.debug(`Adding video: ${videoPath}`);
     tasksStore.addTask(videoPath);

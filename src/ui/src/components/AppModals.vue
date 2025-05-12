@@ -39,9 +39,8 @@
         </div>
         <div class="modal-body">
           <TaskSettingsForm
-            v-if="modalStore.activeModals.taskSettings.taskData"
-            :task="modalStore.activeModals.taskSettings.taskData"
-            @close="modalStore.closeTaskSettings()"
+            v-if="taskStore.selectedTaskID"
+            @close="closeTaskSettings"
           />
         </div>
       </div>
@@ -50,10 +49,15 @@
 </template>
 
 <script setup lang="ts">
-import { useModalStore } from "../stores/stores";
+import { useModalStore, useTasksBoundEvents } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
-import { Task } from "../models/tasks";
 const modalStore = useModalStore();
+const taskStore = useTasksBoundEvents();
+
+const closeTaskSettings = () => {
+  taskStore.selectedTaskID = null; // 清除選擇的任務 ID
+  modalStore.closeTaskSettings();
+};
 </script>
 
 <style scoped>

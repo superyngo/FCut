@@ -1,13 +1,12 @@
 <template>
-  <div class="task-settings-form">
-    <h4>設定 "{{ tempTask.videoName }}" 的轉檔參數</h4>
+  <div class="task-settings-form" v-if="taskStore.selectedTask?.videoName">
+    <h4>設定 "{{ taskStore.selectedTask!.videoName }}" 的轉檔參數</h4>
     <div class="form-group">
       <label for="renderMethod">渲染方式</label>
       <select
         id="renderMethod"
-        v-model="tempTask.renderMethod"
+        v-model="tempRenderMethod"
         :disabled="isTaskInProgress"
-        @change="change_settings(tempTask)"
       >
         <option value="" disabled>請選擇</option>
         <option v-for="method of ACTIONS" :key="method" :value="method">
@@ -15,33 +14,42 @@
         </option>
       </select>
     </div>
+    <!-- 根據選擇的渲染方式顯示不同的設定選項 -->
+    <div v-if="tempRenderMethod" class="settings-fields">
+      <div></div>
+      <div
+        v-for="setting in tempSettings![tempRenderMethod]"
+        :key="setting.id"
+        class="form-group"
+      >
+        <!-- 針對 InputRange 類型 -->
+        <template v-if="setting.type === 'InputRange'">
+          <label :for="setting.id">{{ setting.label }}</label>
+          <div class="range-container">
+            <input
+              type="range"
+              :id="setting.id"
+              v-model.number="setting.value"
+              :min="(setting as InputRange).min"
+              :max="(setting as InputRange).max"
+              :step="(setting as InputRange).step"
+            />
+            <span>{{ setting.value }}</span>
+          </div>
+        </template>
 
-    <!-- 根據選擇的渲染方式顯示不同的設定選項
-    <div v-if="tempTask.renderMethod" class="settings-fields">
-      <div class="form-group">
-        <label for="outputFormat">輸出格式</label>
-        <select id="outputFormat" v-model="tempTask.settings!">
-          <option value="mp4">MP4</option>
-          <option value="mov">MOV</option>
-          <option value="webm">WebM</option>
-        </select>
+        <!-- 針對 InputText 類型 -->
+        <template v-else-if="setting.type === 'InputText'">
+          <label :for="setting.id">{{ setting.label }}</label>
+          <input
+            type="text"
+            :id="setting.id"
+            v-model="setting.value"
+            :placeholder="setting.label"
+          />
+        </template>
       </div>
-
-      <div class="form-group">
-        <label for="quality">品質</label>
-        <input
-          type="range"
-          id="quality"
-          v-model.number="tempTask.settings.quality"
-          min="1"
-          max="100"
-          step="1"
-        />
-        <span>{{ tempTask.settings.quality }}%</span>
-      </div> -->
-
-    <!-- 更多設定選項可以根據需求添加 -->
-    <!-- </div> -->
+    </div>
 
     <div class="form-actions">
       <button @click="saveSettings" class="save-button">儲存</button>
@@ -51,97 +59,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { useTasksBoundEvents } from "../stores/stores";
-import { Task, TASK_STATUS } from "../models/tasks";
-import {
-  ACTIONS,
-  initTaskSettings,
-  TaskSettingType,
-} from "../models/taskSetting";
+import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
-const { task } = defineProps<{
-  task: Task;
-}>();
-const emit = defineEmits(["close", "save"]);
+import { InputRange } from "../models/elements";
+import { TaskSettings } from "../models/tasks";
 
 const taskStore = useTasksBoundEvents();
+let tempRenderMethod = ref<ACTIONS | "">(taskStore.selectedTask?.renderMethod!);
+let tempSettings: TaskSettings | null = reactive(
+  taskStore.selectedTask!.settings!.clone()
+);
+const emit = defineEmits(["close"]);
 
 // 創建本地數據的副本，以便在保存之前進行修改
-const tempTask = ref<Task>(new Task({ ...task }));
+
 // 檢查任務是否在進行中（排隊或正在渲染）
 const isTaskInProgress = computed(() => {
   return [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-    task.status as TASK_STATUS
+    taskStore.selectedTask!.status
   );
 });
-// 建立task settings的快取
-const taskSettingsCache = ref<Record<ACTIONS, TaskSettingType> | {}>({});
-
-const change_settings = (task: Task) => {
-  if (taskStore.hasTasksSelected) {
-    const method = task.renderMethod;
-    taskStore.selectedTasks.forEach((selectedTask) => {
-      if (
-        [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-          selectedTask.status
-        )
-      ) {
-        return;
-      }
-      selectedTask.renderMethod = method;
-      initTaskSettings(selectedTask as Task);
-      selectedTask.status = TASK_STATUS.Ready;
-    });
-  } else {
-    initTaskSettings(task);
-    task.status = TASK_STATUS.Ready;
-  }
-  taskStore.saveTasks();
-};
 
 // 當組件掛載時，確保設置已初始化
-onMounted(() => {
-  if (task.renderMethod && !task.settings) {
-    initTaskSettings(task);
-  }
-});
+onMounted(() => {});
 
 // 保存設置並更新原始任務
 const saveSettings = () => {
-  // 將更改應用到原始任務
-  task.renderMethod = tempTask.value.renderMethod;
-  task.settings = tempTask.value.settings?.clone();
+  if (
+    taskStore.hasTasksSelected &&
+    taskStore.selectedTasks.length > 1 &&
+    confirm("是否要將相同的設置應用於所有選中的任務？")
+  ) {
+    taskStore.selectedTasks.forEach((selectedTask) => {
+      // 將更改應用到原始任務
+      selectedTask!.renderMethod = tempRenderMethod.value as ACTIONS;
+      selectedTask!.settings![tempRenderMethod.value as ACTIONS] =
+        tempSettings!.clone()[tempRenderMethod.value as ACTIONS];
 
-  // 如果任務尚未準備好，將其標記為就緒
-  if (task.status === TASK_STATUS.Preparing) {
-    task.status = TASK_STATUS.Ready;
+      // 如果任務尚未準備好，將其標記為就緒
+      if (selectedTask!.status === TASK_STATUS.Preparing) {
+        selectedTask!.status = TASK_STATUS.Ready;
+      }
+    });
+    logger.debug(`Settings saved for task: ${taskStore.selectedTask!.id}`);
+  } else {
+    taskStore.selectedTask!.renderMethod = tempRenderMethod.value as ACTIONS;
+    taskStore.selectedTask!.settings![tempRenderMethod.value as ACTIONS] =
+      tempSettings!.clone()[tempRenderMethod.value as ACTIONS];
+    tempSettings = null;
+
+    // 如果任務尚未準備好，將其標記為就緒
+    if (taskStore.selectedTask!.status === TASK_STATUS.Preparing) {
+      taskStore.selectedTask!.status = TASK_STATUS.Ready;
+    }
   }
-
-  // 如果還有其他選中的任務，詢問是否將相同的設置應用於它們
-  // if (taskStore.hasTasksSelected && taskStore.selectedTasks.length > 1) {
-  //   const applyToAll = confirm("是否要將相同的設置應用於所有選中的任務？");
-  //   if (applyToAll) {
-  //     taskStore.selectedTasks.forEach((selectedTask) => {
-  //       if (
-  //         selectedTask.id !== props.task.id &&
-  //         ![TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-  //           selectedTask.status
-  //         )
-  //       ) {
-  //         selectedTask.renderMethod = tempTask.value.renderMethod;
-  //         selectedTask.settings = tempTask.value.settings as TaskSettingType;
-  //         selectedTask.status = TASK_STATUS.Ready;
-  //       }
-  //     });
-  //   }
-  // }
 
   // 保存更改到本地存儲
   taskStore.saveTasks();
-
-  logger.debug(`Settings saved for task: ${props.task.id}`);
-  emit("save");
+  logger.debug(`Settings saved for task: ${taskStore.selectedTask!.id}`);
   emit("close");
 };
 </script>

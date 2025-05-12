@@ -87,16 +87,13 @@
 <script setup lang="ts">
 import { logger } from "../utils/logger";
 import { useTasksBoundEvents, useModalStore } from "../stores/stores";
-import { initTaskSettings } from "../models/taskSetting";
-import { TASK_STATUS } from "../models/tasks";
-import { ACTIONS } from "../models/taskSetting";
+import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 
 const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
 const change_settings = (task: Task) => {
   if (taskStore.hasTasksSelected) {
-    const method = task.renderMethod;
     taskStore.selectedTasks.forEach((selectedTask) => {
       if (
         [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
@@ -105,12 +102,10 @@ const change_settings = (task: Task) => {
       ) {
         return;
       }
-      selectedTask.renderMethod = method;
-      initTaskSettings(selectedTask as Task);
+      selectedTask.renderMethod = task.renderMethod as ACTIONS;
       selectedTask.status = TASK_STATUS.Ready;
     });
   } else {
-    initTaskSettings(task);
     task.status = TASK_STATUS.Ready;
   }
   taskStore.saveTasks();
@@ -118,7 +113,7 @@ const change_settings = (task: Task) => {
 
 const openSettings = (task: Task) => {
   logger.debug(`Opening settings for task: ${task.id}`);
-
+  taskStore.selectedTaskID = task.id;
   modalStore.openTaskSettings(task);
 };
 

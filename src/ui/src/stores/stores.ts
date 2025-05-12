@@ -69,11 +69,25 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
   // State
   const storeId = ref("app_tasks");
   const tasks = ref<Task[]>([]);
+  const selectedTaskID = ref<string | null>(null);
   const lastSelectedIndex = ref(-1);
   const mouseNearestIndex = ref(-1);
   const isShiftOn = ref(false);
 
   // Getters
+  const selectedTask = computed(() => {
+    if (selectedTaskID.value === null) {
+      return null;
+    }
+    const task = tasks.value.find((task) => task.id === selectedTaskID.value);
+    if (task) {
+      return task;
+    } else {
+      selectedTaskID.value = null; // Reset if not found
+      return null;
+    }
+  });
+
   const selectedTasks = computed(() =>
     tasks.value.filter((task) => task.selected === true)
   );
@@ -143,7 +157,9 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
       try {
         const parsed = JSON.parse(cached);
         // Convert plain objects back to Task instances
-        tasks.value = parsed.map((taskData: any) => new Task(taskData));
+        tasks.value = parsed.map((taskData: any) => {
+          return new Task(taskData);
+        });
       } catch (error) {
         console.error("Failed to load tasks from cache:", error);
         localStorage.removeItem(storeId.value);
@@ -214,10 +230,12 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
   return {
     storeId,
     tasks,
+    selectedTaskID,
     lastSelectedIndex,
     mouseNearestIndex,
     isShiftOn,
     // getters
+    selectedTask,
     selectedTasks,
     readyTasks,
     selectedReadyTasks,
@@ -337,7 +355,6 @@ export const useModalStore = defineStore("modalStore", () => {
   const activeModals = ref({
     taskSettings: {
       isOpen: false,
-      taskData: null as Task | null,
     },
     menu: {
       isOpen: false,
@@ -348,14 +365,12 @@ export const useModalStore = defineStore("modalStore", () => {
   // Actions
   // Task Settings Modal
   function openTaskSettings(task: Task) {
-    activeModals.value.taskSettings.taskData = task;
     activeModals.value.taskSettings.isOpen = true;
     logger.debug(`Opening settings modal for task: ${task.id}`);
   }
 
   function closeTaskSettings() {
     activeModals.value.taskSettings.isOpen = false;
-    activeModals.value.taskSettings.taskData = null;
   }
 
   // Menu Modal
