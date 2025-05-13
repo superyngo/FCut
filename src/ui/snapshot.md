@@ -30,8 +30,8 @@
 │   ├── models
 │   │   ├── BaseModel.ts
 │   │   ├── elements.ts
-│   │   ├── taskSetting.ts
-│   │   └── tasks.ts
+│   │   ├── tasks.ts
+│   │   └── test.ts
 │   ├── services
 │   │   └── pywebview.ts
 │   ├── stores
@@ -43,7 +43,8 @@
 │   ├── utils
 │   │   ├── keyEvents.ts
 │   │   ├── logger.ts
-│   │   └── mouseEvents.ts
+│   │   ├── mouseEvents.ts
+│   │   └── proxy.ts
 │   ├── views
 │   │   └── MainView.vue
 │   └── vite-env.d.ts
@@ -57,9 +58,6 @@
 ```
 
 ## 函式清單
-
-### src\models\taskSetting.ts
-- **initTaskSettings(task: any)**
 
 ### src\services\pywebview.ts
 - **waitForPyWebviewApi(timeout = 3000)**

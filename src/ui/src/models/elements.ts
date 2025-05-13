@@ -1,19 +1,56 @@
 import { BaseClass } from "./BaseModel";
 
-export class Button extends BaseClass {
+export type AllBaseElementsData = (
+  | Button
+  | InputRange
+  | InputText
+  | Selection
+  | Container
+)[];
+
+export function initBaseElementData(
+  elementsData: AllBaseElementsData
+): AllBaseElementsData {
+  return elementsData.map((elementData) => {
+    switch (elementData.type) {
+      case "InputRange":
+        return new InputRange(elementData as InputRange);
+      case "InputText":
+        return new InputText(elementData as InputText);
+      case "Button":
+        return new Button(elementData as Button);
+      case "Selection":
+        return new Selection(elementData as Selection);
+      case "Container":
+        return new Container(elementData as Container);
+      default:
+        throw new Error("Invalid task elementData type");
+    }
+  });
+}
+
+class BaseElementData extends BaseClass {
+  type: string = "BaseElementData";
   id: string = crypto.randomUUID();
-  label: string | (() => String) = "";
+  label: string | ((...args: any[]) => string) = "";
+  value: string | number = "";
+  tooltip: string | ((...args: any[]) => string) = "";
+}
+
+export class Button extends BaseElementData {
+  type: string = "Button";
   icon?: string;
-  action?: () => any;
-  visible: boolean | (() => boolean) = true;
-  disabled: boolean | (() => boolean) = false;
+  action?: (...args: any[]) => any;
+  visible: boolean | ((...args: any[]) => boolean) = true;
+  disabled: boolean | ((...args: any[]) => boolean) = false;
   constructor(data: {
     id?: string;
-    label: string | (() => String);
+    label: string | ((...args: any[]) => string);
+    tooltip?: string | ((...args: any[]) => string);
     icon?: string;
-    action?: () => any;
-    visible?: boolean | (() => boolean);
-    disabled?: boolean | (() => boolean);
+    action?: (...args: any[]) => any;
+    visible?: boolean | ((...args: any[]) => boolean);
+    disabled?: boolean | ((...args: any[]) => boolean);
     [_: string]: any;
   }) {
     super();
@@ -21,22 +58,19 @@ export class Button extends BaseClass {
   }
 }
 
-export class InputRange extends BaseClass {
-  id: string = crypto.randomUUID();
+export class InputRange extends BaseElementData {
   type: string = "InputRange";
-  value: number = 2;
   min: number = 1;
   max: number = 100;
   step: number = 1;
-  label: string = "";
   constructor(data: {
     id?: string;
-    type?: string;
-    value?: number;
+    label?: string | ((...args: any[]) => string);
+    value?: string | number;
+    tooltip?: string | ((...args: any[]) => string);
     min?: number;
     max?: number;
     step?: number;
-    label?: string;
     [_: string]: any;
   }) {
     super();
@@ -44,18 +78,52 @@ export class InputRange extends BaseClass {
   }
 }
 
-export class InputText extends BaseClass {
-  id: string = crypto.randomUUID();
-  value: string = "";
+export class InputText extends BaseElementData {
   type: string = "InputText";
-  label: string = "";
   constructor(data: {
-    value?: string;
-    type?: string;
-    label: string;
+    id?: string;
+    label?: string | ((...args: any[]) => string);
+    value?: string | number;
+    tooltip?: string | ((...args: any[]) => string);
     [_: string]: any;
   }) {
     super();
     this._init(data);
+  }
+}
+
+type Option = {
+  label: string;
+  value: string | number;
+};
+
+export class Selection extends BaseElementData {
+  type: string = "Selection";
+  options: Option[] = [];
+  constructor(data: {
+    id?: string;
+    label?: string | ((...args: any[]) => string);
+    value?: string | number;
+    tooltip?: string | ((...args: any[]) => string);
+    options?: Option[];
+    [_: string]: any;
+  }) {
+    super();
+    this._init(data);
+  }
+}
+
+export class Container extends BaseElementData {
+  type: string = "Container";
+  children: AllBaseElementsData = [];
+  constructor(data: {
+    id?: string;
+    children?: AllBaseElementsData;
+    [_: string]: any;
+  }) {
+    let initedElements = initBaseElementData(data.children || []);
+
+    super();
+    this._init({ ...data, children: initedElements });
   }
 }

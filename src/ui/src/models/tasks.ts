@@ -1,8 +1,17 @@
 import { BaseClass } from "./BaseModel";
-import { InputRange, InputText } from "./elements";
+import {
+  AllBaseElementsData,
+  initBaseElementData,
+  InputRange,
+  InputText,
+  Button,
+  Selection,
+  Container,
+} from "./elements";
+import { enumToOptions } from "../utils/common";
+import { logger } from "../utils/logger";
 
 export enum ACTIONS {
-  // CUSTOM = "CUSTOM",
   CUT = "CUT",
   SPEEDUP = "SPEEDUP",
   JUMPCUT = "JUMPCUT",
@@ -19,6 +28,7 @@ export enum TASK_STATUS {
   Rendering,
   Done,
 }
+
 export class Task extends BaseClass {
   readonly id: string = crypto.randomUUID();
   readonly videoPath: string = "";
@@ -49,35 +59,59 @@ export class Task extends BaseClass {
   }
 }
 
+enum VIDEO_QUALITY {
+  "Very Low" = 1,
+  "Low" = 2,
+  "Medium" = 3,
+  "High" = 4,
+  "Very High" = 5,
+}
+
 export class TaskSettings extends BaseClass {
-  // [ACTIONS.CUSTOM]: TaskSetting = [];
-  [ACTIONS.CUT]: TaskSetting = [];
-  [ACTIONS.SPEEDUP]: TaskSetting = [];
-  [ACTIONS.JUMPCUT]: TaskSetting = [];
-  [ACTIONS.CUT_SILENCE]: TaskSetting = [];
-  [ACTIONS.CUT_MOTIONLESS]: TaskSetting = [];
-  [ACTIONS.COMPRESS_VIDEO]: TaskSetting = [];
-  [ACTIONS.CONVERT_TO_AUDIO]: TaskSetting = [];
-  constructor(taskSettings: Record<ACTIONS, TaskSetting> | {} = {}) {
-    let _taskSettings: Record<ACTIONS, TaskSetting> = {
-      // [ACTIONS.CUSTOM]:
-      //   ACTIONS.CUSTOM in taskSettings
-      //     ? wrapTaskSetting(taskSettings[ACTIONS.CUSTOM])
-      //     : [new InputRange({ value: 2 })],
+  [ACTIONS.CUT]: AllBaseElementsData = [];
+  [ACTIONS.SPEEDUP]: AllBaseElementsData = [];
+  [ACTIONS.JUMPCUT]: AllBaseElementsData = [];
+  [ACTIONS.CUT_SILENCE]: AllBaseElementsData = [];
+  [ACTIONS.CUT_MOTIONLESS]: AllBaseElementsData = [];
+  [ACTIONS.COMPRESS_VIDEO]: AllBaseElementsData = [];
+  [ACTIONS.CONVERT_TO_AUDIO]: AllBaseElementsData = [];
+
+  constructor(taskSettings: Record<ACTIONS, AllBaseElementsData> | {} = {}) {
+    let _taskSettings: Record<ACTIONS, AllBaseElementsData> = {
       [ACTIONS.CUT]:
         ACTIONS.CUT in taskSettings
-          ? taskSettings[ACTIONS.CUT]
+          ? initBaseElementData(taskSettings[ACTIONS.CUT])
           : [
-              new InputText({ label: "Start", value: "00:00:00" }),
-              new InputText({ label: "End", value: "00:00:00" }),
+              new Container({
+                children: [
+                  new InputText({ label: "Start", value: "00:00:00" }),
+                  new InputText({ label: "End", value: "00:00:00" }),
+                ],
+              }),
+              new Button({
+                label: "Add",
+                action: () => {
+                  logger.info(123);
+                  // this[ACTIONS.CUT].push(
+                  //   new Container({
+                  //     children: [
+                  //       new InputText({ label: "Start", value: "00:00:00" }),
+                  //       new InputText({ label: "End", value: "00:00:00" }),
+                  //     ],
+                  //   })
+                  // );
+                },
+              }),
             ],
+
       [ACTIONS.SPEEDUP]:
         ACTIONS.SPEEDUP in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.SPEEDUP])
+          ? initBaseElementData(taskSettings[ACTIONS.SPEEDUP])
           : [new InputRange({ label: "Multiple", value: 3 })],
+
       [ACTIONS.JUMPCUT]:
         ACTIONS.JUMPCUT in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.JUMPCUT])
+          ? initBaseElementData(taskSettings[ACTIONS.JUMPCUT])
           : [
               new InputRange({
                 label: "p1_duration",
@@ -94,13 +128,15 @@ export class TaskSettings extends BaseClass {
               new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
               new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
             ],
+
       [ACTIONS.CUT_SILENCE]:
         ACTIONS.CUT_SILENCE in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.CUT_SILENCE])
+          ? initBaseElementData(taskSettings[ACTIONS.CUT_SILENCE])
           : [new InputRange({ label: "dB", value: -23, min: -50, max: -5 })],
+
       [ACTIONS.CUT_MOTIONLESS]:
         ACTIONS.CUT_MOTIONLESS in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.CUT_MOTIONLESS])
+          ? initBaseElementData(taskSettings[ACTIONS.CUT_MOTIONLESS])
           : [
               new InputRange({
                 label: "Threshold",
@@ -110,31 +146,19 @@ export class TaskSettings extends BaseClass {
                 step: 0.0001,
               }),
             ],
+
       [ACTIONS.COMPRESS_VIDEO]:
         ACTIONS.COMPRESS_VIDEO in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.COMPRESS_VIDEO])
-          : [new InputRange({ value: 2 })],
+          ? initBaseElementData(taskSettings[ACTIONS.COMPRESS_VIDEO])
+          : [new InputRange({ label: "Quality", value: 23, min: 0, max: 51 })], // crf 51 is best quality
+
       [ACTIONS.CONVERT_TO_AUDIO]:
         ACTIONS.CONVERT_TO_AUDIO in taskSettings
-          ? wrapTaskSetting(taskSettings[ACTIONS.CONVERT_TO_AUDIO])
-          : [new InputRange({ value: 2 })],
+          ? initBaseElementData(taskSettings[ACTIONS.CONVERT_TO_AUDIO])
+          : [new InputRange({ label: "Quality", value: 6, min: 0, max: 9 })], // -q:a 0 is best quality
     };
+
     super();
     this._init(_taskSettings);
   }
-}
-
-export type TaskSetting = (InputRange | InputText)[];
-
-function wrapTaskSetting(taskSetting: TaskSetting): TaskSetting {
-  return taskSetting.map((setting) => {
-    switch (setting.type) {
-      case "InputRange":
-        return new InputRange(setting as InputRange);
-      case "InputText":
-        return new InputText(setting as InputText);
-      default:
-        throw new Error("Invalid task setting type");
-    }
-  });
 }

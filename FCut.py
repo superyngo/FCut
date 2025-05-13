@@ -16,7 +16,7 @@ class App_Mode(Enum):
     PROD = "prod"
 
 
-app_mode: App_Mode = App_Mode.PROD  # Set the default mode to DEV
+app_mode: App_Mode = App_Mode.DEV  # Set the default mode to DEV
 
 if __name__ == "__main__":
     logger.info("Starting ui server...")

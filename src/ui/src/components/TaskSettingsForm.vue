@@ -1,13 +1,9 @@
 <template>
   <div class="task-settings-form" v-if="taskStore.selectedTask?.videoName">
-    <h4>設定 "{{ taskStore.selectedTask!.videoName }}" 的轉檔參數</h4>
+    <h4>設定 "{{ taskStore.selectedTask!.videoName }}" 的轉檔參數1234</h4>
     <div class="form-group">
       <label for="renderMethod">渲染方式</label>
-      <select
-        id="renderMethod"
-        v-model="tempRenderMethod"
-        :disabled="isTaskInProgress"
-      >
+      <select id="renderMethod" v-model="tempRenderMethod" :disabled="isTaskInProgress">
         <option value="" disabled>請選擇</option>
         <option v-for="method of ACTIONS" :key="method" :value="method">
           {{ method }}
@@ -17,37 +13,22 @@
     <!-- 根據選擇的渲染方式顯示不同的設定選項 -->
     <div v-if="tempRenderMethod" class="settings-fields">
       <div></div>
-      <div
-        v-for="setting in tempSettings![tempRenderMethod]"
-        :key="setting.id"
-        class="form-group"
-      >
-        <!-- 針對 InputRange 類型 -->
-        <template v-if="setting.type === 'InputRange'">
-          <label :for="setting.id">{{ setting.label }}</label>
-          <div class="range-container">
-            <input
-              type="range"
-              :id="setting.id"
-              v-model.number="setting.value"
-              :min="(setting as InputRange).min"
-              :max="(setting as InputRange).max"
-              :step="(setting as InputRange).step"
-            />
-            <span>{{ setting.value }}</span>
+      <div v-for="(setting, index) in tempSettings![tempRenderMethod]" :key="setting.id" class="form-group">
+        <!-- container 類型 -->
+        <template v-if="setting.type === 'Container'">
+          <div class="form-group container-group">
+            <div class="container-title" v-if="setting.label">{{ typeof setting.label === 'function' ? setting.label() :
+              setting.label }}</div>
+            <div class="container-children">
+              <div v-for="(child, index) in (setting as Container).children" :key="child.id" class="form-group">
+                <SettingControl v-model="(setting as Container).children[index]" />
+              </div>
+            </div>
           </div>
         </template>
 
-        <!-- 針對 InputText 類型 -->
-        <template v-else-if="setting.type === 'InputText'">
-          <label :for="setting.id">{{ setting.label }}</label>
-          <input
-            type="text"
-            :id="setting.id"
-            v-model="setting.value"
-            :placeholder="setting.label"
-          />
-        </template>
+        <!-- 其他 類型 -->
+        <SettingControl v-else v-model="tempSettings![tempRenderMethod][index]" />
       </div>
     </div>
 
@@ -63,8 +44,9 @@ import { computed, onMounted, reactive, ref } from "vue";
 import { useTasksBoundEvents } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
-import { InputRange } from "../models/elements";
+import { InputRange, InputText, Selection, Button, Container } from "../models/elements";
 import { TaskSettings } from "../models/tasks";
+import SettingControl from "./SettingControl.vue";
 
 const taskStore = useTasksBoundEvents();
 let tempRenderMethod = ref<ACTIONS | "">(taskStore.selectedTask?.renderMethod!);
@@ -83,7 +65,7 @@ const isTaskInProgress = computed(() => {
 });
 
 // 當組件掛載時，確保設置已初始化
-onMounted(() => {});
+onMounted(() => { });
 
 // 保存設置並更新原始任務
 const saveSettings = () => {
@@ -128,7 +110,8 @@ const saveSettings = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  color: #333; /* 添加深色文字顏色 */
+  color: #333;
+  /* 添加深色文字顏色 */
 }
 
 .form-group {
@@ -193,5 +176,27 @@ const saveSettings = () => {
 
 .cancel-button:hover {
   background-color: #e0e0e0;
+}
+
+.container-group {
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 12px;
+  background-color: #f9f9f9;
+  margin-bottom: 8px;
+}
+
+.container-title {
+  font-weight: bold;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #444;
+}
+
+.container-children {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 8px;
 }
 </style>

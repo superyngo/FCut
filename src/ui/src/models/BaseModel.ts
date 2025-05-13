@@ -1,4 +1,4 @@
-import { ReflectMapObject } from "../utils/proxy";
+import { ReflectMapObject, ReflectObjectToMap } from "../utils/reflects";
 
 export abstract class BaseClass {
   _init(data: Record<PropertyKey, any> = {}): void {
@@ -6,9 +6,9 @@ export abstract class BaseClass {
       (this as any)[key] = value;
     }
   }
-  // toMap() {
-  //   return new Proxy(this, ReflectObjectToMap);
-  // }
+  toMap() {
+    return new Proxy(this, ReflectObjectToMap);
+  }
   clone(): this {
     return new (this.constructor as new (
       data: Record<PropertyKey, any>

@@ -108,141 +108,141 @@ export const ReflectMapToObject: ProxyHandler<Map<any, any>> = {
   },
 };
 
-// export const ReflectObjectToMap: ProxyHandler<object> = {
-//   get(target: object, property: string | symbol, receiver: any) {
-//     // 定義 Map 的方法和屬性
-//     const mapMethods: Record<string, Function> = {
-//       get: (key: string) => target[key as keyof typeof target],
-//       set: (key: string, value: any) => {
-//         target[key as keyof typeof target] = value;
-//         return receiver; // 支持鏈式調用
-//       },
-//       has: (key: string) => key in target,
-//       delete: (key: string) => delete target[key as keyof typeof target],
-//       clear: () => {
-//         for (const key in target) {
-//           delete target[key as keyof typeof target];
-//         }
-//       },
-//       keys: () => Object.keys(target)[Symbol.iterator](),
-//       values: () => Object.values(target)[Symbol.iterator](),
-//       entries: () => Object.entries(target)[Symbol.iterator](),
-//       forEach: (callback: Function) => {
-//         for (const key in target) {
-//           callback(target[key as keyof typeof target], key, receiver);
-//         }
-//       },
-//       size: {
-//         get: () => Object.keys(target).length,
-//       },
-//       toString: () => {
-//         const entries = Object.entries(target).map(
-//           ([k, v]) => `"${k}" => ${v}`
-//         );
-//         return `Map(${entries.length}) {${entries.join(", ")}}`;
-//       },
-//     };
+export const ReflectObjectToMap: ProxyHandler<object> = {
+  get(target: Record<string, any>, property: string | symbol, receiver: any) {
+    // 定義 Map 的方法和屬性
+    const mapMethods: Record<string, Function> = {
+      get: (key: string) => target[key as keyof typeof target],
+      set: (key: string, value: any) => {
+        target[key as keyof typeof target] = value;
+        return receiver; // 支持鏈式調用
+      },
+      has: (key: string) => key in target,
+      delete: (key: string) => delete target[key as keyof typeof target],
+      clear: () => {
+        for (const key in target) {
+          delete target[key as keyof typeof target];
+        }
+      },
+      keys: () => Object.keys(target)[Symbol.iterator](),
+      values: () => Object.values(target)[Symbol.iterator](),
+      entries: () => Object.entries(target)[Symbol.iterator](),
+      forEach: (callback: Function) => {
+        for (const key in target) {
+          callback(target[key as keyof typeof target], key, receiver);
+        }
+      },
+      size:
+        () => Object.keys(target).length,
 
-//     // 處理 Symbol.toStringTag
-//     if (property === Symbol.toStringTag) {
-//       return "Map";
-//     }
+      toString: () => {
+        const entries = Object.entries(target).map(
+          ([k, v]) => `"${k}" => ${v}`
+        );
+        return `Map(${entries.length}) {${entries.join(", ")}}`;
+      },
+    };
 
-//     // 處理 Symbol.iterator
-//     if (property === Symbol.iterator) {
-//       return mapMethods.entries;
-//     }
+    // 處理 Symbol.toStringTag
+    if (property === Symbol.toStringTag) {
+      return "Map";
+    }
 
-//     // 處理 Map 的方法和屬性
-//     if (typeof property === "string" && property in mapMethods) {
-//       const method = mapMethods[property];
-//       if (property === "size") {
-//         return method.get(); // size 是屬性，返回其值
-//       } else {
-//         return method.bind(receiver); // 其他是方法，返回綁定函數
-//       }
-//     }
+    // 處理 Symbol.iterator
+    if (property === Symbol.iterator) {
+      return mapMethods.entries;
+    }
 
-//     return undefined; // 未定義的屬性返回 undefined
-//   },
+    // 處理 Map 的方法和屬性
+    if (typeof property === "string" && property in mapMethods) {
+      const method = mapMethods[property];
+      if (property === "size") {
+        return method(); // size 是屬性，返回其值
+      } else {
+        return method.bind(receiver); // 其他是方法，返回綁定函數
+      }
+    }
 
-//   has(target: object, property: string | symbol) {
-//     // 處理 in 運算符
-//     const mapMethods = [
-//       "get",
-//       "set",
-//       "has",
-//       "delete",
-//       "clear",
-//       "keys",
-//       "values",
-//       "entries",
-//       "forEach",
-//       "size",
-//       "toString",
-//     ];
-//     if (typeof property === "string" && mapMethods.includes(property)) {
-//       return true;
-//     }
-//     if (property === Symbol.iterator || property === Symbol.toStringTag) {
-//       return true;
-//     }
-//     return false;
-//   },
+    return undefined; // 未定義的屬性返回 undefined
+  },
 
-//   getOwnPropertyDescriptor(target: object, property: string | symbol) {
-//     // 提供 Map 方法和屬性的描述符
-//     const mapMethods = [
-//       "get",
-//       "set",
-//       "has",
-//       "delete",
-//       "clear",
-//       "keys",
-//       "values",
-//       "entries",
-//       "forEach",
-//       "size",
-//       "toString",
-//     ];
-//     if (typeof property === "string" && mapMethods.includes(property)) {
-//       return {
-//         configurable: true,
-//         enumerable: false,
-//         writable: false,
-//         value: ReflectObjectToMap.get!(target, property, target),
-//       };
-//     }
-//     if (property === Symbol.iterator || property === Symbol.toStringTag) {
-//       return {
-//         configurable: true,
-//         enumerable: false,
-//         writable: false,
-//         value: ReflectObjectToMap.get!(target, property, target),
-//       };
-//     }
-//     return undefined;
-//   },
+  has(target: object, property: string | symbol) {
+    // 處理 in 運算符
+    const mapMethods = [
+      "get",
+      "set",
+      "has",
+      "delete",
+      "clear",
+      "keys",
+      "values",
+      "entries",
+      "forEach",
+      "size",
+      "toString",
+    ];
+    if (typeof property === "string" && mapMethods.includes(property)) {
+      return true;
+    }
+    if (property === Symbol.iterator || property === Symbol.toStringTag) {
+      return true;
+    }
+    return false;
+  },
 
-//   ownKeys(target: object) {
-//     // 返回 Map 的方法和屬性
-//     return [
-//       "get",
-//       "set",
-//       "has",
-//       "delete",
-//       "clear",
-//       "keys",
-//       "values",
-//       "entries",
-//       "forEach",
-//       "size",
-//       "toString",
-//       Symbol.iterator,
-//       Symbol.toStringTag,
-//     ];
-//   },
-// };
+  getOwnPropertyDescriptor(target: object, property: string | symbol) {
+    // 提供 Map 方法和屬性的描述符
+    const mapMethods = [
+      "get",
+      "set",
+      "has",
+      "delete",
+      "clear",
+      "keys",
+      "values",
+      "entries",
+      "forEach",
+      "size",
+      "toString",
+    ];
+    if (typeof property === "string" && mapMethods.includes(property)) {
+      return {
+        configurable: true,
+        enumerable: false,
+        writable: false,
+        value: ReflectObjectToMap.get!(target, property, target),
+      };
+    }
+    if (property === Symbol.iterator || property === Symbol.toStringTag) {
+      return {
+        configurable: true,
+        enumerable: false,
+        writable: false,
+        value: ReflectObjectToMap.get!(target, property, target),
+      };
+    }
+    return undefined;
+  },
+
+  ownKeys(target: object) {
+    // 返回 Map 的方法和屬性
+    return [
+      "get",
+      "set",
+      "has",
+      "delete",
+      "clear",
+      "keys",
+      "values",
+      "entries",
+      "forEach",
+      "size",
+      "toString",
+      Symbol.iterator,
+      Symbol.toStringTag,
+    ];
+  },
+};
 
 export const ReflectMapObject: ProxyHandler<Map<any, any>> = {
   get(target, property, receiver) {
