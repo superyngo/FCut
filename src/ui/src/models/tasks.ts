@@ -7,6 +7,7 @@ import {
   Button,
   Selection,
   Container,
+  createCutCell,
 } from "./elements";
 import { enumToOptions } from "../utils/common";
 import { logger } from "../utils/logger";
@@ -83,12 +84,7 @@ export class TaskSettings extends BaseClass {
         taskSettings && ACTIONS.CUT in taskSettings
           ? taskSettings[ACTIONS.CUT]
           : [
-              new Container({
-                children: [
-                  new InputText({ label: "Start", value: "00:00:00" }),
-                  new InputText({ label: "End", value: "00:00:00" }),
-                ],
-              }),
+              createCutCell(),
               new Button({
                 label: "Add",
                 // 使用註冊的方法
@@ -102,9 +98,9 @@ export class TaskSettings extends BaseClass {
           ? initElementsData(taskSettings[ACTIONS.SPEEDUP])
           : [new InputRange({ label: "Multiple", value: 3 })],
 
-      [ACTIONS.JUMPCUT]:
-        ACTIONS.JUMPCUT in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.JUMPCUT])
+      [ACTIONS.JUMPCUT]: initElementsData(
+        taskSettings && ACTIONS.JUMPCUT in taskSettings
+          ? taskSettings[ACTIONS.JUMPCUT]
           : [
               new InputRange({
                 label: "p1_duration",
@@ -120,16 +116,18 @@ export class TaskSettings extends BaseClass {
               }),
               new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
               new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
-            ],
+            ]
+      ),
 
-      [ACTIONS.CUT_SILENCE]:
-        ACTIONS.CUT_SILENCE in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.CUT_SILENCE])
-          : [new InputRange({ label: "dB", value: -23, min: -50, max: -5 })],
+      [ACTIONS.CUT_SILENCE]: initElementsData(
+        taskSettings && ACTIONS.CUT_SILENCE in taskSettings
+          ? taskSettings[ACTIONS.CUT_SILENCE]
+          : [new InputRange({ label: "dB", value: -23, min: -50, max: -5 })]
+      ),
 
-      [ACTIONS.CUT_MOTIONLESS]:
-        ACTIONS.CUT_MOTIONLESS in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.CUT_MOTIONLESS])
+      [ACTIONS.CUT_MOTIONLESS]: initElementsData(
+        taskSettings && ACTIONS.CUT_MOTIONLESS in taskSettings
+          ? taskSettings[ACTIONS.CUT_MOTIONLESS]
           : [
               new InputRange({
                 label: "Threshold",
@@ -138,17 +136,20 @@ export class TaskSettings extends BaseClass {
                 max: 1,
                 step: 0.0001,
               }),
-            ],
+            ]
+      ),
 
-      [ACTIONS.COMPRESS_VIDEO]:
-        ACTIONS.COMPRESS_VIDEO in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.COMPRESS_VIDEO])
-          : [new InputRange({ label: "Quality", value: 23, min: 0, max: 51 })], // crf 51 is best quality
+      [ACTIONS.COMPRESS_VIDEO]: initElementsData(
+        taskSettings && ACTIONS.COMPRESS_VIDEO in taskSettings
+          ? taskSettings[ACTIONS.COMPRESS_VIDEO]
+          : [new InputRange({ label: "Quality", value: 23, min: 0, max: 51 })]
+      ), // crf 51 is best quality
 
-      [ACTIONS.CONVERT_TO_AUDIO]:
-        ACTIONS.CONVERT_TO_AUDIO in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.CONVERT_TO_AUDIO])
-          : [new InputRange({ label: "Quality", value: 6, min: 0, max: 9 })], // -q:a 0 is best quality
+      [ACTIONS.CONVERT_TO_AUDIO]: initElementsData(
+        taskSettings && ACTIONS.CONVERT_TO_AUDIO in taskSettings
+          ? taskSettings[ACTIONS.CONVERT_TO_AUDIO]
+          : [new InputRange({ label: "Quality", value: 6, min: 0, max: 9 })]
+      ), // -q:a 0 is best quality
     };
 
     super();

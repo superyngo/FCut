@@ -67,7 +67,7 @@ export function useAppStateInit() {
 }
 
 // 使用組合式 API 定義 Tasks store
-const useTasks = defineStore(crypto.randomUUID(), () => {
+export const useTasks = defineStore(crypto.randomUUID(), () => {
   // State
   const storeId = ref("app_tasks");
   const tasks = ref<Task[]>([]);

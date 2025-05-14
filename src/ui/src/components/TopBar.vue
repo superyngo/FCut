@@ -66,7 +66,7 @@ const clearCompletedTasks = () => {
 };
 
 const startRender = async () => {
-  const readyTasks = [...tasksStore.readyTasks];
+  const readyTasks = tasksStore.hasTasksSelected ? [...tasksStore.selectedReadyTasks] : [...tasksStore.readyTasks];
   for (const task of readyTasks) {
     logger.debug(`Queue task: ${task.id}`);
     task.status = TASK_STATUS.Queued;

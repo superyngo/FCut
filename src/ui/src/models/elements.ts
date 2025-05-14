@@ -1,6 +1,6 @@
-import { defineStore } from "pinia";
 import { BaseClass } from "./BaseModel";
-import { logger } from "../utils/logger";
+import { useTasks } from "../stores/stores";
+import { ACTIONS } from "./tasks";
 
 class BaseElementData extends BaseClass {
   type: string = "BaseElementData";
@@ -33,7 +33,14 @@ export function initElementsData(
 ): AllBaseElementsData {
   return elementsData.map((elementData) => {
     // elementData.paretnt = elementsData;
-    if (allBaseElementsData.includes(elementData.constructor)) {
+    if (
+      allBaseElementsData.includes(
+        elementData.constructor as
+          | typeof Container
+          | typeof InputText
+          | typeof Button
+      )
+    ) {
       return elementData;
     }
     switch (elementData.type) {
@@ -54,12 +61,28 @@ export function initElementsData(
 }
 export const methodRegistry: Record<string, any> = {
   call_tt: function call_tt() {
-    logger.info(this);
+    const taskStore = useTasks();
+    const index = taskStore.tempTask!.settings![ACTIONS.CUT].length - 2 + 1; // 等於 arr.length - 1
+    taskStore.tempTask!.settings![ACTIONS.CUT].splice(
+      index,
+      0,
+      createCutCell()
+    );
+  },
+  call_removeCutCell: function () {
+    const taskStore = useTasks();
+    taskStore.tempTask!.settings![ACTIONS.CUT] = taskStore.tempTask!.settings![
+      ACTIONS.CUT
+    ].filter((setting) => {
+      let handle1 = setting.type != "Container";
+      let handle2 = "children" in setting && setting.children[2].id != this.id;
+      return handle1 || handle2;
+    });
   },
 };
 
 // 雙向註冊及綁定方法
-function registerBindMethods(data: Record<PropertyKey, any>): void {
+function registerMapMethods(data: Record<PropertyKey, any>): void {
   // 對於每個屬性，檢查是否為函數
   for (const key in data) {
     const value = data[key];
@@ -93,7 +116,7 @@ export class Button extends BaseElementData {
     [_: string]: any;
   }) {
     super();
-    registerBindMethods(data);
+    registerMapMethods(data);
     this._init(data);
   }
 }
@@ -114,7 +137,7 @@ export class InputRange extends BaseElementData {
     [_: string]: any;
   }) {
     super();
-    registerBindMethods(data);
+    registerMapMethods(data);
     this._init(data);
   }
 }
@@ -129,7 +152,7 @@ export class InputText extends BaseElementData {
     [_: string]: any;
   }) {
     super();
-    registerBindMethods(data);
+    registerMapMethods(data);
     this._init(data);
   }
 }
@@ -151,7 +174,7 @@ export class Selection extends BaseElementData {
     [_: string]: any;
   }) {
     super();
-    registerBindMethods(data);
+    registerMapMethods(data);
     this._init(data);
   }
 }
@@ -169,6 +192,20 @@ export class Container extends BaseElementData {
     super();
     this._init({ ...data, children: initedElements });
   }
+}
+
+export function createCutCell() {
+  return new Container({
+    children: [
+      new InputText({ label: "Start", value: "00:00:000" }),
+      new InputText({ label: "End", value: "00:00:000" }),
+      new Button({
+        label: "Remove",
+        // 使用註冊的方法
+        action: "call_removeCutCell",
+      }),
+    ],
+  });
 }
 
 export type AllBaseElementsData = (
