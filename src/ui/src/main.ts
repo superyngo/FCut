@@ -1,6 +1,6 @@
+import { waitForPyWebviewApi } from "./services/pywebview";
 import { createApp } from "vue";
 import { createPinia } from "pinia";
-import { waitForPyWebviewApi } from "./services/pywebview";
 import App from "./App.vue";
 import "./style.css";
 

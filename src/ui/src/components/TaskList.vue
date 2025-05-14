@@ -1,65 +1,34 @@
 <template>
-  <div
-    class="task-list"
-    :class="{ 'has-selected': taskStore.hasTasksSelected }"
-  >
+  <div class="task-list" :class="{ 'has-selected': taskStore.hasTasksSelected }">
     <!-- 新增取消選取按鈕 -->
     <div v-if="taskStore.hasTasksSelected" class="clear-selection-wrapper">
-      <button
-        @click="clearAllSelections"
-        class="clear-selection-button"
-        title="取消所有選取"
-      >
+      <button @click="clearAllSelections" class="clear-selection-button" title="取消所有選取">
         <span>X</span>
       </button>
     </div>
     <ul>
-      <li
-        v-for="(task, index) in taskStore.tasks"
-        :key="task.id"
-        class="task-item"
-      >
+      <li v-for="(task, index) in taskStore.tasks" :key="task.id" class="task-item">
         <!-- Wrap preview in a container for positioning and hover detection -->
         <div class="preview-container">
           <!-- Checkbox positioned at the top-left -->
           <div class="checkbox-wrapper">
-            <input
-              type="checkbox"
-              v-model="task.selected"
-              @change="changeSelected(task, index)"
-              class="select-checkbox"
-              :class="{ 'is-selected': task.selected }"
-              title="Select Task"
-            />
+            <input type="checkbox" v-model="task.selected" @change="changeSelected(task, index)" class="select-checkbox"
+              :class="{ 'is-selected': task.selected }" title="Select Task" />
           </div>
-          <div
-            class="task-preview"
-            :class="{ shifted: taskStore.shiftHoverRange.includes(index) }"
-            @click="toggleTaskSelection(task, index)"
-          >
+          <div class="task-preview" :class="{ shifted: taskStore.shiftHoverRange.includes(index) }"
+            @click="toggleTaskSelection(task, index)">
             <!-- Placeholder for video preview -->
-            <img
-              v-if="task.previewUrl"
-              :src="task.previewUrl"
-              alt="Preview"
-              class="preview-image"
-            />
+            <img v-if="task.previewUrl" :src="task.previewUrl" alt="Preview" class="preview-image" />
             <div v-else class="preview-placeholder">No Preview</div>
           </div>
         </div>
         <div class="task-details">
           <span class="task-filename">{{ task.videoName }}</span>
           <div class="task-actions">
-            <select
-              v-model="task.renderMethod"
-              class="render-select"
-              @change="change_settings(task as Task)"
-              :disabled="
-                [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-                  task.status
-                )
-              "
-            >
+            <select v-model="task.renderMethod" class="render-select" @change="change_settings(task as Task)" :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
+              task.status
+            )
+              ">
               <option value="" disabled selected>Please select</option>
               <option v-for="method of ACTIONS" :key="method" :value="method">
                 {{ method }}
@@ -71,13 +40,10 @@
           </div>
         </div>
         <div class="task-status">
-          <span
-            :class="[
-              'status-badge',
-              `status-${TASK_STATUS[task.status].toLowerCase()}`,
-            ]"
-            >{{ TASK_STATUS[task.status] }}</span
-          >
+          <span :class="[
+            'status-badge',
+            `status-${TASK_STATUS[task.status].toLowerCase()}`,
+          ]">{{ TASK_STATUS[task.status] }}</span>
         </div>
       </li>
     </ul>
@@ -86,12 +52,13 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { useTasksBoundEvents, useModalStore } from "../stores/stores";
+import { useTasksBoundEvents, useModalStore, usemethodRegistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 
 const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
+
 const change_settings = (task: Task) => {
   if (taskStore.hasTasksSelected) {
     taskStore.selectedTasks.forEach((selectedTask) => {
@@ -114,6 +81,7 @@ const change_settings = (task: Task) => {
 const openSettings = (task: Task) => {
   logger.debug(`Opening settings for task: ${task.id}`);
   taskStore.selectedTaskID = task.id;
+  taskStore.tempTask = new Task(task);
   modalStore.openTaskSettings(task);
 };
 
@@ -219,9 +187,7 @@ const clearAllSelections = () => {
 }
 
 /* 當 checkbox 被勾選時，preview-placeholder 的 scale 變成 0.9 */
-.preview-container:has(.select-checkbox:checked)
-  .task-preview
-  .preview-placeholder {
+.preview-container:has(.select-checkbox:checked) .task-preview .preview-placeholder {
   scale: 0.9;
   transition: scale 0.2s ease-in-out;
 }
@@ -237,9 +203,7 @@ const clearAllSelections = () => {
 }
 
 /* 當 task-preview 有 shifted 類時，讓同一個 preview-container 中的 checkbox 顯示 hover 狀態 */
-.preview-container:has(.task-preview.shifted)
-  .checkbox-wrapper
-  .select-checkbox {
+.preview-container:has(.task-preview.shifted) .checkbox-wrapper .select-checkbox {
   background-image: url("../assets/checkbox-hover.svg");
   opacity: 1 !important;
 }
@@ -350,23 +314,28 @@ const clearAllSelections = () => {
 
 /* 不同狀態的顏色 */
 .status-preparing {
-  background-color: #f0ad4e; /* 橙色 */
+  background-color: #f0ad4e;
+  /* 橙色 */
 }
 
 .status-ready {
-  background-color: #5bc0de; /* 藍色 */
+  background-color: #5bc0de;
+  /* 藍色 */
 }
 
 .status-queued {
-  background-color: #9370db; /* 紫色 */
+  background-color: #9370db;
+  /* 紫色 */
 }
 
 .status-rendering {
-  background-color: #ff6347; /* 番茄紅 */
+  background-color: #ff6347;
+  /* 番茄紅 */
 }
 
 .status-done {
-  background-color: #5cb85c; /* 綠色 */
+  background-color: #5cb85c;
+  /* 綠色 */
 }
 
 /* 取消選取按鈕樣式 */

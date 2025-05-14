@@ -1,23 +1,15 @@
 <template>
   <div class="top-bar">
     <!-- Iterate over Map values -->
-    <button
-      v-for="button in buttons.values()"
-      :key="button.id"
-      :class="{
-        hidden:
-          typeof button.visible === 'boolean'
-            ? !button.visible
-            : !button.visible(),
-      }"
-      @click="button.action"
-      class="icon-button"
-      :disabled="
-        typeof button.disabled === 'boolean'
-          ? button.disabled
-          : button.disabled()
-      "
-    >
+    <button v-for="button in buttons.values()" :key="button.id" :class="{
+      hidden:
+        typeof button.visible === 'boolean'
+          ? !button.visible
+          : !button.visible(),
+    }" @click="button.action" class="icon-button" :disabled="typeof button.disabled === 'boolean'
+      ? button.disabled
+      : button.disabled()
+      ">
       <i :class="button.icon"></i>
       <span>{{
         typeof button.label === "string" ? button.label : button.label()
@@ -36,48 +28,6 @@ import { TASK_STATUS } from "../models/tasks";
 
 const tasksStore = useTasksBoundEvents();
 const modalStore = useModalStore();
-
-// Use a Map for buttonsData
-const buttonsData = new Map<string, Button>([
-  [
-    "Menu",
-    new Button({
-      label: "Menu",
-      icon: "fas fa-bars",
-      action: () => toggleMenu(),
-    }),
-  ],
-  [
-    "Add",
-    new Button({
-      label: "➕",
-      icon: "fas fa-plus",
-      action: () => addTask(),
-    }),
-  ],
-  [
-    "Render",
-    new Button({
-      label: "Render",
-      icon: "fas fa-trash",
-      action: () => startRender(),
-      disabled: () =>
-        tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0,
-    }),
-  ],
-  [
-    "Remove",
-    new Button({
-      label: () => (tasksStore.hasTasksSelected ? "Remove" : "Clean"),
-      icon: "fas fa-trash",
-      action: () =>
-        tasksStore.hasTasksSelected ? deleteTask() : clearCompletedTasks(),
-    }),
-  ],
-]);
-
-// Update the type of the buttons ref
-const buttons = ref<Map<string, Button>>(buttonsData);
 
 const toggleMenu = () => {
   logger.debug("Menu toggled");
@@ -131,6 +81,50 @@ const startRender = async () => {
     task.status = TASK_STATUS.Done;
   }
 };
+
+// Use a Map for buttonsData
+const buttonsData = new Map<string, Button>([
+  [
+    "Menu",
+    new Button({
+      label: "Menu",
+      icon: "fas fa-bars",
+      action: toggleMenu
+    }),
+  ],
+  [
+    "Add",
+    new Button({
+      label: "➕",
+      icon: "fas fa-plus",
+      action: addTask
+    }),
+  ],
+  [
+    "Render",
+    new Button({
+      label: "Render",
+      icon: "fas fa-trash",
+      action: startRender,
+      disabled: function renderButtonDisableHandle() { return tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0 }
+    }),
+  ],
+  [
+    "Remove",
+    new Button({
+      label: function hasTasksSelectedToLabel() { return (tasksStore.hasTasksSelected ? "Remove" : "Clean") },
+      icon: "fas fa-trash",
+      action: function hasTasksSelectedToAction() {
+        return tasksStore.hasTasksSelected ? deleteTask() : clearCompletedTasks()
+      }
+    }),
+  ],
+]);
+
+// Update the type of the buttons ref
+const buttons = ref<Map<string, Button>>(buttonsData);
+
+
 </script>
 
 <style scoped>

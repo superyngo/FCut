@@ -1,7 +1,7 @@
 import { BaseClass } from "./BaseModel";
 import {
   AllBaseElementsData,
-  initBaseElementData,
+  initElementsData,
   InputRange,
   InputText,
   Button,
@@ -10,6 +10,7 @@ import {
 } from "./elements";
 import { enumToOptions } from "../utils/common";
 import { logger } from "../utils/logger";
+import { methodRegistry } from "../models/elements";
 
 export enum ACTIONS {
   CUT = "CUT",
@@ -78,9 +79,9 @@ export class TaskSettings extends BaseClass {
 
   constructor(taskSettings: Record<ACTIONS, AllBaseElementsData> | {} = {}) {
     let _taskSettings: Record<ACTIONS, AllBaseElementsData> = {
-      [ACTIONS.CUT]:
-        ACTIONS.CUT in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.CUT])
+      [ACTIONS.CUT]: initElementsData(
+        taskSettings && ACTIONS.CUT in taskSettings
+          ? taskSettings[ACTIONS.CUT]
           : [
               new Container({
                 children: [
@@ -90,28 +91,20 @@ export class TaskSettings extends BaseClass {
               }),
               new Button({
                 label: "Add",
-                action: () => {
-                  logger.info(123);
-                  // this[ACTIONS.CUT].push(
-                  //   new Container({
-                  //     children: [
-                  //       new InputText({ label: "Start", value: "00:00:00" }),
-                  //       new InputText({ label: "End", value: "00:00:00" }),
-                  //     ],
-                  //   })
-                  // );
-                },
+                // 使用註冊的方法
+                action: "call_tt",
               }),
-            ],
+            ]
+      ),
 
       [ACTIONS.SPEEDUP]:
         ACTIONS.SPEEDUP in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.SPEEDUP])
+          ? initElementsData(taskSettings[ACTIONS.SPEEDUP])
           : [new InputRange({ label: "Multiple", value: 3 })],
 
       [ACTIONS.JUMPCUT]:
         ACTIONS.JUMPCUT in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.JUMPCUT])
+          ? initElementsData(taskSettings[ACTIONS.JUMPCUT])
           : [
               new InputRange({
                 label: "p1_duration",
@@ -131,12 +124,12 @@ export class TaskSettings extends BaseClass {
 
       [ACTIONS.CUT_SILENCE]:
         ACTIONS.CUT_SILENCE in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.CUT_SILENCE])
+          ? initElementsData(taskSettings[ACTIONS.CUT_SILENCE])
           : [new InputRange({ label: "dB", value: -23, min: -50, max: -5 })],
 
       [ACTIONS.CUT_MOTIONLESS]:
         ACTIONS.CUT_MOTIONLESS in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.CUT_MOTIONLESS])
+          ? initElementsData(taskSettings[ACTIONS.CUT_MOTIONLESS])
           : [
               new InputRange({
                 label: "Threshold",
@@ -149,12 +142,12 @@ export class TaskSettings extends BaseClass {
 
       [ACTIONS.COMPRESS_VIDEO]:
         ACTIONS.COMPRESS_VIDEO in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.COMPRESS_VIDEO])
+          ? initElementsData(taskSettings[ACTIONS.COMPRESS_VIDEO])
           : [new InputRange({ label: "Quality", value: 23, min: 0, max: 51 })], // crf 51 is best quality
 
       [ACTIONS.CONVERT_TO_AUDIO]:
         ACTIONS.CONVERT_TO_AUDIO in taskSettings
-          ? initBaseElementData(taskSettings[ACTIONS.CONVERT_TO_AUDIO])
+          ? initElementsData(taskSettings[ACTIONS.CONVERT_TO_AUDIO])
           : [new InputRange({ label: "Quality", value: 6, min: 0, max: 9 })], // -q:a 0 is best quality
     };
 

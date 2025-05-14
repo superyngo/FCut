@@ -1,11 +1,7 @@
 <template>
   <teleport to="body">
     <!-- Menu Modal -->
-    <div
-      v-if="modalStore.activeModals.menu.isOpen"
-      class="modal-overlay"
-      @click.self="modalStore.closeMenu()"
-    >
+    <div v-if="modalStore.activeModals.menu.isOpen" class="modal-overlay" @click.self="modalStore.closeMenu()">
       <div class="modal-content menu-modal">
         <div class="modal-header">
           <h3>選單</h3>
@@ -25,11 +21,8 @@
     </div>
 
     <!-- Task Settings Modal -->
-    <div
-      v-if="modalStore.activeModals.taskSettings.isOpen"
-      class="modal-overlay"
-      @click.self="modalStore.closeTaskSettings()"
-    >
+    <div v-if="modalStore.activeModals.taskSettings.isOpen" class="modal-overlay"
+      @click.self="modalStore.closeTaskSettings()">
       <div class="modal-content settings-modal">
         <div class="modal-header">
           <h3>任務設定</h3>
@@ -38,10 +31,7 @@
           </button>
         </div>
         <div class="modal-body">
-          <TaskSettingsForm
-            v-if="taskStore.selectedTaskID"
-            @close="closeTaskSettings"
-          />
+          <TaskSettingsForm v-if="taskStore.tempTask" @close="closeTaskSettings" />
         </div>
       </div>
     </div>
@@ -56,7 +46,8 @@ const taskStore = useTasksBoundEvents();
 
 const closeTaskSettings = () => {
   taskStore.selectedTaskID = null; // 清除選擇的任務 ID
-  modalStore.closeTaskSettings();
+  taskStore.tempTask = null; // 清除臨時任務
+  modalStore.activeModals.taskSettings.isOpen = false
 };
 </script>
 
@@ -123,11 +114,13 @@ const closeTaskSettings = () => {
 
 /* 特定模態框的自定義樣式 */
 .settings-modal {
-  max-width: 600px; /* 設定對話框可以更寬一些 */
+  max-width: 600px;
+  /* 設定對話框可以更寬一些 */
 }
 
 .menu-modal {
-  max-width: 300px; /* 選單對話框可以窄一些 */
+  max-width: 300px;
+  /* 選單對話框可以窄一些 */
 }
 
 .menu-items {
@@ -156,6 +149,7 @@ const closeTaskSettings = () => {
     opacity: 0;
     transform: translateY(-20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

@@ -1,9 +1,9 @@
 <template>
-  <div class="task-settings-form" v-if="taskStore.selectedTask?.videoName">
-    <h4>設定 "{{ taskStore.selectedTask!.videoName }}" 的轉檔參數1234</h4>
+  <div class="task-settings-form" v-if="tempTask!.videoName">
+    <h4>設定 "{{ tempTask!.videoName }}" 的轉檔參數</h4>
     <div class="form-group">
       <label for="renderMethod">渲染方式</label>
-      <select id="renderMethod" v-model="tempRenderMethod" :disabled="isTaskInProgress">
+      <select id="renderMethod" v-model="tempTask!.renderMethod" :disabled="isTaskInProgress">
         <option value="" disabled>請選擇</option>
         <option v-for="method of ACTIONS" :key="method" :value="method">
           {{ method }}
@@ -11,9 +11,9 @@
       </select>
     </div>
     <!-- 根據選擇的渲染方式顯示不同的設定選項 -->
-    <div v-if="tempRenderMethod" class="settings-fields">
+    <div v-if="tempTask!.renderMethod" class="settings-fields">
       <div></div>
-      <div v-for="(setting, index) in tempSettings![tempRenderMethod]" :key="setting.id" class="form-group">
+      <div v-for="(setting, index) in tempTask!.settings![tempTask!.renderMethod]" :key="setting.id" class="form-group">
         <!-- container 類型 -->
         <template v-if="setting.type === 'Container'">
           <div class="form-group container-group">
@@ -28,7 +28,7 @@
         </template>
 
         <!-- 其他 類型 -->
-        <SettingControl v-else v-model="tempSettings![tempRenderMethod][index]" />
+        <SettingControl v-else v-model="tempTask!.settings![tempTask!.renderMethod][index]" />
       </div>
     </div>
 
@@ -40,19 +40,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted } from "vue";
+import { storeToRefs } from "pinia";
 import { useTasksBoundEvents } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { InputRange, InputText, Selection, Button, Container } from "../models/elements";
-import { TaskSettings } from "../models/tasks";
 import SettingControl from "./SettingControl.vue";
 
 const taskStore = useTasksBoundEvents();
-let tempRenderMethod = ref<ACTIONS | "">(taskStore.selectedTask?.renderMethod!);
-let tempSettings: TaskSettings | null = reactive(
-  taskStore.selectedTask!.settings!.clone()
-);
+const { tempTask } = storeToRefs(taskStore);
+
 const emit = defineEmits(["close"]);
 
 // 創建本地數據的副本，以便在保存之前進行修改
@@ -69,6 +67,10 @@ onMounted(() => { });
 
 // 保存設置並更新原始任務
 const saveSettings = () => {
+  // 停止 tempTask 的reactive更新
+  let tempRenderMethod: ACTIONS = tempTask.value!.renderMethod! as ACTIONS
+  let tempSettings = tempTask.value!.settings!
+
   if (
     taskStore.hasTasksSelected &&
     taskStore.selectedTasks.length > 1 &&
@@ -76,21 +78,19 @@ const saveSettings = () => {
   ) {
     taskStore.selectedTasks.forEach((selectedTask) => {
       // 將更改應用到原始任務
-      selectedTask!.renderMethod = tempRenderMethod.value as ACTIONS;
-      selectedTask!.settings![tempRenderMethod.value as ACTIONS] =
-        tempSettings!.clone()[tempRenderMethod.value as ACTIONS];
-
+      selectedTask!.renderMethod = tempRenderMethod;
+      selectedTask!.settings![tempRenderMethod] =
+        tempSettings!.clone()[tempRenderMethod];
       // 如果任務尚未準備好，將其標記為就緒
       if (selectedTask!.status === TASK_STATUS.Preparing) {
         selectedTask!.status = TASK_STATUS.Ready;
       }
+      logger.debug(`Settings saved for task: ${selectedTask!.id}`);
     });
-    logger.debug(`Settings saved for task: ${taskStore.selectedTask!.id}`);
   } else {
-    taskStore.selectedTask!.renderMethod = tempRenderMethod.value as ACTIONS;
-    taskStore.selectedTask!.settings![tempRenderMethod.value as ACTIONS] =
-      tempSettings!.clone()[tempRenderMethod.value as ACTIONS];
-    tempSettings = null;
+    taskStore.selectedTask!.renderMethod = tempRenderMethod;
+    taskStore.selectedTask!.settings![tempRenderMethod] = tempSettings!.clone()[tempRenderMethod];
+    logger.debug(`Settings saved for task: ${taskStore.selectedTask!.id}`);
 
     // 如果任務尚未準備好，將其標記為就緒
     if (taskStore.selectedTask!.status === TASK_STATUS.Preparing) {
@@ -100,7 +100,6 @@ const saveSettings = () => {
 
   // 保存更改到本地存儲
   taskStore.saveTasks();
-  logger.debug(`Settings saved for task: ${taskStore.selectedTask!.id}`);
   emit("close");
 };
 </script>

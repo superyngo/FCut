@@ -1,78 +1,53 @@
-<template>
-  <!-- InputRange 類型 -->
-  <div class="form-group" v-if="modelValue.type === 'InputRange'">
-    <label :for="modelValue.id">{{ modelValue.label }}</label>
+<template> <!-- InputRange 類型 -->
+  <div class="form-group" v-if="setting.type === 'InputRange'">
+    <label :for="setting.id">{{ setting.label }}</label>
     <div class="range-container">
-      <input type="range" :id="modelValue.id" :value="modelValue.value" @input="updateValue($event)"
-        :min="(modelValue as InputRange).min" :max="(modelValue as InputRange).max"
-        :step="(modelValue as InputRange).step" />
-      <span>{{ modelValue.value }}</span>
+      <input type="range" :id="setting.id" v-model.number="setting.value" :min="(setting as InputRange).min"
+        :max="(setting as InputRange).max" :step="(setting as InputRange).step" />
+      <span>{{ setting.value }}</span>
     </div>
   </div>
 
   <!-- InputText 類型 -->
-  <div class="form-group" v-else-if="modelValue.type === 'InputText'">
-    <label :for="modelValue.id">{{ modelValue.label }}</label>
-    <input type="text" :id="modelValue.id" :value="modelValue.value" @input="updateValue($event)"
-      :placeholder="typeof modelValue.label === 'string' ? modelValue.label : modelValue.label()" />
+  <div class="form-group" v-else-if="setting.type === 'InputText'">
+    <label :for="setting.id">{{ setting.label }}</label>
+    <input type="text" :id="setting.id" v-model="setting.value"
+      :placeholder="typeof setting.label === 'string' ? setting.label : setting.label()" />
   </div>
 
   <!-- Selection 類型 -->
-  <div class="form-group" v-else-if="modelValue.type === 'Selection'">
-    <label :for="modelValue.id">{{ modelValue.label }}</label>
-    <select :id="modelValue.id" :value="modelValue.value" @change="updateValue($event)">
-      <option v-for="option in (modelValue as any).options" :key="option.value" :value="option.value">
+  <div class="form-group" v-else-if="setting.type === 'Selection'">
+    <label :for="setting.id">{{ setting.label }}</label>
+    <select :id="setting.id" v-model="setting.value">
+      <option v-for="option in (setting as any).options" :key="option.value" :value="option.value">
         {{ option.label }}
       </option>
     </select>
   </div>
 
   <!-- Button 類型 -->
-  <div class="form-group" v-else-if="modelValue.type === 'Button'">
-    {{ modelValue.action }}
-    <button :id="modelValue.id" @click="(e) => (modelValue as any).action && (modelValue as any).action(e)" :disabled="typeof (modelValue as any).disabled === 'boolean'
-      ? (modelValue as any).disabled
+  <div class="form-group" v-else-if="setting.type === 'Button'">
+    <button :id="setting.id" @click="(e) => (setting as any).action && (setting as any).action(e)" :disabled="typeof (setting as any).disabled === 'boolean'
+      ? (setting as any).disabled
       : false" :class="{
-        'hidden': typeof (modelValue as any).visible === 'boolean'
-          ? !(modelValue as any).visible
+        'hidden': typeof (setting as any).visible === 'boolean'
+          ? !(setting as any).visible
           : false
       }">
-      <i v-if="(modelValue as any).icon" :class="(modelValue as any).icon"></i>
-      {{ modelValue.label }}
+      <i v-if="(setting as any).icon" :class="(setting as any).icon"></i>
+      {{ setting.label }}
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue';
+import { defineModel } from 'vue';
 import { InputRange, InputText, Selection, Button } from "../models/elements";
 
-const props = defineProps({
-  modelValue: {
-    type: Object,
-    required: true
-  }
+// 使用 defineModel 代替 props 和 emit
+const setting = defineModel<any>({
+  required: true
 });
-
-const emit = defineEmits(['update:modelValue']);
-
-// 更新值並觸發事件讓父組件知道值已經改變
-const updateValue = (event: Event) => {
-  const target = event.target as HTMLInputElement | HTMLSelectElement;
-
-  // 創建對象的副本，以避免直接修改 props
-  const updatedSetting = { ...props.modelValue };
-
-  // 判斷是否為 range input，如果是則轉換為數字
-  if (props.modelValue.type === 'InputRange') {
-    updatedSetting.value = Number(target.value);
-  } else {
-    updatedSetting.value = target.value;
-  }
-
-  // 向父組件發出更新事件
-  emit('update:modelValue', updatedSetting);
-};
 </script>
 
 <style scoped>

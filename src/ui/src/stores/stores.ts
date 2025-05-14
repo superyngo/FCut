@@ -1,5 +1,7 @@
-import { defineStore } from "pinia";
 import { waitForPyWebviewApi } from "../services/pywebview";
+await waitForPyWebviewApi();
+
+import { defineStore } from "pinia";
 import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { onMounted, onUnmounted, ref, computed } from "vue";
@@ -69,6 +71,7 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
   // State
   const storeId = ref("app_tasks");
   const tasks = ref<Task[]>([]);
+  const tempTask = ref<Task | null>(null);
   const selectedTaskID = ref<string | null>(null);
   const lastSelectedIndex = ref(-1);
   const mouseNearestIndex = ref(-1);
@@ -230,6 +233,7 @@ const useTasks = defineStore(crypto.randomUUID(), () => {
   return {
     storeId,
     tasks,
+    tempTask,
     selectedTaskID,
     lastSelectedIndex,
     mouseNearestIndex,
