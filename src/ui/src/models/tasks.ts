@@ -85,11 +85,14 @@ export class TaskSettings extends BaseClass {
           ? taskSettings[ACTIONS.CUT]
           : [
               createCutCell(),
-              new Button({
-                label: "Add",
-                // 使用註冊的方法
-                action: "call_tt",
-              }),
+              new Button(
+                {
+                  label: "Add",
+                  // 使用註冊的方法
+                  action: "call_tt",
+                },
+                true
+              ),
             ]
       ),
 
@@ -142,13 +145,29 @@ export class TaskSettings extends BaseClass {
       [ACTIONS.COMPRESS_VIDEO]: initElementsData(
         taskSettings && ACTIONS.COMPRESS_VIDEO in taskSettings
           ? taskSettings[ACTIONS.COMPRESS_VIDEO]
-          : [new InputRange({ label: "Quality", value: 23, min: 0, max: 51 })]
+          : [
+              new InputRange({
+                label: "Quality",
+                title: "越大畫質越好，容量越大",
+                value: 23,
+                min: 0,
+                max: 51,
+              }),
+            ]
       ), // crf 51 is best quality
 
       [ACTIONS.CONVERT_TO_AUDIO]: initElementsData(
         taskSettings && ACTIONS.CONVERT_TO_AUDIO in taskSettings
           ? taskSettings[ACTIONS.CONVERT_TO_AUDIO]
-          : [new InputRange({ label: "Quality", value: 6, min: 0, max: 9 })]
+          : [
+              new InputRange({
+                label: "Quality",
+                title: "越小畫質越好，容量越大",
+                value: 6,
+                min: 0,
+                max: 9,
+              }),
+            ]
       ), // -q:a 0 is best quality
     };
 

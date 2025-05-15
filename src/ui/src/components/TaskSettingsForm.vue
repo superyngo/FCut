@@ -4,7 +4,7 @@
     <div class="form-group">
       <label for="renderMethod">渲染方式</label>
       <select id="renderMethod" v-model="tempTask!.renderMethod" :disabled="isTaskInProgress">
-        <option value="" disabled>請選擇</option>
+        <option value="" disabled selected>選擇處理模式</option>
         <option v-for="method of ACTIONS" :key="method" :value="method">
           {{ method }}
         </option>

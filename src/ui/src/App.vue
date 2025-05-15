@@ -15,8 +15,53 @@ const appState = useAppStateInit();
 </script>
 
 <style>
+:root {
+  --app-bg-color: #121212;
+  --app-text-color: #ffffff;
+  --app-accent-color: #3498db;
+}
+
+html,
 body {
   margin: 0;
-  font-family: sans-serif;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--app-bg-color);
+  color: var(--app-text-color);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
+/* 統一按鈕樣式 */
+button {
+  font-family: inherit;
+}
+
+/* 預設滾動條樣式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 </style>

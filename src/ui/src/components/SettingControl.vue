@@ -3,6 +3,7 @@
     <label :for="setting.id">{{ setting.label }}</label>
     <div class="range-container">
       <input type="range" :id="setting.id" v-model.number="setting.value" :min="(setting as InputRange).min"
+        :title="typeof (setting as InputRange).title === 'function' ? (setting.title as () => string)() : setting.title"
         :max="(setting as InputRange).max" :step="(setting as InputRange).step" />
       <span>{{ setting.value }}</span>
     </div>
@@ -12,12 +13,16 @@
   <div class="form-group" v-else-if="setting.type === 'InputText'">
     <label :for="setting.id">{{ setting.label }}</label>
     <input type="text" :id="setting.id" v-model="setting.value"
+      :title="typeof (setting as InputRange).title === 'function' ? (setting.title as () => string)() : setting.title"
       :placeholder="typeof setting.label === 'string' ? setting.label : setting.label()" />
   </div>
 
   <!-- Selection 類型 -->
   <div class="form-group" v-else-if="setting.type === 'Selection'">
-    <label :for="setting.id">{{ setting.label }}</label>
+    <label :for="setting.id"
+      :title="typeof (setting as InputRange).title === 'function' ? (setting.title as () => string)() : setting.title">
+      {{ setting.label }}
+    </label>
     <select :id="setting.id" v-model="setting.value">
       <option v-for="option in (setting as any).options" :key="option.value" :value="option.value">
         {{ option.label }}
@@ -27,9 +32,10 @@
 
   <!-- Button 類型 -->
   <div class="form-group" v-else-if="setting.type === 'Button'">
-    <button :id="setting.id" @click="(e) => (setting as any).action && (setting as any).action(e)" :disabled="typeof (setting as any).disabled === 'boolean'
-      ? (setting as any).disabled
-      : false" :class="{
+    <button :id="setting.id"
+      :title="typeof (setting as InputRange).title === 'function' ? (setting.title as () => string)() : setting.title"
+      @click="(e) => (setting as any).action && (setting as any).action(e)"
+      :disabled="typeof (setting as any).disabled === 'boolean' ? (setting as any).disabled : false" :class="{
         'hidden': typeof (setting as any).visible === 'boolean'
           ? !(setting as any).visible
           : false

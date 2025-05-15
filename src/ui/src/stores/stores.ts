@@ -335,6 +335,14 @@ export function useTasksBoundEvents() {
               tasks_state.unselect_all_tasks();
             },
           },
+          Delete: {
+            type: "onPress",
+            callback: () => {
+              tasks_state.selectedTasks.forEach((task) => {
+                tasks_state.removeTask(task);
+              });
+            },
+          },
         })
       );
       isUseTasksStarted.value = true;

@@ -1,13 +1,8 @@
 <template>
-  <div class="task-list" :class="{ 'has-selected': taskStore.hasTasksSelected }">
-    <!-- 新增取消選取按鈕 -->
-    <div v-if="taskStore.hasTasksSelected" class="clear-selection-wrapper">
-      <button @click="clearAllSelections" class="clear-selection-button" title="取消所有選取">
-        <span>X</span>
-      </button>
-    </div>
-    <ul>
-      <li v-for="(task, index) in taskStore.tasks" :key="task.id" class="task-item">
+  <div class="task-list" :class="{ 'has-selected': taskStore.hasTasksSelected, 'shiftOn': taskStore.isShiftOn }">
+    <ul v-if="taskStore.tasks.length > 0" class="task-item-ul">
+      <li v-for="(task, index) in taskStore.tasks" :key="task.id" class="task-item"
+        :class="{ shifted: taskStore.shiftHoverRange.includes(index) }" @click="toggleTaskSelection(task, index)">
         <!-- Wrap preview in a container for positioning and hover detection -->
         <div class="preview-container">
           <!-- Checkbox positioned at the top-left -->
@@ -15,27 +10,29 @@
             <input type="checkbox" v-model="task.selected" @change="changeSelected(task, index)" class="select-checkbox"
               :class="{ 'is-selected': task.selected }" title="Select Task" />
           </div>
-          <div class="task-preview" :class="{ shifted: taskStore.shiftHoverRange.includes(index) }"
-            @click="toggleTaskSelection(task, index)">
+          <div class="task-preview" :class="{ shifted: taskStore.shiftHoverRange.includes(index) }">
             <!-- Placeholder for video preview -->
             <img v-if="task.previewUrl" :src="task.previewUrl" alt="Preview" class="preview-image" />
             <div v-else class="preview-placeholder">No Preview</div>
           </div>
         </div>
         <div class="task-details">
-          <span class="task-filename">{{ task.videoName }}</span>
+          <span class="task-filename" :title="task.videoName">{{ task.videoName }}</span>
           <div class="task-actions">
-            <select v-model="task.renderMethod" class="render-select" @change="change_settings(task as Task)" :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-              task.status
-            )
-              ">
-              <option value="" disabled selected>Please select</option>
-              <option v-for="method of ACTIONS" :key="method" :value="method">
-                {{ method }}
-              </option>
-            </select>
-            <button @click="openSettings(task as Task)" class="settings-button">
-              ...
+            <div class="custom-select-wrapper">
+              <select v-model="task.renderMethod" class="render-select" @change="change_settings(task as Task)"
+                :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
+                  task.status
+                )">
+                <option value="" disabled selected>選擇處理模式</option>
+                <option v-for="method of ACTIONS" :key="method" :value="method">
+                  {{ method }}
+                </option>
+              </select>
+              <div class="select-arrow"></div>
+            </div>
+            <button @click="openSettings(task as Task)" class="settings-button" title="更多設定">
+              <img src="../assets/settings-icon.svg" alt="設定" />
             </button>
           </div>
         </div>
@@ -47,12 +44,25 @@
         </div>
       </li>
     </ul>
+    <div v-else class="empty-state">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 8V4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4"></path>
+          <path d="M2 12v8a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-8"></path>
+          <path d="M2 12h20"></path>
+          <path d="M12 22v-5.5"></path>
+          <path d="M10 16.5l2 2 2-2"></path>
+        </svg>
+      </div>
+      <p>請點擊"新增"按鈕添加影片</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { useTasksBoundEvents, useModalStore, usemethodRegistry } from "../stores/stores";
+import { useTasksBoundEvents, useModalStore } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 
@@ -111,37 +121,134 @@ const toggleTaskSelection = (
     taskStore.shiftHoverRange.forEach((index: number) => {
       taskStore.tasks[index].selected = true;
     });
-  }
-  taskStore.lastSelectedIndex = task.selected ? index : -1;
+  } taskStore.lastSelectedIndex = task.selected ? index : -1;
   taskStore.saveTasks();
-};
-
-const clearAllSelections = () => {
-  taskStore.tasks.forEach((task: any) => {
-    task.selected = false;
-  });
-  taskStore.saveTasks();
-  taskStore.lastSelectedIndex = -1;
-  logger.debug("已取消所有任務選取");
 };
 </script>
 
 <style scoped>
 /* 主容器樣式 */
 .task-list {
-  max-height: 100vh;
+  /* width: 85%; */
+  max-width: min(600px, 95vw);
+  /* 確保不超出視窗範圍 */
+  height: 100%;
+  min-height: 250px;
+  max-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #333;
+  border-radius: 0 0 8px 8px;
+  /* 使用 calc() 和相對單位實現左右間距隨視窗寬度等比例縮小 */
+  /* padding: 15px calc(4% + 10px); */
+  /* 最小值為10px，最大約為30px，根據容器寬度等比例變化 */
+  background-color: #1a1a1a;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
+  overflow: hidden;
+  margin-top: -1px;
+}
+
+/* 列表容器樣式 */
+.task-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  /* 填充容器剩餘空間 */
   overflow-y: auto;
-  border: 1px solid #ccc;
-  padding: 10px;
+  /* 只在任務列表內使用滾動條 */
+  scrollbar-width: thin;
+  scrollbar-color: #444 #222;
+  min-height: 0;
+  /* 允許flex項目縮小，解決滾動問題 */
+}
+
+/* 滾動條樣式 */
+.task-list ul::-webkit-scrollbar {
+  width: 8px;
+}
+
+.task-list ul::-webkit-scrollbar-track {
+  background: #222;
+  border-radius: 4px;
+}
+
+.task-list ul::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 4px;
+}
+
+.task-list ul::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* 任務項目基本布局 */
 .task-item {
   display: flex;
   align-items: center;
-  padding: 10px 5px;
-  border-bottom: 1px solid #eee;
-  gap: 10px;
+  padding: 10px 0;
+  /* 調整上下 padding，左右 padding 由父元素控制 */
+  border-bottom: 1px solid #333;
+  gap: calc(1.5% + 8px);
+  /* 動態調整元素間間距，隨視窗寬度變化 */
+  transition: all 0.2s ease;
+  height: 90px;
+  /* 增加任務行高度 */
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  /* 防止內容溢出 */
+  width: 100%;
+  /* 確保任務項目寬度填滿父容器 */
+  padding: 15px calc(4% + 10px);
+}
+
+.task-item:has(.select-checkbox:checked) {
+  border: 5px solid #05325b;
+  border-bottom-width: 0;
+  margin-bottom: 0;
+}
+
+/* 如果下一個兄弟元素也被選中，則當前元素不需要頂部邊框 */
+.task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:checked) {
+  border-top: none;
+}
+
+/* 最後一個被選中的項目需要底部邊框 */
+.task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:not(:checked)) {
+  border-top: 5px solid #05325b;
+}
+
+/* 確保選中項目之間沒有間隙 */
+.task-item:has(.select-checkbox:checked):has(+ .task-item:has(.select-checkbox:checked)) {
+  padding-bottom: 0;
+}
+
+.task-item-ul>.task-item:last-child:has(.select-checkbox:checked) {
+  border-bottom-width: 5px;
+
+}
+
+/* 確保選中項目之間沒有間隙 - 下一個選中的項目 */
+.task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:checked) {
+  padding-top: 0;
+}
+
+
+.task-item:hover,
+.shifted {
+  background-color: #242424;
+  transform: translateY(-1px);
+  /* 輕微上移效果 */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  /* 懸停時增加陰影 */
+}
+
+.task-item:active {
+  transform: translateY(0);
+  /* 點擊時恢復位置 */
 }
 
 .task-item:last-child {
@@ -152,38 +259,46 @@ const clearAllSelections = () => {
 .preview-container {
   position: relative;
   flex-shrink: 0;
-  width: 80px;
-  height: 50px;
+  width: 90px;
+  /* 增加寬度 */
+  height: 56px;
+  /* 16:9比例更加適合視頻預覽 */
+  border-radius: 6px;
+  overflow: hidden;
+  /* 確保內容不溢出 */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .task-preview {
   width: 100%;
   height: 100%;
-  background-color: #f0f0f0;
+  background-color: #2c2c2c;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: 4px;
-  transition: box-shadow 0.2s ease-in-out;
+  border-radius: 6px;
+  transition: all 0.2s ease-in-out;
 }
 
 .preview-image {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
 .preview-placeholder {
   font-size: 12px;
   color: #fff;
-  background-color: lightslategray;
+  background-color: #2c2c2c;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  border: 1px solid #444;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* 當 checkbox 被勾選時，preview-placeholder 的 scale 變成 0.9 */
@@ -192,28 +307,22 @@ const clearAllSelections = () => {
   transition: scale 0.2s ease-in-out;
 }
 
-/* 預覽區域懸停效果 */
-.preview-container:hover .task-preview {
-  box-shadow: 0 0 0 3px #3498db;
-  transition: box-shadow 0.2s ease-in-out;
-}
-
-.shifted {
-  box-shadow: 0 0 0 3px #3498db;
-}
-
-/* 當 task-preview 有 shifted 類時，讓同一個 preview-container 中的 checkbox 顯示 hover 狀態 */
-.preview-container:has(.task-preview.shifted) .checkbox-wrapper .select-checkbox {
-  background-image: url("../assets/checkbox-hover.svg");
-  opacity: 1 !important;
-}
-
 /* 選擇框相關樣式 */
 .checkbox-wrapper {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: 4px;
+  left: 4px;
   z-index: 10;
+  background-color: rgba(0, 0, 0, 0.3);
+  /* 半透明背景增加可見度 */
+  border-radius: 50%;
+  padding: 2px;
+  display: flex;
+  /* Added for centering content */
+  align-items: center;
+  /* Added for centering content */
+  justify-content: center;
+  /* Added for centering content */
 }
 
 .select-checkbox {
@@ -235,13 +344,6 @@ const clearAllSelections = () => {
   opacity: 0;
 }
 
-/* hover 狀態下顯示白色圓圈帶簍空勾選 */
-.select-checkbox:hover {
-  background-image: url("../assets/checkbox-hover.svg");
-  opacity: 1 !important;
-  scale: 1.2;
-  transition: scale 0.2s ease-in-out;
-}
 
 /* 選中狀態顯示藍色圓圈帶白色勾選 */
 .select-checkbox:checked {
@@ -251,15 +353,25 @@ const clearAllSelections = () => {
 }
 
 /* 當有任何任務被選中時，所有的 checkbox 都會顯示 */
+.task-item:hover .select-checkbox,
 .task-list.has-selected .select-checkbox {
   opacity: 1 !important;
 }
 
-/* 選擇框狀態與交互效果 */
-.select-checkbox:hover,
-.task-list.has-selected .preview-container:hover .select-checkbox {
+/* 當 task-item 有 shifted 類時，checkbox 顯示 hover 狀態 */
+.task-item.shifted .checkbox-wrapper .select-checkbox {
   background-image: url("../assets/checkbox-hover.svg");
   opacity: 1 !important;
+}
+
+/* Checkbox狀態與交互效果 */
+.select-checkbox:hover,
+.task-list.has-selected .task-item:hover .select-checkbox,
+.task-list.shiftOn .task-item:hover .select-checkbox {
+  background-image: url("../assets/checkbox-hover.svg");
+  opacity: 1 !important;
+  scale: 1.2;
+  transition: scale 0.2s ease-in-out;
 }
 
 .preview-container:hover .select-checkbox {
@@ -269,106 +381,249 @@ const clearAllSelections = () => {
 /* 任務詳情與操作區域 */
 .task-details {
   flex-grow: 1;
+  flex-shrink: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  justify-content: space-around;
+  /* 調整為 space-around 使檔名和操作上下分布更均勻 */
+  min-width: 0;
+  max-width: calc(100% - 220px);
+  /* 調整最大寬度以容納預覽和狀態 */
+  height: 100%;
+  gap: 4px;
+  /* 減少 gap */
+  padding: 5px 0;
+  /* 增加上下 padding */
+  overflow: hidden;
+  /* margin-right: -10px; */
+  /* 移除負邊距 */
 }
 
 .task-filename {
-  font-weight: bold;
+  font-weight: 600;
   font-size: 14px;
+  white-space: nowrap;
+  /* 防止檔名換行 */
+  overflow: hidden;
+  /* 隱藏超出部分 */
+  text-overflow: ellipsis;
+  /* 超出部分以省略號顯示 */
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  line-height: 1.3;
+  /* 調整行高 */
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  padding-right: 5px;
+  /* 減少右側 padding */
 }
 
 .task-actions {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 10px;
+  flex-wrap: nowrap;
+  /* 防止按鈕換行 */
+  min-width: 0;
+  /* 允許收縮但保持內容不超出 */
+}
+
+.custom-select-wrapper {
+  position: relative;
+  width: 130px;
+  /* 調整下拉選單寬度 */
+  min-width: 110px;
+  flex-shrink: 1;
+  margin-right: 5px;
+  /* 添加右側間距 */
 }
 
 .render-select {
-  padding: 3px 5px;
+  width: 100%;
+  padding: 8px 30px 8px 10px;
   font-size: 12px;
-  max-width: 100px;
+  border: 1px solid #333;
+  background-color: #242424;
+  color: #fff;
+  border-radius: 4px;
+  appearance: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.render-select:hover {
+  border-color: #666;
+}
+
+.render-select:focus {
+  outline: none;
+  border-color: #3182ce;
+  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
+}
+
+.render-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+  background-image: url("../assets/arrow-down.svg");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: invert(1);
 }
 
 .settings-button {
-  padding: 2px 8px;
-  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: none;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.settings-button img {
+  width: 16px;
+  height: 16px;
+  filter: invert(1);
+}
+
+.settings-button:hover {
+  background-color: #3a3a3a;
 }
 
 /* 任務狀態樣式 */
 .task-status {
   flex-shrink: 0;
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  /* 狀態 badge 靠右對齊 */
+  height: 100%;
+  /* margin-right: 10px; */
+  /* 移除固定右邊距，由父容器 padding 控制 */
+  align-self: center;
+  position: relative;
+  width: 100px;
+  /* 給狀態一個固定寬度 */
+  /* 使用 calc() 和百分比單位使 padding-right 隨視窗寬度等比例調整 */
+  padding-right: calc(1% + 5px);
+  box-sizing: border-box;
+  /* 確保 padding 不會增加總寬度 */
 }
 
 .status-badge {
-  padding: 3px 8px;
+  padding: 6px 10px;
+  /* 調整 padding */
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
   color: white;
-  min-width: 70px;
+  min-width: 80px;
+  /* 調整最小寬度 */
+  max-width: 100%;
+  /* badge 最大寬度為其容器寬度 */
+  height: 26px;
+  /* 調整高度 */
   text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-sizing: border-box;
 }
 
 /* 不同狀態的顏色 */
 .status-preparing {
-  background-color: #f0ad4e;
-  /* 橙色 */
+  background-color: #f39c12;
+  /* 增強橙色 */
 }
 
 .status-ready {
-  background-color: #5bc0de;
-  /* 藍色 */
+  background-color: #3498db;
+  /* 增強藍色 */
 }
 
 .status-queued {
-  background-color: #9370db;
-  /* 紫色 */
+  background-color: #9b59b6;
+  /* 增強紫色 */
 }
 
 .status-rendering {
-  background-color: #ff6347;
-  /* 番茄紅 */
+  background-color: #e74c3c;
+  /* 增強紅色 */
 }
 
 .status-done {
-  background-color: #5cb85c;
-  /* 綠色 */
+  background-color: #2ecc71;
+  /* 增強綠色 */
 }
 
-/* 取消選取按鈕樣式 */
-.clear-selection-wrapper {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 100;
-}
+/* 取消選取按鈕已移至 MainView.vue 中的訊息欄 */
 
-.clear-selection-button {
-  background-color: #ff6347;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 14px;
-  font-weight: bold;
+/* 空狀態樣式 */
+.empty-state {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+  height: 100%;
+  min-height: 300px;
+  color: #888;
+  text-align: center;
+  flex: 1;
+  /* 確保空狀態填充整個容器 */
 }
 
-.clear-selection-button:hover {
-  background-color: #e74c3c;
-  transform: scale(1.1);
+.empty-icon {
+  margin-bottom: 20px;
+  opacity: 0.6;
+  animation: pulse 2s infinite ease-in-out;
 }
 
-.clear-selection-button:active {
-  transform: scale(0.95);
+@keyframes pulse {
+  0% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.empty-icon svg {
+  width: 80px;
+  height: 80px;
+  stroke: #666;
+}
+
+.empty-state p {
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0;
+  color: #999;
+  letter-spacing: 0.5px;
 }
 </style>

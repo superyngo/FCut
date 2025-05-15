@@ -23,28 +23,31 @@
 │   ├── components
 │   │   ├── AppModals.vue
 │   │   ├── MenuOptions.vue
+│   │   ├── SettingControl.vue
 │   │   ├── TaskList.vue
 │   │   ├── TaskSettingsForm.vue
 │   │   └── TopBar.vue
+│   ├── examples
 │   ├── main.ts
 │   ├── models
 │   │   ├── BaseModel.ts
 │   │   ├── elements.ts
-│   │   ├── tasks.ts
-│   │   └── test.ts
+│   │   └── tasks.ts
 │   ├── services
 │   │   └── pywebview.ts
 │   ├── stores
 │   │   ├── archived
 │   │   │   ├── keyStore.ts
 │   │   │   └── mouseXY.ts
+│   │   ├── piniaInstance.ts
 │   │   └── stores.ts
 │   ├── style.css
 │   ├── utils
+│   │   ├── common.ts
 │   │   ├── keyEvents.ts
 │   │   ├── logger.ts
 │   │   ├── mouseEvents.ts
-│   │   └── proxy.ts
+│   │   └── reflects.ts
 │   ├── views
 │   │   └── MainView.vue
 │   └── vite-env.d.ts
@@ -58,6 +61,9 @@
 ```
 
 ## 函式清單
+
+### src\models\elements.ts
+- **createCutCell()**
 
 ### src\services\pywebview.ts
 - **waitForPyWebviewApi(timeout = 3000)**

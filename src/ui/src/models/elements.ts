@@ -6,9 +6,8 @@ class BaseElementData extends BaseClass {
   type: string = "BaseElementData";
   id: string = crypto.randomUUID();
   label: string | ((...args: any[]) => string) = "";
+  title?: string | ((...args: any[]) => string);
   value: string | number = "";
-  tooltip: string | ((...args: any[]) => string) = "";
-  paretnt: AllBaseElementsData = [];
 
   // 處理序列化，轉換方法為字符串標識
   toJSON(): Record<string, any> {
@@ -32,7 +31,6 @@ export function initElementsData(
   elementsData: AllBaseElementsData
 ): AllBaseElementsData {
   return elementsData.map((elementData) => {
-    // elementData.paretnt = elementsData;
     if (
       allBaseElementsData.includes(
         elementData.constructor as
@@ -105,18 +103,21 @@ export class Button extends BaseElementData {
   action?: (...args: any[]) => any;
   visible: boolean | ((...args: any[]) => boolean) = true;
   disabled: boolean | ((...args: any[]) => boolean) = false;
-  constructor(data: {
-    id?: string;
-    label: string | ((...args: any[]) => string);
-    tooltip?: string | ((...args: any[]) => string);
-    icon?: string;
-    action?: string | ((...args: any[]) => any);
-    visible?: boolean | ((...args: any[]) => boolean);
-    disabled?: boolean | ((...args: any[]) => boolean);
-    [_: string]: any;
-  }) {
+  constructor(
+    data: {
+      id?: string;
+      label: string | ((...args: any[]) => string);
+      title?: string | ((...args: any[]) => string);
+      icon?: string;
+      action?: string | ((...args: any[]) => any);
+      visible?: boolean | ((...args: any[]) => boolean);
+      disabled?: boolean | ((...args: any[]) => boolean);
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
     super();
-    registerMapMethods(data);
+    register && registerMapMethods(data);
     this._init(data);
   }
 }
@@ -126,33 +127,39 @@ export class InputRange extends BaseElementData {
   min: number = 1;
   max: number = 100;
   step: number = 1;
-  constructor(data: {
-    id?: string;
-    label?: string | ((...args: any[]) => string);
-    value?: string | number;
-    tooltip?: string | ((...args: any[]) => string);
-    min?: number;
-    max?: number;
-    step?: number;
-    [_: string]: any;
-  }) {
+  constructor(
+    data: {
+      id?: string;
+      label?: string | ((...args: any[]) => string);
+      value?: string | number;
+      title?: string | ((...args: any[]) => string);
+      min?: number;
+      max?: number;
+      step?: number;
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
     super();
-    registerMapMethods(data);
+    register && registerMapMethods(data);
     this._init(data);
   }
 }
 
 export class InputText extends BaseElementData {
   type: string = "InputText";
-  constructor(data: {
-    id?: string;
-    label?: string | ((...args: any[]) => string);
-    value?: string | number;
-    tooltip?: string | ((...args: any[]) => string);
-    [_: string]: any;
-  }) {
+  constructor(
+    data: {
+      id?: string;
+      label?: string | ((...args: any[]) => string);
+      value?: string | number;
+      title?: string | ((...args: any[]) => string);
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
     super();
-    registerMapMethods(data);
+    register && registerMapMethods(data);
     this._init(data);
   }
 }
@@ -165,14 +172,17 @@ type Option = {
 export class Selection extends BaseElementData {
   type: string = "Selection";
   options: Option[] = [];
-  constructor(data: {
-    id?: string;
-    label?: string | ((...args: any[]) => string);
-    value?: string | number;
-    tooltip?: string | ((...args: any[]) => string);
-    options?: Option[];
-    [_: string]: any;
-  }) {
+  constructor(
+    data: {
+      id?: string;
+      label?: string | ((...args: any[]) => string);
+      value?: string | number;
+      title?: string | ((...args: any[]) => string);
+      options?: Option[];
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
     super();
     registerMapMethods(data);
     this._init(data);
@@ -182,28 +192,36 @@ export class Selection extends BaseElementData {
 export class Container extends BaseElementData {
   type: string = "Container";
   children: AllBaseElementsData = [];
-  constructor(data: {
-    id?: string;
-    children?: AllBaseElementsData;
-    [_: string]: any;
-  }) {
+  constructor(
+    data: {
+      id?: string;
+      children?: AllBaseElementsData;
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
     let initedElements = initElementsData(data.children || []);
 
     super();
+    register && registerMapMethods(data);
     this._init({ ...data, children: initedElements });
   }
 }
 
+// template
 export function createCutCell() {
   return new Container({
     children: [
       new InputText({ label: "Start", value: "00:00:000" }),
       new InputText({ label: "End", value: "00:00:000" }),
-      new Button({
-        label: "Remove",
-        // 使用註冊的方法
-        action: "call_removeCutCell",
-      }),
+      new Button(
+        {
+          label: "Remove",
+          // 使用註冊的方法
+          action: "call_removeCutCell",
+        },
+        true
+      ),
     ],
   });
 }

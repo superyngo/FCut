@@ -1,20 +1,32 @@
 <template>
   <div class="top-bar">
-    <!-- Iterate over Map values -->
-    <button v-for="button in buttons.values()" :key="button.id" :class="{
-      hidden:
-        typeof button.visible === 'boolean'
-          ? !button.visible
-          : !button.visible(),
-    }" @click="button.action" class="icon-button" :disabled="typeof button.disabled === 'boolean'
-      ? button.disabled
-      : button.disabled()
-      ">
-      <i :class="button.icon"></i>
-      <span>{{
-        typeof button.label === "string" ? button.label : button.label()
-      }}</span>
-    </button>
+    <!-- 左側菜單 -->
+    <div class="left-section">
+      <button @click="toggleMenu" class="icon-button" title="菜單">
+        <img src="../assets/menu-hamburger.svg" alt="菜單" />
+      </button>
+    </div>
+
+    <!-- 右側操作區 -->
+    <div class="right-section">
+      <button @click="addTask" class="icon-button" title="新增檔案">
+        <img src="../assets/add-icon.svg" alt="新增" />
+        <span>新增</span>
+      </button>
+
+      <button @click="startRender" class="icon-button render-button"
+        :disabled="tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0"
+        :title="tasksStore.hasTasksSelected ? '開始處理選取的檔案' : '開始處理所有檔案'">
+        <img src="../assets/render-icon.svg" alt="處理" />
+        <span>{{ tasksStore.hasTasksSelected ? "Render" : "Render All" }}</span>
+      </button>
+
+      <button @click="tasksStore.hasTasksSelected ? deleteTask() : clearTasks()" class="icon-button remove-button"
+        :title="tasksStore.hasTasksSelected ? '刪除選取' : '刪除所有'">
+        <img src="../assets/trash-icon.svg" alt="刪除" />
+        <span>{{ tasksStore.hasTasksSelected ? "Remove" : "Clear" }}</span>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -57,12 +69,10 @@ const deleteTask = () => {
   }
 };
 
-const clearCompletedTasks = () => {
-  const doneTasks = [...tasksStore.doneTasks];
-  for (const task of doneTasks) {
-    logger.debug(`Deleting done task: ${task.id}`);
-    tasksStore.removeTask(task);
-  }
+const clearTasks = () => {
+  tasksStore.tasks = []
+  tasksStore.selectedTaskID = null
+  tasksStore.lastSelectedIndex = -1
 };
 
 const startRender = async () => {
@@ -115,7 +125,7 @@ const buttonsData = new Map<string, Button>([
       label: function hasTasksSelectedToLabel() { return (tasksStore.hasTasksSelected ? "Remove" : "Clean") },
       icon: "fas fa-trash",
       action: function hasTasksSelectedToAction() {
-        return tasksStore.hasTasksSelected ? deleteTask() : clearCompletedTasks()
+        return tasksStore.hasTasksSelected ? deleteTask() : clearTasks()
       }
     }),
   ],
@@ -131,12 +141,33 @@ const buttons = ref<Map<string, Button>>(buttonsData);
 .top-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background-color: #171717;
+  border-bottom: 1px solid #333;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  height: 60px;
+  box-sizing: border-box;
+  max-width: 100vw;
+  /* 確保不會超出視窗寬度 */
+  overflow: hidden;
+  /* 防止內容溢出 */
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
   gap: 15px;
-  padding: 10px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  position: relative;
 }
 
 .icon-button {
@@ -144,30 +175,84 @@ const buttons = ref<Map<string, Button>>(buttonsData);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: none;
-  border: none;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px 12px;
+  /* 增加上下間距 */
   cursor: pointer;
-  color: #5f6368;
-  font-size: 14px;
+  color: #ffffff;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  height: 60px;
+  /* 統一寬度 */
+  width: 85px;
 }
 
-.icon-button i {
-  font-size: 20px;
+.icon-button img {
+  width: 20px;
+  height: 20px;
   margin-bottom: 5px;
+  filter: invert(1);
+  /* 將 SVG 轉為白色 */
+  transition: transform 0.2s;
 }
 
 .icon-button:hover {
-  color: #1a73e8;
+  background-color: #3a3a3a;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+.icon-button:hover img {
+  transform: scale(1.1);
+}
+
+.icon-button:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* 
+.menu-button {
+  width: 85px;
+  background: none;
+  border: none;
+  min-width: auto;
+  width: auto;
+}
+
+.menu-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+} */
+
+.render-button {
+  background-color: #2c5282;
+  border-color: #2a4365;
+  font-weight: 500;
+}
+
+.render-button:hover {
+  background-color: #3182ce;
+}
+
+.remove-button {
+  background-color: #9b2c2c;
+  border-color: #822727;
+  font-weight: 500;
+}
+
+.remove-button:hover {
+  background-color: #e53e3e;
 }
 
 .icon-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  color: #9aa0a6;
-}
-
-.icon-button:disabled:hover {
-  color: #9aa0a6;
+  background-color: #333333 !important;
+  transform: none;
+  box-shadow: none;
 }
 
 .hidden {
