@@ -21,9 +21,8 @@
           <div class="task-actions">
             <div class="custom-select-wrapper">
               <select v-model="task.renderMethod" class="render-select" @change="change_settings(task as Task)"
-                :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
-                  task.status
-                )">
+                :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status) || taskStore.isShiftOn"
+                @click.stop>
                 <option value="" disabled selected>選擇處理模式</option>
                 <option v-for="method of ACTIONS" :key="method" :value="method">
                   {{ method }}
@@ -31,7 +30,8 @@
               </select>
               <div class="select-arrow"></div>
             </div>
-            <button @click="openSettings(task as Task)" class="settings-button" title="更多設定">
+            <button @click.stop="openSettings(task as Task)" class="settings-button" title="更多設定"
+              :disabled="taskStore.isShiftOn">
               <img src="../assets/settings-icon.svg" alt="設定" />
             </button>
           </div>
@@ -62,15 +62,17 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { useTasksBoundEvents, useModalStore } from "../stores/stores";
+import { useTasksBoundEvents, useModalStore, useCallBackRedistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
+import { onKeys } from "../utils/keyEvents"; // 引入 on_shift 工具函數
 
 const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
+const callBackRedistry = useCallBackRedistry()
 
 const change_settings = (task: Task) => {
-  if (taskStore.hasTasksSelected) {
+  if (task.selected) {
     taskStore.selectedTasks.forEach((selectedTask) => {
       if (
         [TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(
@@ -93,6 +95,7 @@ const openSettings = (task: Task) => {
   taskStore.selectedTaskID = task.id;
   taskStore.tempTask = new Task(task);
   modalStore.openTaskSettings(task);
+  modalStore.modalEvents.push(onKeys(callBackRedistry.eventsProxy.TaskSettingsForm))
 };
 
 const changeSelected = (task: Task, index: number) => {
@@ -121,7 +124,8 @@ const toggleTaskSelection = (
     taskStore.shiftHoverRange.forEach((index: number) => {
       taskStore.tasks[index].selected = true;
     });
-  } taskStore.lastSelectedIndex = task.selected ? index : -1;
+  }
+  taskStore.lastSelectedIndex = task.selected ? index : -1;
   taskStore.saveTasks();
 };
 </script>
@@ -190,11 +194,12 @@ const toggleTaskSelection = (
   align-items: center;
   padding: 10px 0;
   /* 調整上下 padding，左右 padding 由父元素控制 */
-  border-bottom: 1px solid #333;
+  border: 2px solid transparent;
+  border-bottom: 2px solid #333;
   gap: calc(1.5% + 8px);
   /* 動態調整元素間間距，隨視窗寬度變化 */
   transition: all 0.2s ease;
-  height: 90px;
+  height: 100px;
   /* 增加任務行高度 */
   box-sizing: border-box;
   position: relative;
@@ -206,50 +211,34 @@ const toggleTaskSelection = (
 }
 
 .task-item:has(.select-checkbox:checked) {
-  border: 5px solid #05325b;
-  border-bottom-width: 0;
-  margin-bottom: 0;
+  border: 2px solid #3394ee;
+  border-bottom-color: transparent;
+  /* margin-bottom: 0; */
 }
 
 /* 如果下一個兄弟元素也被選中，則當前元素不需要頂部邊框 */
 .task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:checked) {
-  border-top: none;
+  border-top-color: transparent;
 }
 
 /* 最後一個被選中的項目需要底部邊框 */
 .task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:not(:checked)) {
-  border-top: 5px solid #05325b;
-}
-
-/* 確保選中項目之間沒有間隙 */
-.task-item:has(.select-checkbox:checked):has(+ .task-item:has(.select-checkbox:checked)) {
-  padding-bottom: 0;
+  border-top: 2px solid #3394ee;
 }
 
 .task-item-ul>.task-item:last-child:has(.select-checkbox:checked) {
-  border-bottom-width: 5px;
+  border-bottom-color: #3394ee;
 
-}
-
-/* 確保選中項目之間沒有間隙 - 下一個選中的項目 */
-.task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:checked) {
-  padding-top: 0;
 }
 
 
 .task-item:hover,
 .shifted {
   background-color: #242424;
-  transform: translateY(-1px);
-  /* 輕微上移效果 */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
   /* 懸停時增加陰影 */
 }
 
-.task-item:active {
-  transform: translateY(0);
-  /* 點擊時恢復位置 */
-}
 
 .task-item:last-child {
   border-bottom: none;
@@ -495,6 +484,12 @@ const toggleTaskSelection = (
   transition: background-color 0.2s;
 }
 
+.settings-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .settings-button img {
   width: 16px;
   height: 16px;
@@ -587,6 +582,7 @@ const toggleTaskSelection = (
   justify-content: center;
   height: 100%;
   min-height: 300px;
+  width: 500px;
   color: #888;
   text-align: center;
   flex: 1;
@@ -625,5 +621,14 @@ const toggleTaskSelection = (
   margin: 0;
   color: #999;
   letter-spacing: 0.5px;
+}
+
+/* 當Shift鍵按下時，調整滑鼠游標樣式，表示整個任務項是可選擇的 */
+.task-list.shiftOn .task-item {
+  cursor: pointer;
+}
+
+.task-list.shiftOn .task-details {
+  pointer-events: none;
 }
 </style>

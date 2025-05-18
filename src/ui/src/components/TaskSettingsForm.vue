@@ -42,13 +42,13 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
-import { useTasksBoundEvents } from "../stores/stores";
+import { useTasks } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { InputRange, InputText, Selection, Button, Container } from "../models/elements";
 import SettingControl from "./SettingControl.vue";
 
-const taskStore = useTasksBoundEvents();
+const taskStore = useTasks();
 const { tempTask } = storeToRefs(taskStore);
 
 const emit = defineEmits(["close"]);
@@ -72,7 +72,7 @@ const saveSettings = () => {
   let tempSettings = tempTask.value!.settings!
 
   if (
-    taskStore.hasTasksSelected &&
+    tempTask.value!.selected &&
     taskStore.selectedTasks.length > 1 &&
     confirm("是否要將相同的設置應用於所有選中的任務？")
   ) {

@@ -66,6 +66,134 @@ export function useAppStateInit() {
   return appState;
 }
 
+export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
+  const tasksStore = useTasks();
+
+  // 清理函數，用於移除事件監聽器
+  let cleaner = ref<(() => void)[]>([]);
+  let mouse_events = ref<(() => void)[]>([]);
+
+  // 找出滑鼠最近的任務索引
+  const findNearestTaskToMouse = ref((event: any) => {
+    const taskItems = document.querySelectorAll(".task-item");
+    let closestTask = -1;
+    let minDistance = Infinity;
+
+    taskItems.forEach((taskItem, index) => {
+      const rect = taskItem.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      // 計算滑鼠與任務中心點的距離
+      const distX = centerX - (event || coordinate()).clientX;
+      const distY = centerY - (event || coordinate()).clientY;
+      const distance = Math.sqrt(distX * distX + distY * distY);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestTask = index;
+      }
+    });
+
+    tasksStore.mouseNearestIndex = closestTask;
+  });
+
+  // 創建 shift 鍵按下和釋放的回調函數
+  const onShiftPress = ref(() => {
+    tasksStore.isShiftOn = true;
+    findNearestTaskToMouse.value(null);
+    mouse_events.value.push(
+      onMousemove({
+        callbacks: [callbackProxy.value["findNearestTaskToMouse"]],
+      })
+    );
+  });
+
+  const onShiftRelease = ref(() => {
+    tasksStore.isShiftOn = false;
+    tasksStore.mouseNearestIndex = -1;
+    if (mouse_events.value) {
+      mouse_events.value.forEach((event) => event());
+      mouse_events.value = [];
+    }
+  });
+
+  const callbackProxy = ref({
+    findNearestTaskToMouse: findNearestTaskToMouse.value,
+    onShiftPress: onShiftPress.value,
+    onShiftRelease: onShiftRelease.value,
+    select_all_tasks: tasksStore.select_all_tasks,
+    unselect_all_tasks: tasksStore.unselect_all_tasks,
+    clearAllTasks: tasksStore.clearAllTasks,
+    stopPropagation: (event: KeyboardEvent) => {
+      event.stopPropagation();
+    },
+  });
+
+  const eventsProxy = ref({
+    taskLists: {
+      Shift: [
+        {
+          type: "onPress" as "onPress",
+          callback: callbackProxy.value["onShiftPress"],
+        },
+        {
+          type: "onRelease" as "onRelease",
+          callback: callbackProxy.value["onShiftRelease"],
+        },
+      ],
+      a: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.select_all_tasks,
+        modifiers: [MODIFIER_KEYS.Control],
+      },
+      Escape: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.unselect_all_tasks,
+      },
+      Delete: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.clearAllTasks,
+      },
+    },
+    TaskSettingsForm: {
+      Shift: [
+        {
+          type: "onPress" as "onPress",
+          callback: callbackProxy.value.stopPropagation,
+        },
+        {
+          type: "onRelease" as "onRelease",
+          callback: callbackProxy.value.stopPropagation,
+        },
+      ],
+      a: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.stopPropagation,
+        modifiers: [MODIFIER_KEYS.Control],
+      },
+      Escape: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.stopPropagation,
+      },
+      Delete: {
+        type: "onPress" as "onPress",
+        callback: callbackProxy.value.stopPropagation,
+      },
+    },
+  });
+
+  return {
+    callbackProxy,
+    eventsProxy,
+    cleaner,
+    mouse_events,
+    onShiftPress,
+    onShiftRelease,
+    findNearestTaskToMouse,
+  };
+});
+
 // 使用組合式 API 定義 Tasks store
 export const useTasks = defineStore(crypto.randomUUID(), () => {
   // State
@@ -191,6 +319,15 @@ export const useTasks = defineStore(crypto.randomUUID(), () => {
     }
   }
 
+  function clearAllTasks() {
+    let _selectedTasks = [...selectedTasks.value];
+    _selectedTasks.forEach((task) => {
+      removeTask(task);
+    });
+    selectedTaskID.value = null;
+    lastSelectedIndex.value = -1;
+  }
+
   function modifyTask(id: string, taskData: Omit<Task, "id" | "videoPath">) {
     const index = tasks.value.findIndex((task) => task.id === id);
     if (index !== -1) {
@@ -254,6 +391,7 @@ export const useTasks = defineStore(crypto.randomUUID(), () => {
     saveTasks,
     addTask,
     removeTask,
+    clearAllTasks,
     modifyTask,
     clearTasksCache,
     select_all_tasks,
@@ -262,88 +400,15 @@ export const useTasks = defineStore(crypto.randomUUID(), () => {
 });
 const isUseTasksStarted = ref(false);
 export function useTasksBoundEvents() {
-  const tasks_state = useTasks();
-  // 清理函數，用於移除事件監聽器
-  let cleaner: (() => void)[] = [];
-  let mouse_events: (() => void)[] = [];
-
-  // 找出滑鼠最近的任務索引
-  const findNearestTaskToMouse = (event: any) => {
-    const taskItems = document.querySelectorAll(".task-item");
-    let closestTask = -1;
-    let minDistance = Infinity;
-
-    taskItems.forEach((taskItem, index) => {
-      const rect = taskItem.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-
-      // 計算滑鼠與任務中心點的距離
-      const distX = centerX - (event || coordinate()).clientX;
-      const distY = centerY - (event || coordinate()).clientY;
-      const distance = Math.sqrt(distX * distX + distY * distY);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestTask = index;
-      }
-    });
-
-    tasks_state.mouseNearestIndex = closestTask;
-  };
-
-  // 創建 shift 鍵按下和釋放的回調函數
-  const onShiftPress = () => {
-    tasks_state.isShiftOn = true;
-    findNearestTaskToMouse(null);
-    mouse_events.push(
-      onMousemove({
-        callbacks: [(event: any) => findNearestTaskToMouse(event)],
-      })
-    );
-  };
-
-  const onShiftRelease = () => {
-    tasks_state.isShiftOn = false;
-    tasks_state.mouseNearestIndex = -1;
-    if (mouse_events) {
-      mouse_events.forEach((event) => event());
-      mouse_events = [];
-    }
-  };
+  const tasksStore = useTasks();
+  const callbackRegistry = useCallBackRedistry();
 
   // 組件掛載時設置事件監聽
   onMounted(() => {
     if (!isUseTasksStarted.value) {
-      tasks_state.initTasks();
-      cleaner.push(
-        onKeys({
-          Shift: [
-            { type: "onPress", callback: onShiftPress },
-            { type: "onRelease", callback: onShiftRelease },
-          ],
-          a: {
-            type: "onPress",
-            callback: () => {
-              tasks_state.select_all_tasks();
-            },
-            modifiers: [MODIFIER_KEYS.Control],
-          },
-          Escape: {
-            type: "onPress",
-            callback: () => {
-              tasks_state.unselect_all_tasks();
-            },
-          },
-          Delete: {
-            type: "onPress",
-            callback: () => {
-              tasks_state.selectedTasks.forEach((task) => {
-                tasks_state.removeTask(task);
-              });
-            },
-          },
-        })
+      tasksStore.initTasks();
+      callbackRegistry.cleaner.push(
+        onKeys(callbackRegistry.eventsProxy.taskLists)
       );
       isUseTasksStarted.value = true;
     }
@@ -354,15 +419,15 @@ export function useTasksBoundEvents() {
     isUseTasksStarted.value = false;
 
     // 清理事件監聽
-    cleaner.forEach((cleanup) => cleanup());
-    cleaner = [];
+    callbackRegistry.cleaner.forEach((cleanup) => cleanup());
+    callbackRegistry.cleaner = [];
   });
 
-  return tasks_state;
+  return tasksStore;
 }
 
 // 使用組合式 API 定義 Modal store
-export const useModalStore = defineStore("modalStore", () => {
+export const useModalStore = defineStore(crypto.randomUUID(), () => {
   // State
   const activeModals = ref({
     taskSettings: {
@@ -373,6 +438,7 @@ export const useModalStore = defineStore("modalStore", () => {
     },
     // 可以在此添加其他模態框的狀態
   });
+  const modalEvents = ref<(() => void)[]>([]);
 
   // Actions
   // Task Settings Modal
@@ -407,6 +473,7 @@ export const useModalStore = defineStore("modalStore", () => {
 
   return {
     activeModals,
+    modalEvents,
     openTaskSettings,
     closeTaskSettings,
     openMenu,

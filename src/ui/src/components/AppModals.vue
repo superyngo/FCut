@@ -39,15 +39,17 @@
 </template>
 
 <script setup lang="ts">
-import { useModalStore, useTasksBoundEvents } from "../stores/stores";
+import { useModalStore, useTasks } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
 const modalStore = useModalStore();
-const taskStore = useTasksBoundEvents();
+const taskStore = useTasks();
 
 const closeTaskSettings = () => {
   taskStore.selectedTaskID = null; // 清除選擇的任務 ID
   taskStore.tempTask = null; // 清除臨時任務
   modalStore.activeModals.taskSettings.isOpen = false
+  modalStore.modalEvents.forEach((cleanup) => cleanup())
+  modalStore.modalEvents = []
 };
 </script>
 

@@ -8,7 +8,7 @@ export enum MODIFIER_KEYS {
 }
 
 // --- 新增類型定義 ---
-type CallbackFunction = () => any;
+type CallbackFunction = (event: any) => any;
 
 // 擴展的回調配置
 type KeyCallbackConfig = {
@@ -113,7 +113,7 @@ const handleKeyDown = (event: KeyboardEvent) => {
     // 執行回調 (因為已經統一轉換為數組，所以只需處理數組情況)
     try {
       (config._wrappedCallback as CallbackFunction[]).forEach((callback) => {
-        callback();
+        callback(event);
       });
     } catch (error) {
       logger.error(`執行 ${key} 按壓回調時發生錯誤: ${error}`);
@@ -145,7 +145,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
     // 執行回調 (因為已經統一轉換為數組，所以只需處理數組情況)
     try {
       (config._wrappedCallback as CallbackFunction[]).forEach((callback) => {
-        callback();
+        callback(event);
       });
     } catch (error) {
       logger.error(`執行 ${key} 釋放回調時發生錯誤: ${error}`);

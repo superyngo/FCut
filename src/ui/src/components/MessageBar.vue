@@ -3,6 +3,7 @@
         <!-- 取消選取按鈕放置在訊息欄中 -->
         <div v-if="taskStore.hasTasksSelected" class="clear-selection-wrapper">
             <button @click="clearAllSelections" class="clear-selection-button" title="取消所有選取">
+                <img src="../assets/cancel-all.svg" alt=" 刪除" />
                 <span class="visually-hidden">取消所有選取</span>
             </button>
         </div>
@@ -77,7 +78,6 @@ const clearAllSelections = () => {
 }
 
 .clear-selection-button {
-    background-image: url("../assets/cancel-all.svg");
     background-size: contain;
     background-position: center;
     background-repeat: no-repeat;
@@ -87,10 +87,15 @@ const clearAllSelections = () => {
     height: 28px;
     font-size: 0;
     /* 隱藏文字 */
+
     cursor: pointer;
     transition: transform 0.2s ease;
     outline: none;
     filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.2));
+}
+
+.clear-selection-button img {
+    filter: invert(1);
 }
 
 .clear-selection-button:hover {

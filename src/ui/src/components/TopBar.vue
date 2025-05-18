@@ -21,18 +21,16 @@
         <span>{{ tasksStore.hasTasksSelected ? "Render" : "Render All" }}</span>
       </button>
 
-      <button @click="tasksStore.hasTasksSelected ? deleteTask() : clearTasks()" class="icon-button remove-button"
+      <button @click="tasksStore.hasTasksSelected ? deleteTask() : clearDoneTasks()" class="icon-button remove-button"
         :title="tasksStore.hasTasksSelected ? '刪除選取' : '刪除所有'">
         <img src="../assets/trash-icon.svg" alt="刪除" />
-        <span>{{ tasksStore.hasTasksSelected ? "Remove" : "Clear" }}</span>
+        <span>{{ tasksStore.hasTasksSelected ? "Remove" : "Clear Done" }}</span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { Button } from "../models/elements";
 import { logger } from "../utils/logger";
 import { useTasksBoundEvents, useModalStore } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
@@ -69,8 +67,12 @@ const deleteTask = () => {
   }
 };
 
-const clearTasks = () => {
-  tasksStore.tasks = []
+const clearDoneTasks = () => {
+  const doneTasks = [...tasksStore.doneTasks]
+  doneTasks.forEach((task) => {
+    tasksStore.removeTask(task);
+    logger.debug(`Clearing done task: ${task.id}`);
+  });
   tasksStore.selectedTaskID = null
   tasksStore.lastSelectedIndex = -1
 };
@@ -92,47 +94,47 @@ const startRender = async () => {
   }
 };
 
-// Use a Map for buttonsData
-const buttonsData = new Map<string, Button>([
-  [
-    "Menu",
-    new Button({
-      label: "Menu",
-      icon: "fas fa-bars",
-      action: toggleMenu
-    }),
-  ],
-  [
-    "Add",
-    new Button({
-      label: "➕",
-      icon: "fas fa-plus",
-      action: addTask
-    }),
-  ],
-  [
-    "Render",
-    new Button({
-      label: "Render",
-      icon: "fas fa-trash",
-      action: startRender,
-      disabled: function renderButtonDisableHandle() { return tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0 }
-    }),
-  ],
-  [
-    "Remove",
-    new Button({
-      label: function hasTasksSelectedToLabel() { return (tasksStore.hasTasksSelected ? "Remove" : "Clean") },
-      icon: "fas fa-trash",
-      action: function hasTasksSelectedToAction() {
-        return tasksStore.hasTasksSelected ? deleteTask() : clearTasks()
-      }
-    }),
-  ],
-]);
+// // Use a Map for buttonsData
+// const buttonsData = new Map<string, Button>([
+//   [
+//     "Menu",
+//     new Button({
+//       label: "Menu",
+//       icon: "fas fa-bars",
+//       action: toggleMenu
+//     }),
+//   ],
+//   [
+//     "Add",
+//     new Button({
+//       label: "➕",
+//       icon: "fas fa-plus",
+//       action: addTask
+//     }),
+//   ],
+//   [
+//     "Render",
+//     new Button({
+//       label: "Render",
+//       icon: "fas fa-trash",
+//       action: startRender,
+//       disabled: function renderButtonDisableHandle() { return tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0 }
+//     }),
+//   ],
+//   [
+//     "Remove",
+//     new Button({
+//       label: function hasTasksSelectedToLabel() { return (tasksStore.hasTasksSelected ? "Remove" : "Clean") },
+//       icon: "fas fa-trash",
+//       action: function hasTasksSelectedToAction() {
+//         return tasksStore.hasTasksSelected ? deleteTask() : clearDoneTasks()
+//       }
+//     }),
+//   ],
+// ]);
 
-// Update the type of the buttons ref
-const buttons = ref<Map<string, Button>>(buttonsData);
+// // Update the type of the buttons ref
+// const buttons = ref<Map<string, Button>>(buttonsData);
 
 
 </script>
@@ -186,7 +188,7 @@ const buttons = ref<Map<string, Button>>(buttonsData);
   transition: all 0.2s ease;
   height: 60px;
   /* 統一寬度 */
-  width: 85px;
+  width: 90px;
 }
 
 .icon-button img {
