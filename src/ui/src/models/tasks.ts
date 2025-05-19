@@ -9,9 +9,6 @@ import {
   Container,
   createCutCell,
 } from "./elements";
-import { enumToOptions } from "../utils/common";
-import { logger } from "../utils/logger";
-import { methodRegistry } from "../models/elements";
 
 export enum ACTIONS {
   CUT = "CUT",

@@ -1,160 +1,92 @@
 <template>
-  <teleport to="body">
-    <!-- Menu Modal -->
-    <div v-if="modalStore.activeModals.menu.isOpen" class="modal-overlay" @click.self="modalStore.closeMenu()">
-      <div class="modal-content menu-modal">
-        <div class="modal-header">
-          <h3>選單</h3>
-          <button @click="modalStore.closeMenu()" class="close-button">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <!-- 選單內容將在這裡顯示 -->
-          <div class="menu-items">
-            <button class="menu-item">設定</button>
-            <button class="menu-item">關於</button>
-            <button class="menu-item">說明</button>
-          </div>
-        </div>
-      </div>
-    </div>
+  <!-- Menu Modal -->
+  <BaseModal :is-open="modalStore.activeModals.menu.isOpen" :title="modalStore.activeModals.menu.title"
+    modal-class="menu-modal" :content-style="modalStore.menuModalStyle" @close="modalStore.closeMenu()"
+    :close-on-overlay-click="true">
+    <MenuOptions />
+  </BaseModal>
 
-    <!-- Task Settings Modal -->
-    <div v-if="modalStore.activeModals.taskSettings.isOpen" class="modal-overlay"
-      @click.self="modalStore.closeTaskSettings()">
-      <div class="modal-content settings-modal">
-        <div class="modal-header">
-          <h3>任務設定</h3>
-          <button @click="modalStore.closeTaskSettings()" class="close-button">
-            &times;
-          </button>
-        </div>
-        <div class="modal-body">
-          <TaskSettingsForm v-if="taskStore.tempTask" @close="closeTaskSettings" />
-        </div>
-      </div>
-    </div>
-  </teleport>
+  <!-- Task Settings Modal -->
+  <BaseModal :is-open="modalStore.activeModals.taskSettings.isOpen" :title="modalStore.activeModals.taskSettings.title"
+    modal-class="settings-modal" :content-style="modalStore.settingsModalStyle" @close="closeTaskSettingsModal"
+    :close-on-overlay-click="true">
+    <TaskSettingsForm v-if="taskStore.tempTask" @close="closeTaskSettingsModal" />
+  </BaseModal>
+
+  <!-- Settings Page Modal -->
+  <BaseModal :is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
+    modal-class="page-modal" @close="modalStore.closeSettingsPage()" :close-on-overlay-click="true"
+    :show-back-button="true" @back-clicked="handlePageBackNavigation">
+    <SettingsPage />
+  </BaseModal>
+
+  <!-- About Page Modal -->
+  <BaseModal :is-open="modalStore.activeModals.aboutPage.isOpen" :title="modalStore.activeModals.aboutPage.title"
+    modal-class="page-modal" @close="modalStore.closeAboutPage()" :close-on-overlay-click="true"
+    :show-back-button="true" @back-clicked="handlePageBackNavigation">
+    <AboutPage />
+  </BaseModal>
+
+  <!-- Help Page Modal -->
+  <BaseModal :is-open="modalStore.activeModals.helpPage.isOpen" :title="modalStore.activeModals.helpPage.title"
+    modal-class="page-modal" @close="modalStore.closeHelpPage()" :close-on-overlay-click="true" :show-back-button="true"
+    @back-clicked="handlePageBackNavigation">
+    <HelpPage />
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
-import { useModalStore, useTasks } from "../stores/stores";
+import { useModalStore, useTasks, useCallBackRedistry } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
+import MenuOptions from "./MenuOptions.vue";
+import SettingsPage from "./pages/SettingsPage.vue";
+import AboutPage from "./pages/AboutPage.vue";
+import HelpPage from "./pages/HelpPage.vue";
+import BaseModal from "./BaseModal.vue"; // 新增 BaseModal 的引入
+
 const modalStore = useModalStore();
 const taskStore = useTasks();
+const callBackRedistry = useCallBackRedistry();
 
-const closeTaskSettings = () => {
-  taskStore.selectedTaskID = null; // 清除選擇的任務 ID
-  taskStore.tempTask = null; // 清除臨時任務
-  modalStore.activeModals.taskSettings.isOpen = false
-  modalStore.modalEvents.forEach((cleanup) => cleanup())
-  modalStore.modalEvents = []
+const closeTaskSettingsModal = () => {
+  modalStore.closeTaskSettings();
+  taskStore.selectedTaskID = null;
+  taskStore.tempTask = null;
+  callBackRedistry.registeredKeyEvents.forEach((keyEventHandle: any) => {
+    keyEventHandle.registeredConfigs.forEach((config: any) => {
+      if (config.swap && typeof config.swap === 'function') {
+        config.callback = config.swap(config.callback);
+      }
+    });
+  });
+};
+
+const handlePageBackNavigation = (event?: MouseEvent) => {
+  modalStore.openMenuAndCloseCurrentPage(event);
 };
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+/* 保留特定模態框的自定義樣式 */
+/* BaseModal 已經處理了 .modal-overlay, .modal-content, .modal-header, .modal-body 的通用樣式 */
+/* 如果 BaseModal 的樣式不足夠，可以在這裡覆蓋或添加 */
 
-.modal-content {
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  width: 90%;
-  max-width: 500px;
-  animation: modal-appear 0.3s ease;
-  display: flex;
-  flex-direction: column;
-}
+/* .settings-modal { */
+/* Task Settings Modal */
+/* max-width 來自 BaseModal props 或其內部樣式，如果需要特定於 AppModals 的覆蓋則保留 */
+/* } */
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #e0e0e0;
-}
+/* .menu-modal { */
+/* max-width 來自 BaseModal props 或其內部樣式 */
+/* position: absolute; */
+/* 如果 menuModalStyle 控制了 top/left 且 BaseModal 未處理 */
+/* } */
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #333;
-}
+/* .page-modal { */
+/* 用於 SettingsPage, AboutPage, HelpPage */
+/* max-width 來自 BaseModal props 或其內部樣式 */
+/* } */
 
-.close-button {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #555;
-  padding: 0;
-  line-height: 1;
-}
-
-.close-button:hover {
-  color: #000;
-}
-
-.modal-body {
-  padding: 16px;
-  overflow-y: auto;
-  max-height: 70vh;
-}
-
-/* 特定模態框的自定義樣式 */
-.settings-modal {
-  max-width: 600px;
-  /* 設定對話框可以更寬一些 */
-}
-
-.menu-modal {
-  max-width: 300px;
-  /* 選單對話框可以窄一些 */
-}
-
-.menu-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.menu-item {
-  color: #555;
-  padding: 12px;
-  text-align: left;
-  background: none;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.menu-item:hover {
-  background-color: #f0f0f0;
-}
-
-@keyframes modal-appear {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* 由於 BaseModal 內部有自己的動畫，這裡的 modal-appear 可能不再需要，或者需要協調 */
+/* @keyframes modal-appear { ... } */
 </style>

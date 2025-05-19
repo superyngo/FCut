@@ -30,7 +30,7 @@
               </select>
               <div class="select-arrow"></div>
             </div>
-            <button @click.stop="openSettings(task as Task)" class="settings-button" title="更多設定"
+            <button @click.stop="modalStore.openTaskSettings(task as Task)" class="settings-button" title="更多設定"
               :disabled="taskStore.isShiftOn">
               <img src="../assets/settings-icon.svg" alt="設定" />
             </button>
@@ -65,11 +65,9 @@ import { logger } from "../utils/logger";
 import { useTasksBoundEvents, useModalStore, useCallBackRedistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
-import { onKeys } from "../utils/keyEvents"; // 引入 on_shift 工具函數
 
 const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
-const callBackRedistry = useCallBackRedistry()
 
 const change_settings = (task: Task) => {
   if (task.selected) {
@@ -90,13 +88,6 @@ const change_settings = (task: Task) => {
   taskStore.saveTasks();
 };
 
-const openSettings = (task: Task) => {
-  logger.debug(`Opening settings for task: ${task.id}`);
-  taskStore.selectedTaskID = task.id;
-  taskStore.tempTask = new Task(task);
-  modalStore.openTaskSettings(task);
-  modalStore.modalEvents.push(onKeys(callBackRedistry.eventsProxy.TaskSettingsForm))
-};
 
 const changeSelected = (task: Task, index: number) => {
   toggleTaskSelection(task, index, false);

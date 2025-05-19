@@ -5,7 +5,14 @@ import { defineStore } from "pinia";
 import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { onMounted, onUnmounted, ref, computed } from "vue";
-import { onKeys, MODIFIER_KEYS } from "../utils/keyEvents"; // 引入 on_shift 工具函數
+import { MakeOptional } from "../utils/types";
+
+import {
+  onKeys,
+  MODIFIER_KEYS,
+  KeyCallbackConfig,
+  KeyListenerHandle,
+} from "../utils/keyEvents.new"; // 引入 on_shift 工具函數
 import { onMousemove, coordinate } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
@@ -66,12 +73,13 @@ export function useAppStateInit() {
   return appState;
 }
 
+// callbacks和events的註冊
 export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const tasksStore = useTasks();
 
   // 清理函數，用於移除事件監聽器
-  let cleaner = ref<(() => void)[]>([]);
-  let mouse_events = ref<(() => void)[]>([]);
+  let registeredKeyEvents = ref<KeyListenerHandle[]>([]);
+  let registeredMouseEvents = ref<(() => void)[]>([]);
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = ref((event: any) => {
@@ -102,9 +110,9 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const onShiftPress = ref(() => {
     tasksStore.isShiftOn = true;
     findNearestTaskToMouse.value(null);
-    mouse_events.value.push(
+    registeredMouseEvents.value.push(
       onMousemove({
-        callbacks: [callbackProxy.value["findNearestTaskToMouse"]],
+        callbacks: findNearestTaskToMouse.value,
       })
     );
   });
@@ -112,82 +120,47 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const onShiftRelease = ref(() => {
     tasksStore.isShiftOn = false;
     tasksStore.mouseNearestIndex = -1;
-    if (mouse_events.value) {
-      mouse_events.value.forEach((event) => event());
-      mouse_events.value = [];
+    if (registeredMouseEvents.value) {
+      registeredMouseEvents.value.forEach((event) => event());
+      registeredMouseEvents.value = [];
     }
   });
 
-  const callbackProxy = ref({
-    findNearestTaskToMouse: findNearestTaskToMouse.value,
-    onShiftPress: onShiftPress.value,
-    onShiftRelease: onShiftRelease.value,
-    select_all_tasks: tasksStore.select_all_tasks,
-    unselect_all_tasks: tasksStore.unselect_all_tasks,
-    clearAllTasks: tasksStore.clearAllTasks,
-    stopPropagation: (event: KeyboardEvent) => {
-      event.stopPropagation();
-    },
-  });
-
   const eventsProxy = ref({
-    taskLists: {
-      Shift: [
-        {
-          type: "onPress" as "onPress",
-          callback: callbackProxy.value["onShiftPress"],
-        },
-        {
-          type: "onRelease" as "onRelease",
-          callback: callbackProxy.value["onShiftRelease"],
-        },
-      ],
-      a: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.select_all_tasks,
+    taskLists: [
+      {
+        key: "Shift",
+        type: "onPress",
+        callback: onShiftPress.value,
+      },
+      {
+        key: "Shift",
+        type: "onRelease",
+        callback: onShiftRelease.value,
+      },
+      {
+        key: "a",
+        type: "onPress",
+        callback: tasksStore.select_all_tasks,
         modifiers: [MODIFIER_KEYS.Control],
       },
-      Escape: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.unselect_all_tasks,
+      {
+        key: "Escape",
+        type: "onPress",
+        callback: tasksStore.unselect_all_tasks,
       },
-      Delete: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.clearAllTasks,
+      {
+        key: "Delete",
+        type: "onPress",
+        callback: tasksStore.clearAllTasks,
       },
-    },
-    TaskSettingsForm: {
-      Shift: [
-        {
-          type: "onPress" as "onPress",
-          callback: callbackProxy.value.stopPropagation,
-        },
-        {
-          type: "onRelease" as "onRelease",
-          callback: callbackProxy.value.stopPropagation,
-        },
-      ],
-      a: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.stopPropagation,
-        modifiers: [MODIFIER_KEYS.Control],
-      },
-      Escape: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.stopPropagation,
-      },
-      Delete: {
-        type: "onPress" as "onPress",
-        callback: callbackProxy.value.stopPropagation,
-      },
-    },
+    ],
   });
 
   return {
-    callbackProxy,
     eventsProxy,
-    cleaner,
-    mouse_events,
+    registeredKeyEvents,
+    registeredMouseEvents,
     onShiftPress,
     onShiftRelease,
     findNearestTaskToMouse,
@@ -407,8 +380,13 @@ export function useTasksBoundEvents() {
   onMounted(() => {
     if (!isUseTasksStarted.value) {
       tasksStore.initTasks();
-      callbackRegistry.cleaner.push(
-        onKeys(callbackRegistry.eventsProxy.taskLists)
+      callbackRegistry.registeredKeyEvents.push(
+        onKeys(
+          callbackRegistry.eventsProxy.taskLists as MakeOptional<
+            KeyCallbackConfig,
+            "id"
+          >[]
+        )
       );
       isUseTasksStarted.value = true;
     }
@@ -419,8 +397,8 @@ export function useTasksBoundEvents() {
     isUseTasksStarted.value = false;
 
     // 清理事件監聽
-    callbackRegistry.cleaner.forEach((cleanup) => cleanup());
-    callbackRegistry.cleaner = [];
+    callbackRegistry.registeredKeyEvents.forEach((cleanup) => cleanup());
+    callbackRegistry.registeredKeyEvents = [];
   });
 
   return tasksStore;
@@ -428,56 +406,107 @@ export function useTasksBoundEvents() {
 
 // 使用組合式 API 定義 Modal store
 export const useModalStore = defineStore(crypto.randomUUID(), () => {
+  const tasksStore = useTasks(); // 假設 useTasks 已經被正確定義和匯出
+  const cakkbackRegistry = useCallBackRedistry();
   // State
+  const storeId = ref("app_modals");
   const activeModals = ref({
-    taskSettings: {
-      isOpen: false,
-    },
-    menu: {
-      isOpen: false,
-    },
-    // 可以在此添加其他模態框的狀態
+    menu: { isOpen: false, title: "選單" },
+    taskSettings: { isOpen: false, title: "任務設定" },
+    settingsPage: { isOpen: false, title: "設定" },
+    aboutPage: { isOpen: false, title: "關於" },
+    helpPage: { isOpen: false, title: "說明" },
   });
-  const modalEvents = ref<(() => void)[]>([]);
+  const menuModalStyle = ref<Record<string, string>>({}); // 明確指定類型
+  const settingsModalStyle = ref<Record<string, string>>({}); // 明確指定類型
 
   // Actions
-  // Task Settings Modal
-  function openTaskSettings(task: Task) {
-    activeModals.value.taskSettings.isOpen = true;
-    logger.debug(`Opening settings modal for task: ${task.id}`);
-  }
-
-  function closeTaskSettings() {
-    activeModals.value.taskSettings.isOpen = false;
-  }
-
-  // Menu Modal
-  function openMenu() {
+  function openMenu(event?: MouseEvent) {
+    if (event && event.currentTarget) {
+      // 確保 event 和 currentTarget 存在
+      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+      menuModalStyle.value = {
+        position: "absolute",
+        top: `${rect.bottom + 5}px`,
+        left: `${rect.left}px`,
+      };
+    }
     activeModals.value.menu.isOpen = true;
-    logger.debug("Opening menu modal");
   }
-
   function closeMenu() {
     activeModals.value.menu.isOpen = false;
   }
 
-  // 通用關閉所有模態框的方法
-  function closeAllModals() {
-    Object.keys(activeModals.value).forEach((key) => {
-      const modalKey = key as keyof typeof activeModals.value;
-      if (typeof activeModals.value[modalKey].isOpen === "boolean") {
-        activeModals.value[modalKey].isOpen = false;
-      }
-    });
+  function openTaskSettings(task: Task) {
+    tasksStore.selectedTaskID = task.id;
+    tasksStore.tempTask = new Task(task); // 創建副本以進行編輯
+    activeModals.value.taskSettings.isOpen = true;
+  }
+  function closeTaskSettings() {
+    activeModals.value.taskSettings.isOpen = false;
+    // 清理 taskStore 的相關狀態可以在 TaskSettingsForm 元件卸載時或這裡處理
+    // 例如:
+    // const tasksStore = useTasks();
+    tasksStore.selectedTaskID = null;
+    tasksStore.tempTask = null;
   }
 
+  function openSettingsPage() {
+    activeModals.value.settingsPage.isOpen = true;
+    closeMenu(); // 通常打開頁面 Modal 時會關閉選單 Modal
+  }
+  function closeSettingsPage() {
+    activeModals.value.settingsPage.isOpen = false;
+  }
+
+  function openAboutPage() {
+    activeModals.value.aboutPage.isOpen = true;
+    closeMenu();
+  }
+  function closeAboutPage() {
+    activeModals.value.aboutPage.isOpen = false;
+  }
+
+  function openHelpPage() {
+    activeModals.value.helpPage.isOpen = true;
+    closeMenu();
+  }
+  function closeHelpPage() {
+    activeModals.value.helpPage.isOpen = false;
+  }
+
+  function openMenuAndCloseCurrentPage(event?: MouseEvent) {
+    // 關閉所有頁面類型的模態框
+    activeModals.value.settingsPage.isOpen = false;
+    activeModals.value.aboutPage.isOpen = false;
+    activeModals.value.helpPage.isOpen = false;
+    // 其他可能存在的頁面模態框也可以在這裡添加關閉邏輯
+
+    // 打開主選單模態框，並傳遞事件以供定位
+    openMenu(event);
+  }
+
+  // Getters
+  const isAnyModalOpen = computed(() =>
+    Object.values(activeModals.value).some((modal) => modal.isOpen)
+  );
+
   return {
+    storeId,
     activeModals,
-    modalEvents,
-    openTaskSettings,
-    closeTaskSettings,
+    menuModalStyle,
+    settingsModalStyle,
     openMenu,
     closeMenu,
-    closeAllModals,
+    openTaskSettings,
+    closeTaskSettings,
+    openSettingsPage,
+    closeSettingsPage,
+    openAboutPage,
+    closeAboutPage,
+    openHelpPage,
+    closeHelpPage,
+    openMenuAndCloseCurrentPage, // 導出新方法
+    isAnyModalOpen,
   };
 });
