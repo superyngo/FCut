@@ -1,36 +1,37 @@
 <template>
   <!-- Menu Modal -->
-  <BaseModal :is-open="modalStore.activeModals.menu.isOpen" :title="modalStore.activeModals.menu.title"
-    modal-class="menu-modal" :content-style="modalStore.menuModalStyle" @close="modalStore.closeMenu()"
-    :close-on-overlay-click="true">
+  <BaseModal v-if="modalStore.activeModals.menu.isOpen" v-model:is-open="modalStore.activeModals.menu.isOpen"
+    :title="modalStore.activeModals.menu.title" modal-class="menu-modal" :content-style="modalStore.menuModalStyle"
+    @close="modalStore.closeMenu()">
     <MenuOptions />
   </BaseModal>
 
   <!-- Task Settings Modal -->
-  <BaseModal :is-open="modalStore.activeModals.taskSettings.isOpen" :title="modalStore.activeModals.taskSettings.title"
-    modal-class="settings-modal" :content-style="modalStore.settingsModalStyle" @close="closeTaskSettingsModal"
-    :close-on-overlay-click="true">
+  <BaseModal v-if="modalStore.activeModals.taskSettings.isOpen"
+    v-model:is-open="modalStore.activeModals.taskSettings.isOpen" :title="modalStore.activeModals.taskSettings.title"
+    modal-class="settings-modal" :content-style="modalStore.settingsModalStyle" @close="closeTaskSettingsModal">
     <TaskSettingsForm v-if="taskStore.tempTask" @close="closeTaskSettingsModal" />
   </BaseModal>
 
   <!-- Settings Page Modal -->
-  <BaseModal :is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
-    modal-class="page-modal" @close="modalStore.closeSettingsPage()" :close-on-overlay-click="true"
-    :show-back-button="true" @back-clicked="handlePageBackNavigation">
+  <BaseModal v-if="modalStore.activeModals.settingsPage.isOpen"
+    v-model:is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
+    modal-class="page-modal" @close="modalStore.closeSettingsPage()" :show-back-button="true"
+    @back-clicked="handlePageBackNavigation">
     <SettingsPage />
   </BaseModal>
 
   <!-- About Page Modal -->
-  <BaseModal :is-open="modalStore.activeModals.aboutPage.isOpen" :title="modalStore.activeModals.aboutPage.title"
-    modal-class="page-modal" @close="modalStore.closeAboutPage()" :close-on-overlay-click="true"
+  <BaseModal v-if="modalStore.activeModals.aboutPage.isOpen" v-model:is-open="modalStore.activeModals.aboutPage.isOpen"
+    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" @close="modalStore.closeAboutPage()"
     :show-back-button="true" @back-clicked="handlePageBackNavigation">
     <AboutPage />
   </BaseModal>
 
   <!-- Help Page Modal -->
-  <BaseModal :is-open="modalStore.activeModals.helpPage.isOpen" :title="modalStore.activeModals.helpPage.title"
-    modal-class="page-modal" @close="modalStore.closeHelpPage()" :close-on-overlay-click="true" :show-back-button="true"
-    @back-clicked="handlePageBackNavigation">
+  <BaseModal v-if="modalStore.activeModals.helpPage.isOpen" v-model:is-open="modalStore.activeModals.helpPage.isOpen"
+    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" @close="modalStore.closeHelpPage()"
+    :show-back-button="true" @back-clicked="handlePageBackNavigation">
     <HelpPage />
   </BaseModal>
 </template>

@@ -15,9 +15,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useTasksBoundEvents } from "../stores/stores";
+import { useTasks } from "../stores/stores";
 
-const taskStore = useTasksBoundEvents();
+const taskStore = useTasks();
 
 // 計算要顯示的訊息
 const message = computed(() => {

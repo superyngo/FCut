@@ -15,16 +15,16 @@
       </button>
 
       <button @click="startRender" class="icon-button render-button"
-        :disabled="tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0"
-        :title="tasksStore.hasTasksSelected ? '開始處理選取的檔案' : '開始處理所有檔案'">
+        :disabled="taskStore.queuedTasks.length + taskStore.renderingTasks.length != 0"
+        :title="taskStore.hasTasksSelected ? '開始處理選取的檔案' : '開始處理所有檔案'">
         <img src="../assets/render-icon.svg" alt="處理" />
-        <span>{{ tasksStore.hasTasksSelected ? "Render" : "Render All" }}</span>
+        <span>{{ taskStore.hasTasksSelected ? "Render" : "Render All" }}</span>
       </button>
 
-      <button @click="tasksStore.hasTasksSelected ? deleteTask() : clearDoneTasks()" class="icon-button remove-button"
-        :title="tasksStore.hasTasksSelected ? '刪除選取' : '刪除所有'">
+      <button @click="taskStore.hasTasksSelected ? deleteTask() : clearDoneTasks()" class="icon-button remove-button"
+        :title="taskStore.hasTasksSelected ? '刪除選取' : '刪除所有'">
         <img src="../assets/trash-icon.svg" alt="刪除" />
-        <span>{{ tasksStore.hasTasksSelected ? "Remove" : "Clear Done" }}</span>
+        <span>{{ taskStore.hasTasksSelected ? "Remove" : "Clear Done" }}</span>
       </button>
     </div>
   </div>
@@ -32,11 +32,11 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { useTasksBoundEvents, useModalStore } from "../stores/stores";
+import { useTasks, useModalStore } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
 
-const tasksStore = useTasksBoundEvents();
+const taskStore = useTasks();
 const modalStore = useModalStore();
 
 const toggleMenu = () => {
@@ -52,39 +52,39 @@ const addTask = async () => {
   }
   for (const videoPath of video_paths) {
     logger.debug(`Adding video: ${videoPath}`);
-    tasksStore.addTask(videoPath);
+    taskStore.addTask(videoPath);
   }
 };
 
 const deleteTask = () => {
-  const selectedTasks = [...tasksStore.selectedTasks];
+  const selectedTasks = [...taskStore.selectedTasks];
   for (const task of selectedTasks) {
     if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
       return;
     }
     logger.debug(`Deleting task: ${task.id}`);
-    tasksStore.removeTask(task);
+    taskStore.removeTask(task);
   }
 };
 
 const clearDoneTasks = () => {
-  const doneTasks = [...tasksStore.doneTasks]
+  const doneTasks = [...taskStore.doneTasks]
   doneTasks.forEach((task) => {
-    tasksStore.removeTask(task);
+    taskStore.removeTask(task);
     logger.debug(`Clearing done task: ${task.id}`);
   });
-  tasksStore.selectedTaskID = null
-  tasksStore.lastSelectedIndex = -1
+  taskStore.selectedTaskID = null
+  taskStore.lastSelectedIndex = -1
 };
 
 const startRender = async () => {
-  const readyTasks = tasksStore.hasTasksSelected ? [...tasksStore.selectedReadyTasks] : [...tasksStore.readyTasks];
+  const readyTasks = taskStore.hasTasksSelected ? [...taskStore.selectedReadyTasks] : [...taskStore.readyTasks];
   for (const task of readyTasks) {
     logger.debug(`Queue task: ${task.id}`);
     task.status = TASK_STATUS.Queued;
   }
 
-  const queuedTasks = [...tasksStore.queuedTasks];
+  const queuedTasks = [...taskStore.queuedTasks];
   for (const task of queuedTasks) {
     logger.debug(`Rendering task: ${task.id}`);
     task.status = TASK_STATUS.Rendering;
@@ -118,16 +118,16 @@ const startRender = async () => {
 //       label: "Render",
 //       icon: "fas fa-trash",
 //       action: startRender,
-//       disabled: function renderButtonDisableHandle() { return tasksStore.queuedTasks.length + tasksStore.renderingTasks.length != 0 }
+//       disabled: function renderButtonDisableHandle() { return taskStore.queuedTasks.length + taskStore.renderingTasks.length != 0 }
 //     }),
 //   ],
 //   [
 //     "Remove",
 //     new Button({
-//       label: function hasTasksSelectedToLabel() { return (tasksStore.hasTasksSelected ? "Remove" : "Clean") },
+//       label: function hasTasksSelectedToLabel() { return (taskStore.hasTasksSelected ? "Remove" : "Clean") },
 //       icon: "fas fa-trash",
 //       action: function hasTasksSelectedToAction() {
-//         return tasksStore.hasTasksSelected ? deleteTask() : clearDoneTasks()
+//         return taskStore.hasTasksSelected ? deleteTask() : clearDoneTasks()
 //       }
 //     }),
 //   ],

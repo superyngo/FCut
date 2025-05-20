@@ -1,6 +1,6 @@
 import { BaseClass } from "./BaseModel";
 import {
-  AllBaseElementsData,
+  AllBaseElements,
   initElementsData,
   InputRange,
   InputText,
@@ -67,16 +67,16 @@ enum VIDEO_QUALITY {
 }
 
 export class TaskSettings extends BaseClass {
-  [ACTIONS.CUT]: AllBaseElementsData = [];
-  [ACTIONS.SPEEDUP]: AllBaseElementsData = [];
-  [ACTIONS.JUMPCUT]: AllBaseElementsData = [];
-  [ACTIONS.CUT_SILENCE]: AllBaseElementsData = [];
-  [ACTIONS.CUT_MOTIONLESS]: AllBaseElementsData = [];
-  [ACTIONS.COMPRESS_VIDEO]: AllBaseElementsData = [];
-  [ACTIONS.CONVERT_TO_AUDIO]: AllBaseElementsData = [];
+  [ACTIONS.CUT]: AllBaseElements[] = [];
+  [ACTIONS.SPEEDUP]: AllBaseElements[] = [];
+  [ACTIONS.JUMPCUT]: AllBaseElements[] = [];
+  [ACTIONS.CUT_SILENCE]: AllBaseElements[] = [];
+  [ACTIONS.CUT_MOTIONLESS]: AllBaseElements[] = [];
+  [ACTIONS.COMPRESS_VIDEO]: AllBaseElements[] = [];
+  [ACTIONS.CONVERT_TO_AUDIO]: AllBaseElements[] = [];
 
-  constructor(taskSettings: Record<ACTIONS, AllBaseElementsData> | {} = {}) {
-    let _taskSettings: Record<ACTIONS, AllBaseElementsData> = {
+  constructor(taskSettings: Record<ACTIONS, AllBaseElements[]> | {} = {}) {
+    let _taskSettings: Record<ACTIONS, AllBaseElements[]> = {
       [ACTIONS.CUT]: initElementsData(
         taskSettings && ACTIONS.CUT in taskSettings
           ? taskSettings[ACTIONS.CUT]

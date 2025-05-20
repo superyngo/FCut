@@ -12,12 +12,12 @@ import {
   MODIFIER_KEYS,
   KeyCallbackConfig,
   KeyListenerHandle,
-} from "../utils/keyEvents.new"; // 引入 on_shift 工具函數
+} from "../utils/keyEvents"; // 引入 on_shift 工具函數
 import { onMousemove, coordinate } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 // 使用組合式 API 定義 AppState store
-const useAppState = defineStore(crypto.randomUUID(), () => {
+export const useAppState = defineStore(crypto.randomUUID(), () => {
   const storeId = ref("app_constants");
   const error = ref(false);
   const loading = ref(true);
@@ -50,120 +50,6 @@ const useAppState = defineStore(crypto.randomUUID(), () => {
     loading,
     constants,
     initFromPython,
-  };
-});
-const isUseAppStateStarted = ref(false);
-export function useAppStateInit() {
-  const appState = useAppState();
-  // 使用 ref 確保只在客戶端 onMounted 中執行
-
-  // 組件掛載時設置事件監聽
-  onMounted(async () => {
-    if (!isUseAppStateStarted.value) {
-      await appState.initFromPython();
-      isUseAppStateStarted.value = true;
-    }
-  });
-
-  // 組件卸載時清理事件監聽
-  onUnmounted(() => {
-    isUseAppStateStarted.value = false;
-  });
-
-  return appState;
-}
-
-// callbacks和events的註冊
-export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
-  const tasksStore = useTasks();
-
-  // 清理函數，用於移除事件監聽器
-  let registeredKeyEvents = ref<KeyListenerHandle[]>([]);
-  let registeredMouseEvents = ref<(() => void)[]>([]);
-
-  // 找出滑鼠最近的任務索引
-  const findNearestTaskToMouse = ref((event: any) => {
-    const taskItems = document.querySelectorAll(".task-item");
-    let closestTask = -1;
-    let minDistance = Infinity;
-
-    taskItems.forEach((taskItem, index) => {
-      const rect = taskItem.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
-
-      // 計算滑鼠與任務中心點的距離
-      const distX = centerX - (event || coordinate()).clientX;
-      const distY = centerY - (event || coordinate()).clientY;
-      const distance = Math.sqrt(distX * distX + distY * distY);
-
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestTask = index;
-      }
-    });
-
-    tasksStore.mouseNearestIndex = closestTask;
-  });
-
-  // 創建 shift 鍵按下和釋放的回調函數
-  const onShiftPress = ref(() => {
-    tasksStore.isShiftOn = true;
-    findNearestTaskToMouse.value(null);
-    registeredMouseEvents.value.push(
-      onMousemove({
-        callbacks: findNearestTaskToMouse.value,
-      })
-    );
-  });
-
-  const onShiftRelease = ref(() => {
-    tasksStore.isShiftOn = false;
-    tasksStore.mouseNearestIndex = -1;
-    if (registeredMouseEvents.value) {
-      registeredMouseEvents.value.forEach((event) => event());
-      registeredMouseEvents.value = [];
-    }
-  });
-
-  const eventsProxy = ref({
-    taskLists: [
-      {
-        key: "Shift",
-        type: "onPress",
-        callback: onShiftPress.value,
-      },
-      {
-        key: "Shift",
-        type: "onRelease",
-        callback: onShiftRelease.value,
-      },
-      {
-        key: "a",
-        type: "onPress",
-        callback: tasksStore.select_all_tasks,
-        modifiers: [MODIFIER_KEYS.Control],
-      },
-      {
-        key: "Escape",
-        type: "onPress",
-        callback: tasksStore.unselect_all_tasks,
-      },
-      {
-        key: "Delete",
-        type: "onPress",
-        callback: tasksStore.clearAllTasks,
-      },
-    ],
-  });
-
-  return {
-    eventsProxy,
-    registeredKeyEvents,
-    registeredMouseEvents,
-    onShiftPress,
-    onShiftRelease,
-    findNearestTaskToMouse,
   };
 });
 
@@ -371,42 +257,104 @@ export const useTasks = defineStore(crypto.randomUUID(), () => {
     unselect_all_tasks,
   };
 });
-const isUseTasksStarted = ref(false);
-export function useTasksBoundEvents() {
-  const tasksStore = useTasks();
-  const callbackRegistry = useCallBackRedistry();
 
-  // 組件掛載時設置事件監聽
-  onMounted(() => {
-    if (!isUseTasksStarted.value) {
-      tasksStore.initTasks();
-      callbackRegistry.registeredKeyEvents.push(
-        onKeys(
-          callbackRegistry.eventsProxy.taskLists as MakeOptional<
-            KeyCallbackConfig,
-            "id"
-          >[]
-        )
-      );
-      isUseTasksStarted.value = true;
+// callbacks和events的註冊
+export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
+  const taskStore = useTasks();
+
+  // 清理函數，用於移除事件監聽器
+  let registeredKeyEvents = ref<KeyListenerHandle[]>([]);
+  let registeredMouseEvents = ref<(() => void)[]>([]);
+
+  // 找出滑鼠最近的任務索引
+  const findNearestTaskToMouse = ref((event: any) => {
+    const taskItems = document.querySelectorAll(".task-item");
+    let closestTask = -1;
+    let minDistance = Infinity;
+
+    taskItems.forEach((taskItem, index) => {
+      const rect = taskItem.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      // 計算滑鼠與任務中心點的距離
+      const distX = centerX - (event || coordinate()).clientX;
+      const distY = centerY - (event || coordinate()).clientY;
+      const distance = Math.sqrt(distX * distX + distY * distY);
+
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestTask = index;
+      }
+    });
+
+    taskStore.mouseNearestIndex = closestTask;
+  });
+
+  // 創建 shift 鍵按下和釋放的回調函數
+  const onShiftPress = ref(() => {
+    taskStore.isShiftOn = true;
+    findNearestTaskToMouse.value(null);
+    registeredMouseEvents.value.push(
+      onMousemove({
+        callbacks: findNearestTaskToMouse.value,
+      })
+    );
+  });
+
+  const onShiftRelease = ref(() => {
+    taskStore.isShiftOn = false;
+    taskStore.mouseNearestIndex = -1;
+    if (registeredMouseEvents.value) {
+      registeredMouseEvents.value.forEach((event) => event());
+      registeredMouseEvents.value = [];
     }
   });
 
-  // 組件卸載時清理事件監聽
-  onUnmounted(() => {
-    isUseTasksStarted.value = false;
-
-    // 清理事件監聽
-    callbackRegistry.registeredKeyEvents.forEach((cleanup) => cleanup());
-    callbackRegistry.registeredKeyEvents = [];
+  const eventsProxy = ref({
+    taskLists: [
+      {
+        key: "Shift",
+        type: "onPress",
+        callback: onShiftPress.value,
+      },
+      {
+        key: "Shift",
+        type: "onRelease",
+        callback: onShiftRelease.value,
+      },
+      {
+        key: "a",
+        type: "onPress",
+        callback: taskStore.select_all_tasks,
+        modifiers: [MODIFIER_KEYS.Control],
+      },
+      {
+        key: "Escape",
+        type: "onPress",
+        callback: taskStore.unselect_all_tasks,
+      },
+      {
+        key: "Delete",
+        type: "onPress",
+        callback: taskStore.clearAllTasks,
+      },
+    ],
   });
 
-  return tasksStore;
-}
+  return {
+    eventsProxy,
+    registeredKeyEvents,
+    registeredMouseEvents,
+    onShiftPress,
+    onShiftRelease,
+    findNearestTaskToMouse,
+  };
+});
 
 // 使用組合式 API 定義 Modal store
 export const useModalStore = defineStore(crypto.randomUUID(), () => {
-  const tasksStore = useTasks(); // 假設 useTasks 已經被正確定義和匯出
+  const taskStore = useTasks(); // 假設 useTasks 已經被正確定義和匯出
   const cakkbackRegistry = useCallBackRedistry();
   // State
   const storeId = ref("app_modals");
@@ -438,17 +386,17 @@ export const useModalStore = defineStore(crypto.randomUUID(), () => {
   }
 
   function openTaskSettings(task: Task) {
-    tasksStore.selectedTaskID = task.id;
-    tasksStore.tempTask = new Task(task); // 創建副本以進行編輯
+    taskStore.selectedTaskID = task.id;
+    taskStore.tempTask = new Task(task); // 創建副本以進行編輯
     activeModals.value.taskSettings.isOpen = true;
   }
   function closeTaskSettings() {
     activeModals.value.taskSettings.isOpen = false;
     // 清理 taskStore 的相關狀態可以在 TaskSettingsForm 元件卸載時或這裡處理
     // 例如:
-    // const tasksStore = useTasks();
-    tasksStore.selectedTaskID = null;
-    tasksStore.tempTask = null;
+    // const taskStore = useTasks();
+    taskStore.selectedTaskID = null;
+    taskStore.tempTask = null;
   }
 
   function openSettingsPage() {

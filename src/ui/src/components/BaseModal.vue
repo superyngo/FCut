@@ -1,7 +1,7 @@
 <template>
     <teleport to="body">
-        <div v-if="isOpen" class="modal-overlay" @click.self="handleOverlayClick">
-            <div class="modal-content" :class="modalClass" :style="contentStyle">
+        <div class="modal-overlay" @click.self="handleOverlayClick">
+            <div class="modal-content" :class="modalClass" :style="contentStyle" ref="modalWindow">
                 <div v-if="!headless" class="modal-header draggable" ref="modalHeader">
                     <svg v-if="showBackButton" @click="onBackClick" class="modal-back-icon" viewBox="0 0 24 24"
                         fill="currentColor">
@@ -21,10 +21,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, toRefs, watch, onMounted, onUnmounted } from 'vue';
+// defineModel 通常在 <script setup> 中是編譯器宏，無需顯式導入，但若 Linter 提示可加上
+import { ref, onMounted, onUnmounted, defineModel } from 'vue';
 import { logger } from '../utils/logger';
-interface Props {
-    isOpen: boolean;
+import { makeDraggable, MouseListenerHandle, onDrag } from '../utils/mouseEvents';
+
+let draggableEvent: MouseListenerHandle[] = []
+
+type Props = {
     title?: string;
     modalClass?: string | Record<string, boolean> | (string | Record<string, boolean>)[];
     contentStyle?: Record<string, string>;
@@ -33,20 +37,26 @@ interface Props {
     showBackButton?: boolean; // 新增：是否顯示返回按鈕
 }
 
+// isOpen 的預設值已從 withDefaults 中移除
 const props = withDefaults(defineProps<Props>(), {
     title: '',
     modalClass: '',
     contentStyle: () => ({}),
-    closeOnOverlayClick: true,
+    closeOnOverlayClick: false,
     headless: false,
-    showBackButton: false, // 新增：預設為 false
+    showBackButton: false,
 });
+const emit = defineEmits(['close', 'back-clicked']); // 新增 back-clicked 事件
 
-const emit = defineEmits(['update:isOpen', 'close', 'back-clicked']); // 新增 back-clicked 事件
+// 使用 defineModel 來處理 isOpen
+const isOpen = defineModel<boolean>('isOpen', { default: false });
 
 const closeModal = () => {
-    emit('update:isOpen', false);
-    emit('close');
+    // 當 isOpen.value 被設置為 false 時，Vue 會自動 emit('update:isOpen', false)
+    if (isOpen.value) { // 確保在 true 時才更新，避免不必要的 emit
+        isOpen.value = false;
+    }
+    emit('close'); // 保留 'close' 事件的發送
 };
 
 const onBackClick = () => {
@@ -54,53 +64,63 @@ const onBackClick = () => {
 };
 
 const handleOverlayClick = () => {
-    if (props.closeOnOverlayClick) {
+    if (!isDragging && props.closeOnOverlayClick) {
         closeModal();
     }
 };
 
 // 可選：簡易拖曳功能 (如果需要，可以進一步完善)
+const modalWindow = ref<HTMLElement | null>(null);
 const modalHeader = ref<HTMLElement | null>(null);
 let isDragging = false;
-let offsetX = 0;
-let offsetY = 0;
+let startX = 0;
+let startY = 0;
+let origX = 0;
+let origY = 0;
 
 const startDrag = (event: MouseEvent) => {
-    if (!modalHeader.value || !modalHeader.value.parentElement) return;
+    logger.info('start dragging');
+    if (!modalHeader.value || !modalWindow.value) return;
+    const rect = modalWindow.value.getBoundingClientRect();
     isDragging = true;
-    const modalContentElement = modalHeader.value.parentElement;
-    offsetX = event.clientX - modalContentElement.offsetLeft;
-    offsetY = event.clientY - modalContentElement.offsetTop;
-    document.addEventListener('mousemove', drag);
+    startX = event.clientX
+    startY = event.clientY
+    origX = rect.left;
+    origY = rect.top;
+    document.addEventListener('mousemove', dragging);
     document.addEventListener('mouseup', stopDrag);
 };
 
-const drag = (event: MouseEvent) => {
-    if (!isDragging || !modalHeader.value || !modalHeader.value.parentElement) return;
-    const modalContentElement = modalHeader.value.parentElement;
-    modalContentElement.style.left = `${event.clientX - offsetX}px`;
-    modalContentElement.style.top = `${event.clientY - offsetY}px`;
+const dragging = (event: MouseEvent) => {
+    if (!isDragging || !modalHeader.value || !modalWindow.value) return;
+    const dx = event.clientX - startX;
+    const dy = event.clientY - startY;
+    modalWindow.value.style.left = origX + dx + "px";
+    modalWindow.value.style.top = origY + dy + "px";
     // 確保 modal 不會被拖出視窗外 (可選)
 };
 
-const stopDrag = () => {
+const stopDrag = (event: MouseEvent) => {
     isDragging = false;
-    document.removeEventListener('mousemove', drag);
+    document.removeEventListener('mousemove', dragging);
     document.removeEventListener('mouseup', stopDrag);
 };
 
 onMounted(() => {
-    if (modalHeader.value && !props.headless) {
-        modalHeader.value.addEventListener('mousedown', startDrag);
+    if (modalHeader.value && modalWindow.value && !props.headless) {
+        draggableEvent.push(onDrag({ target: modalHeader.value, callbacks: (info) => logger.info('dragging', info) }));
+        logger.info(draggableEvent)
+        // modalHeader.value.addEventListener('mousedown', startDrag);
     }
 });
 
 onUnmounted(() => {
-    if (modalHeader.value && !props.headless) {
-        modalHeader.value.removeEventListener('mousedown', startDrag);
+    if (draggableEvent) {
+        draggableEvent.forEach((c) => c())
+        // modalHeader.value.removeEventListener('mousedown', startDrag);
     }
-    document.removeEventListener('mousemove', drag); // 確保移除事件
-    document.removeEventListener('mouseup', stopDrag); // 確保移除事件
+    // document.removeEventListener('mousemove', dragging); // 確保移除事件
+    // document.removeEventListener('mouseup', stopDrag); // 確保移除事件
 });
 
 </script>
@@ -132,7 +152,7 @@ onUnmounted(() => {
     /* ease-out 讓動畫結束時更平滑 */
     display: flex;
     flex-direction: column;
-    position: relative;
+    position: absolute;
     /* 為了拖曳定位 */
 }
 

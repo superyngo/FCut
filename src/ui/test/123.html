@@ -1,0 +1,64 @@
+<style>
+  .window {
+    width: 300px;
+    background: #fff;
+    border: 1px solid #ccc;
+    position: absolute;
+    top: 100px;
+    left: 100px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  .header {
+    background: #3498db;
+    color: white;
+    padding: 10px;
+    cursor: move;
+    user-select: none;
+  }
+  .content {
+    padding: 15px;
+  }
+</style>
+
+<div class="window" id="win">
+  <div class="header" id="header">拖曳我移動視窗</div>
+  <div class="content">這是內容</div>
+</div>
+
+<script>
+  const win = document.getElementById("win");
+  const header = document.getElementById("header");
+
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let origX = 0;
+  let origY = 0;
+
+  header.addEventListener("mousedown", (e) => {
+    isDragging = true;
+
+    const rect = win.getBoundingClientRect();
+    startX = e.clientX;
+    startY = e.clientY;
+    origX = rect.left;
+    origY = rect.top;
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  });
+
+  function onMouseMove(e) {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+    win.style.left = origX + dx + "px";
+    win.style.top = origY + dy + "px";
+  }
+
+  function onMouseUp() {
+    isDragging = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", onMouseUp);
+  }
+</script>

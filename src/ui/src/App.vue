@@ -7,11 +7,20 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from  "vue";
 import MainView from "./views/MainView.vue";
 // import SettingsPanel from "./components/SettingsPanel.vue";
-import { useAppStateInit } from "./stores/stores";
+import { useAppState } from "./stores/stores";
 import { logger } from "./utils/logger";
-const appState = useAppStateInit();
+const appState = useAppState();
+
+
+  // 組件掛載時設置事件監聽
+  onMounted(async () => {
+    logger.info("App mounted");
+      await appState.initFromPython();
+  });
+
 </script>
 
 <style>

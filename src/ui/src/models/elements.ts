@@ -1,12 +1,13 @@
 import { BaseClass } from "./BaseModel";
 import { useTasks } from "../stores/stores";
 import { ACTIONS } from "./tasks";
+import { InstanceTypeOf } from "../utils/types";
 
 class BaseElementData extends BaseClass {
   type: string = "BaseElementData";
   id: string = crypto.randomUUID();
   label: string | ((...args: any[]) => string) = "";
-  title?: string | ((...args: any[]) => string);
+  title: string | ((...args: any[]) => string) = "";
   value: string | number = "";
 
   // 處理序列化，轉換方法為字符串標識
@@ -27,36 +28,90 @@ class BaseElementData extends BaseClass {
   }
 }
 
-export function initElementsData(
-  elementsData: AllBaseElementsData
-): AllBaseElementsData {
-  return elementsData.map((elementData) => {
-    if (
-      allBaseElementsData.includes(
-        elementData.constructor as
-          | typeof Container
-          | typeof InputText
-          | typeof Button
-      )
-    ) {
-      return elementData;
-    }
-    switch (elementData.type) {
-      case "InputRange":
-        return new InputRange(elementData as InputRange);
-      case "InputText":
-        return new InputText(elementData as InputText);
-      case "Button":
-        return new Button(elementData as Button);
-      case "Selection":
-        return new Selection(elementData as Selection);
-      case "Container":
-        return new Container(elementData as Container);
-      default:
-        throw new Error("Invalid task elementData type");
-    }
-  });
+export class Button extends BaseElementData {
+  type: string = "Button";
+  icon?: string;
+  action?: ((...args: any[]) => any) | string;
+  visible: boolean | ((...args: any[]) => boolean) = true;
+  disabled: boolean | ((...args: any[]) => boolean) = false;
+  constructor(
+    data: Partial<Button> & {
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
+    super();
+    register && registerMapMethods(data);
+    this._init(data);
+  }
 }
+
+export class InputRange extends BaseElementData {
+  type: string = "InputRange";
+  min: number = 1;
+  max: number = 100;
+  step: number = 1;
+  constructor(
+    data: Partial<InputRange> & {
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
+    super();
+    register && registerMapMethods(data);
+    this._init(data);
+  }
+}
+export class InputText extends BaseElementData {
+  type: string = "InputText";
+  constructor(
+    data: Partial<InputText> & {
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
+    super();
+    register && registerMapMethods(data);
+    this._init(data);
+  }
+}
+
+export class Selection extends BaseElementData {
+  type: string = "Selection";
+  options: {
+    label: string;
+    value: string | number;
+  }[] = [];
+  constructor(
+    data: Partial<Selection> & {
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
+    super();
+    register && registerMapMethods(data);
+    this._init(data);
+  }
+}
+
+export class Container extends BaseElementData {
+  type: string = "Container";
+  children: AllBaseElements[] = [];
+  constructor(
+    data: Partial<Container> & {
+      [_: string]: any;
+    },
+    register: boolean = false
+  ) {
+    let initedElements = initElementsData(data.children || []);
+
+    super();
+    register && registerMapMethods(data);
+    this._init({ ...data, children: initedElements });
+  }
+}
+
+// Callbacl registry
 export const methodRegistry: Record<string, any> = {
   call_tt: function call_tt() {
     const taskStore = useTasks();
@@ -97,115 +152,31 @@ function registerMapMethods(data: Record<PropertyKey, any>): void {
   }
 }
 
-export class Button extends BaseElementData {
-  type: string = "Button";
-  icon?: string;
-  action?: (...args: any[]) => any;
-  visible: boolean | ((...args: any[]) => boolean) = true;
-  disabled: boolean | ((...args: any[]) => boolean) = false;
-  constructor(
-    data: {
-      id?: string;
-      label: string | ((...args: any[]) => string);
-      title?: string | ((...args: any[]) => string);
-      icon?: string;
-      action?: string | ((...args: any[]) => any);
-      visible?: boolean | ((...args: any[]) => boolean);
-      disabled?: boolean | ((...args: any[]) => boolean);
-      [_: string]: any;
-    },
-    register: boolean = false
-  ) {
-    super();
-    register && registerMapMethods(data);
-    this._init(data);
-  }
-}
-
-export class InputRange extends BaseElementData {
-  type: string = "InputRange";
-  min: number = 1;
-  max: number = 100;
-  step: number = 1;
-  constructor(
-    data: {
-      id?: string;
-      label?: string | ((...args: any[]) => string);
-      value?: string | number;
-      title?: string | ((...args: any[]) => string);
-      min?: number;
-      max?: number;
-      step?: number;
-      [_: string]: any;
-    },
-    register: boolean = false
-  ) {
-    super();
-    register && registerMapMethods(data);
-    this._init(data);
-  }
-}
-
-export class InputText extends BaseElementData {
-  type: string = "InputText";
-  constructor(
-    data: {
-      id?: string;
-      label?: string | ((...args: any[]) => string);
-      value?: string | number;
-      title?: string | ((...args: any[]) => string);
-      [_: string]: any;
-    },
-    register: boolean = false
-  ) {
-    super();
-    register && registerMapMethods(data);
-    this._init(data);
-  }
-}
-
-type Option = {
-  label: string;
-  value: string | number;
-};
-
-export class Selection extends BaseElementData {
-  type: string = "Selection";
-  options: Option[] = [];
-  constructor(
-    data: {
-      id?: string;
-      label?: string | ((...args: any[]) => string);
-      value?: string | number;
-      title?: string | ((...args: any[]) => string);
-      options?: Option[];
-      [_: string]: any;
-    },
-    register: boolean = false
-  ) {
-    super();
-    registerMapMethods(data);
-    this._init(data);
-  }
-}
-
-export class Container extends BaseElementData {
-  type: string = "Container";
-  children: AllBaseElementsData = [];
-  constructor(
-    data: {
-      id?: string;
-      children?: AllBaseElementsData;
-      [_: string]: any;
-    },
-    register: boolean = false
-  ) {
-    let initedElements = initElementsData(data.children || []);
-
-    super();
-    register && registerMapMethods(data);
-    this._init({ ...data, children: initedElements });
-  }
+// Helper function to initialize elements
+export function initElementsData(
+  elementsData: AllBaseElements[]
+): AllBaseElements[] {
+  return elementsData.map((elementData) => {
+    if (
+      allBaseElements.includes(elementData.constructor as AllBaseElementClasses)
+    ) {
+      return elementData;
+    }
+    switch (elementData.type) {
+      case "InputRange":
+        return new InputRange(elementData as InputRange);
+      case "InputText":
+        return new InputText(elementData as InputText);
+      case "Button":
+        return new Button(elementData as Button);
+      case "Selection":
+        return new Selection(elementData as Selection);
+      case "Container":
+        return new Container(elementData as Container);
+      default:
+        throw new Error("Invalid task elementData type");
+    }
+  });
 }
 
 // template
@@ -226,17 +197,13 @@ export function createCutCell() {
   });
 }
 
-export type AllBaseElementsData = (
-  | Button
-  | InputRange
-  | InputText
-  | Selection
-  | Container
-)[];
-const allBaseElementsData = [
+// Types
+const allBaseElements = [
   Button,
   InputRange,
   InputText,
   Selection,
   Container,
-];
+] as const;
+type AllBaseElementClasses = (typeof allBaseElements)[number];
+export type AllBaseElements = InstanceTypeOf<AllBaseElementClasses>;

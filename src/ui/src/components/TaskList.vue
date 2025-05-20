@@ -61,13 +61,18 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted, onUnmounted } from "vue";
 import { logger } from "../utils/logger";
-import { useTasksBoundEvents, useModalStore, useCallBackRedistry } from "../stores/stores";
+import { useTasks, useModalStore, useCallBackRedistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
+import { MakeOptional } from "../utils/types";
+import { onKeys, KeyCallbackConfig } from "../utils/keyEvents";
 
-const taskStore = useTasksBoundEvents();
 const modalStore = useModalStore();
+const taskStore = useTasks();
+const callbackRegistry = useCallBackRedistry();
+
 
 const change_settings = (task: Task) => {
   if (task.selected) {
@@ -119,6 +124,26 @@ const toggleTaskSelection = (
   taskStore.lastSelectedIndex = task.selected ? index : -1;
   taskStore.saveTasks();
 };
+
+
+onMounted(() => {
+  taskStore.initTasks();
+  callbackRegistry.registeredKeyEvents.push(
+    onKeys(
+      callbackRegistry.eventsProxy.taskLists as MakeOptional<
+        KeyCallbackConfig,
+        "id"
+      >[]
+    )
+  );
+});
+
+// 組件卸載時清理事件監聽
+onUnmounted(() => {
+  // 清理事件監聽
+  callbackRegistry.registeredKeyEvents.forEach((cleanup) => cleanup());
+  callbackRegistry.registeredKeyEvents = [];
+});
 </script>
 
 <style scoped>
