@@ -68,6 +68,7 @@ import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 import { MakeOptional } from "../utils/types";
 import { onKeys, KeyCallbackConfig } from "../utils/keyEvents";
+import { startMouseevent } from "../utils/mouseEvents";
 
 const modalStore = useModalStore();
 const taskStore = useTasks();
@@ -128,6 +129,7 @@ const toggleTaskSelection = (
 
 onMounted(() => {
   taskStore.initTasks();
+  callbackRegistry.registeredMouseEvents.push(startMouseevent())
   callbackRegistry.registeredKeyEvents.push(
     onKeys(
       callbackRegistry.eventsProxy.taskLists as MakeOptional<
@@ -143,6 +145,8 @@ onUnmounted(() => {
   // 清理事件監聽
   callbackRegistry.registeredKeyEvents.forEach((cleanup) => cleanup());
   callbackRegistry.registeredKeyEvents = [];
+  callbackRegistry.registeredMouseEvents.forEach((cleanup) => cleanup());
+  callbackRegistry.registeredMouseEvents = []
 });
 </script>
 

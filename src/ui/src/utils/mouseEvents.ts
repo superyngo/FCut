@@ -148,7 +148,7 @@ const _callbackRegistry = {
   // registeredEventTypes: new Set<MOUSE_EVENT_TYPE>(), // 已註冊事件類型集合
   configCache: new Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>(), // 按事件類型的快取
   pendingEvents: new Map<MOUSE_EVENT_TYPE, (MouseEvent | WheelEvent)[]>(), // 待處理事件隊列
-  isDirty: true, // 緩存髒標記
+  isDirty: false, // 緩存髒標記
 };
 
 const _performance = {
@@ -296,19 +296,12 @@ const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
   if (event instanceof MouseEvent) {
     // 更新滑鼠位置，確保位置資訊是最新的
     updateMousePosition(event);
-
+    updateHoverState(event);
     // 更新滑鼠按鍵狀態
     if (event.type === MOUSE_EVENT_TYPE.Down) {
       updateMouseButtons(event);
       logger.debug(
-        `Mouse down: buttons=${event.buttons}, left=${_mouseButtons.left}`
-      );
-    } else if (event.type === MOUSE_EVENT_TYPE.Click) {
-      updateMouseButtons(event);
-    } else if (event.type === MOUSE_EVENT_TYPE.Up) {
-      updateMouseButtons(event);
-      logger.debug(
-        `Mouse up: buttons=${event.buttons}, left=${_mouseButtons.left}`
+        `Mouse ${event.type}: buttons=${event.buttons}, left=${_mouseButtons.left}`
       );
     }
 
@@ -535,14 +528,13 @@ const removeOneTimeCallback = (callbackId: string) => {
 // 開始全局各類Mouse Events事件監聽
 const startListening = (eventType: MOUSE_EVENT_TYPE) => {
   if (typeof window === "undefined") return;
-  if (_callbackRegistry.configCache.has(eventType)) return;
 
   // 註冊特定事件類型的監聽器
   window.addEventListener(eventType, handleMouseEvent as EventListener, {
     passive: false,
   });
 
-  logger.debug(`已為 ${eventType} 事件添加全局監聽器`);
+  logger.debug(`已為 ${eventType} 事件添加滑鼠全局監聽器`);
 
   // 啟動動畫循環 (如果未啟動)
   if (!_performance.animationFrameId) {
@@ -550,40 +542,38 @@ const startListening = (eventType: MOUSE_EVENT_TYPE) => {
   }
 };
 
-// 停止全局事件監聽
+/**
+ * 停止全局事件監聽
+ *
+ * 此函數負責移除事件監聽器，包含全局和局部，但不負責清除回調
+ * 若全局滑鼠監聽器已移除，則一併停止動畫循環。
+ *
+ * @param eventType? MOUSE_EVENT_TYPE
+ */
 const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
   if (typeof window === "undefined") return;
 
-  // 如果提供了特定事件類型，只移除該類型
+  // 如果提供了特定事件類型，只移除該類型的全局事件監聽器
   if (eventType) {
-    if (!_callbackRegistry.configCache.has(eventType)) return;
-
-    removeRegisteredCallbackConfigs(
-      _callbackRegistry.configCache.get(eventType)!
-    );
-
     window.removeEventListener(eventType, handleMouseEvent as EventListener);
     logger.debug(`已移除 ${eventType} 的全局事件監聽器`);
 
     // 如果還有其他事件註冊，提前返回
-    if (_callbackRegistry.configCache.size > 0) return;
+    if (_callbackRegistry.registeredCallbackConfigs.size > 0) return;
   } else {
-    // 如果沒有註冊的監聽器，直接返回
-    if (_callbackRegistry.configCache.size === 0) return;
-
     // 沒有特定事件類型則移除所有已註冊的事件監聽器
-    _callbackRegistry.configCache.forEach(
-      (wrappedCallbackConfigs, eventType) => {
+    viewRegisteredCallbackConfigs().forEach(
+      (_wrappedCallbackConfigs, eventType) => {
+        logger.debug(`已移除 ${eventType} 的全局事件監聽器`);
         window.removeEventListener(
           eventType,
           handleMouseEvent as EventListener
         );
       }
     );
-
-    _callbackRegistry.registeredCallbackConfigs.clear();
-    logger.debug("全局鼠標事件監聽器已停止");
   }
+
+  logger.debug("全局鼠標事件監聽器已停止");
 
   // 停止動畫循環（此時已確認沒有任何註冊事件）
   if (_performance.animationFrameId) {
@@ -935,7 +925,6 @@ export function makeDraggable(
     target: dragPoint,
     preventDefault: true,
     callbacks: (dragInfo: DragInfo) => {
-      logger.info("dragging");
       // 拖拽開始時保存初始位置
       if (dragInfo.state === DRAG_STATE.Start) {
         initialX = dragInfo.startX;
@@ -1019,29 +1008,17 @@ export function isHovering(element: HTMLElement | string): boolean {
  *
  * @returns 所有註冊回調的唯讀副本，按事件類型組織 Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>
  */
-export function allCallbacks(): Readonly<
-  Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>
-> {
-  // 確保緩存是最新的
-  if (_callbackRegistry.isDirty) {
-    rebuildCache();
-  }
-
-  const result = new Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>();
+export function allCallbacks(): WrappedCallbackConfig[] {
+  const result: WrappedCallbackConfig[] = [] as const;
 
   // 直接從緩存中獲取按事件類型組織的數據
-  _callbackRegistry.configCache.forEach((callbacks, eventType) => {
-    if (callbacks.length > 0) {
-      // 創建每個回調的淺拷貝並凍結數組
-      const frozenCallbacks = Object.freeze(
-        callbacks.map((callback) => Object.freeze({ ...callback }))
-      );
-      result.set(eventType, frozenCallbacks);
-    }
+  viewRegisteredCallbackConfigs().forEach((wrappedCallbackConfig) => {
+    // 創建每個回調的淺拷貝並凍結數組
+    const frozenCallbackConfig = Object.freeze({ ...wrappedCallbackConfig });
+    result.push(frozenCallbackConfig);
   });
 
-  // 使用 Object.freeze 確保結果 Map 是唯讀的
-  return Object.freeze(result);
+  return result;
 }
 
 // -------------- 輔助函數 --------------
@@ -1106,16 +1083,13 @@ function addEventListeners(
     wrappedCallbackConfig
   );
 
-  // 標記緩存為髒數據
-  _callbackRegistry.isDirty = true;
-  rebuildCache();
-
   // 為該特定事件類型啟動監聽器（如果尚未啟動）
-  if (!_callbackRegistry.configCache.has(eventType)) {
+  if (viewRegisteredCallbackConfigs(eventType).length === 0) {
     startListening(eventType);
   }
 
   logger.debug(`已註冊 ${eventType} 事件監聽器 (ID: ${callbackId})`);
+  rebuildCache();
 
   // 返回清理函數
   return Object.assign(
@@ -1163,10 +1137,6 @@ export function removeRegisteredCallbackConfigs(
 
   // 遍歷所有指定的事件類型
   registeredCallbacks.forEach((registeredCallback) => {
-    const eventType = _callbackRegistry.registeredCallbackConfigs.get(
-      registeredCallback.id
-    )!.type;
-
     // 遍歷並刪除每個回調
     if (
       _callbackRegistry.registeredCallbackConfigs.has(registeredCallback.id)
@@ -1183,18 +1153,126 @@ export function removeRegisteredCallbackConfigs(
 
   // 標記緩存為髒數據
   if (removed) {
-    _callbackRegistry.isDirty = true;
-
     // 重建緩存以便檢查每種事件類型是否還有回調
-    rebuildCache();
 
     // 如果沒有任何回調，停止所有監聽
     if (_callbackRegistry.registeredCallbackConfigs.size === 0) {
       stopListening();
+      _callbackRegistry.isDirty = true;
+    } else {
+      // 檢查每個事件類型是否還有回調
+      _callbackRegistry.isDirty = true;
+      eventTypesToCheck.forEach((eventType) => {
+        if (viewRegisteredCallbackConfigs(eventType).length === 0) {
+          stopListening(eventType);
+        }
+      });
     }
   }
 
   return removed;
+}
+
+/**
+ * 根據事件類型獲取註冊的回調配置 - 提供向後兼容的視圖函數
+ *
+ * 這個視圖函數是重構的核心部分，作為適配層將新的以ID為索引的數據結構轉換為
+ * 傳統按事件類型組織的視圖。所有需要按事件類型取回調的內部函數（如processEventsForType）
+ * 均透過此函數存取數據，使重構過程對現有代碼影響最小化。
+ *
+ * 工作原理：
+ * 1. 接收一個或多個事件類型
+ * 2. 檢查緩存狀態，若髒標記為true則自動觸發重建
+ * 3. 從緩存中獲取對應事件類型的所有回調配置
+ * 4. 合併多個類型的結果並返回
+ *
+ * 優化機制：
+ * - 使用 configCache 快取按類型索引的結果，避免每次查詢都要遍歷全部回調
+ * - 使用 isDirty 標記避免不必要的重建操作
+ * - 支持批量查詢多種事件類型，優化多類型場景的性能
+ *
+ * 與舊數據結構的差異：
+ * - 舊：Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]> 直接按事件類型存儲
+ * - 新：Map<string, WrappedCallbackConfig> 按ID存儲 + 透過此函數提供視圖層
+ *
+ * @param types 事件類型或類型數組
+ * @returns 符合指定事件類型的回調配置數組
+ */
+function viewRegisteredCallbackConfigs(
+  types: MOUSE_EVENT_TYPE | MOUSE_EVENT_TYPE[]
+): WrappedCallbackConfig[];
+function viewRegisteredCallbackConfigs(): Map<
+  MOUSE_EVENT_TYPE,
+  WrappedCallbackConfig[]
+>;
+
+function viewRegisteredCallbackConfigs(
+  types?: MOUSE_EVENT_TYPE | MOUSE_EVENT_TYPE[]
+): WrappedCallbackConfig[] | Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]> {
+  const typesArray = Array.isArray(types) ? types : [types];
+
+  // 檢查快取是否需要重建
+  if (_callbackRegistry.isDirty) {
+    rebuildCache();
+  }
+
+  if (!types) {
+    return _callbackRegistry.configCache;
+  }
+
+  // 合併多種類型的結果
+  let result: WrappedCallbackConfig[] = [];
+  typesArray.forEach((type) => {
+    if (_callbackRegistry.configCache.has(type!)) {
+      result = [...result, ..._callbackRegistry.configCache.get(type!)!];
+    }
+  });
+
+  return result;
+}
+
+/**
+ * 重建事件類型到回調配置的快取映射
+ *
+ * 此函數將主數據結構（以ID為鍵的Map）轉換為按事件類型組織的快取結構，
+ * 是重構後實現傳統按事件類型查詢的關鍵機制。
+ *
+ * 工作原理：
+ * 1. 清空現有的類型快取映射
+ * 2. 遍歷主存儲 registeredCallbackConfigs (Map<string, WrappedCallbackConfig>)
+ * 3. 根據每個回調的 type 屬性組織到 configCache (Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>)
+ * 4. 當完成後，重置 isDirty 標記為 false
+ *
+ * 效能考量：
+ * - 重建過程是 O(n) 的時間複雜度，n 為註冊的回調數量
+ * - 通過快取與髒標記機制，僅在必要時執行重建，降低頻繁訪問的性能開銷
+ * - 使用延遲重建策略，只有在實際需要查詢時才執行重建
+ *
+ * 觸發重建的情況：
+ * 1. 添加新回調時 (通過 addEventListeners 設置 isDirty = true)
+ * 2. 刪除回調時 (通過 removeRegisteredCallbackConfigs 設置 isDirty = true)
+ * 3. 首次訪問特定事件類型的回調時 (viewRegisteredCallbackConfigs 檢查並觸發)
+ * 4. 讀取 allCallbacks() 時
+ */
+function rebuildCache(): void {
+  // 清空現有快取
+  _callbackRegistry.configCache.clear();
+
+  // 遍歷所有註冊的回調配置
+  _callbackRegistry.registeredCallbackConfigs.forEach((config) => {
+    if (config.type) {
+      // 初始化該類型的快取數組
+      if (!_callbackRegistry.configCache.has(config.type)) {
+        _callbackRegistry.configCache.set(config.type, []);
+      }
+
+      // 添加到對應類型的快取數組
+      _callbackRegistry.configCache.get(config.type)!.push(config);
+    }
+  });
+
+  // 重置髒標記
+  _callbackRegistry.isDirty = false;
 }
 
 /**
@@ -1206,7 +1284,7 @@ export function removeRegisteredCallbackConfigs(
  * 3. 清空 configCache 快取
  * 4. 停止所有事件監聽
  */
-export function clearCallbacks(): void {
+export function clearAllCallbacks(): void {
   // 清空所有事件配置
   _callbackRegistry.registeredCallbackConfigs.clear();
 
@@ -1283,107 +1361,7 @@ export function createVirtualMouseEvent(
 
 // -------------- 初始化 --------------
 
-if (window && !(typeof window === "undefined")) {
-  // 註冊特定事件類型的監聽器更新滑鼠位置和Hover資訊
-  logger.debug("初始化鼠標事件監聽器");
-  window.addEventListener(
-    MOUSE_EVENT_TYPE.Move,
-    (event) => {
-      updateMousePosition(event);
-      updateHoverState(event);
-    },
-    {
-      passive: false,
-    }
-  );
-}
-
-/**
- * 根據事件類型獲取註冊的回調配置 - 提供向後兼容的視圖函數
- *
- * 這個視圖函數是重構的核心部分，作為適配層將新的以ID為索引的數據結構轉換為
- * 傳統按事件類型組織的視圖。所有需要按事件類型取回調的內部函數（如processEventsForType）
- * 均透過此函數存取數據，使重構過程對現有代碼影響最小化。
- *
- * 工作原理：
- * 1. 接收一個或多個事件類型
- * 2. 檢查緩存狀態，若髒標記為true則自動觸發重建
- * 3. 從緩存中獲取對應事件類型的所有回調配置
- * 4. 合併多個類型的結果並返回
- *
- * 優化機制：
- * - 使用 configCache 快取按類型索引的結果，避免每次查詢都要遍歷全部回調
- * - 使用 isDirty 標記避免不必要的重建操作
- * - 支持批量查詢多種事件類型，優化多類型場景的性能
- *
- * 與舊數據結構的差異：
- * - 舊：Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]> 直接按事件類型存儲
- * - 新：Map<string, WrappedCallbackConfig> 按ID存儲 + 透過此函數提供視圖層
- *
- * @param types 事件類型或類型數組
- * @returns 符合指定事件類型的回調配置數組
- */
-function viewRegisteredCallbackConfigs(
-  types: MOUSE_EVENT_TYPE | MOUSE_EVENT_TYPE[]
-): WrappedCallbackConfig[] {
-  const typesArray = Array.isArray(types) ? types : [types];
-
-  // 檢查快取是否需要重建
-  if (_callbackRegistry.isDirty) {
-    rebuildCache();
-  }
-
-  // 合併多種類型的結果
-  let result: WrappedCallbackConfig[] = [];
-  typesArray.forEach((type) => {
-    if (_callbackRegistry.configCache.has(type)) {
-      result = [...result, ..._callbackRegistry.configCache.get(type)!];
-    }
-  });
-
-  return result;
-}
-
-/**
- * 重建事件類型到回調配置的快取映射
- *
- * 此函數將主數據結構（以ID為鍵的Map）轉換為按事件類型組織的快取結構，
- * 是重構後實現傳統按事件類型查詢的關鍵機制。
- *
- * 工作原理：
- * 1. 清空現有的類型快取映射
- * 2. 遍歷主存儲 registeredCallbackConfigs (Map<string, WrappedCallbackConfig>)
- * 3. 根據每個回調的 type 屬性組織到 configCache (Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>)
- * 4. 當完成後，重置 isDirty 標記為 false
- *
- * 效能考量：
- * - 重建過程是 O(n) 的時間複雜度，n 為註冊的回調數量
- * - 通過快取與髒標記機制，僅在必要時執行重建，降低頻繁訪問的性能開銷
- * - 使用延遲重建策略，只有在實際需要查詢時才執行重建
- *
- * 觸發重建的情況：
- * 1. 添加新回調時 (通過 addEventListeners 設置 isDirty = true)
- * 2. 刪除回調時 (通過 removeRegisteredCallbackConfigs 設置 isDirty = true)
- * 3. 首次訪問特定事件類型的回調時 (viewRegisteredCallbackConfigs 檢查並觸發)
- * 4. 讀取 allCallbacks() 時
- */
-function rebuildCache(): void {
-  // 清空現有快取
-  _callbackRegistry.configCache.clear();
-
-  // 遍歷所有註冊的回調配置
-  _callbackRegistry.registeredCallbackConfigs.forEach((config) => {
-    if (config.type) {
-      // 初始化該類型的快取數組
-      if (!_callbackRegistry.configCache.has(config.type)) {
-        _callbackRegistry.configCache.set(config.type, []);
-      }
-
-      // 添加到對應類型的快取數組
-      _callbackRegistry.configCache.get(config.type)!.push(config);
-    }
-  });
-
-  // 重置髒標記
-  _callbackRegistry.isDirty = false;
+export function startMouseevent(): MouseListenerHandle {
+  logger.debug("開始監聽滑鼠事件");
+  return onMousemove({ callbacks: (event) => {} });
 }
