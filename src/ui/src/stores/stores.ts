@@ -4,8 +4,7 @@ await waitForPyWebviewApi();
 import { defineStore } from "pinia";
 import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
-import { onMounted, onUnmounted, ref, computed } from "vue";
-import { MakeOptional } from "../utils/types";
+import { ref, computed } from "vue";
 
 import {
   onKeys,

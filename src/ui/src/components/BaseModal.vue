@@ -109,6 +109,7 @@ const stopDrag = (event: MouseEvent) => {
 onMounted(() => {
     if (modalHeader.value && modalWindow.value && !props.headless) {
         draggableEvent.push(onDrag({ target: modalHeader.value, callbacks: (info) => logger.info('dragging', info) }));
+        // draggableEvent.push(makeDraggable(modalWindow.value, modalHeader.value))
         logger.info(draggableEvent)
         // modalHeader.value.addEventListener('mousedown', startDrag);
     }
