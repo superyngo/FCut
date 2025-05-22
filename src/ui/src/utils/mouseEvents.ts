@@ -1,98 +1,6 @@
 import { logger } from "./logger";
 import { throttle, debounce, isArray } from "lodash-es";
 
-// 模塊概述:
-// 本模塊提供滑鼠事件處理的完整解決方案，包含基本事件監聽、複合拖拽功能、效能優化與資源管理機制。
-// 2023年重構主要針對回調註冊系統進行了優化，提高了查詢效率並添加了快取層。
-
-// 流程控制說明:
-//
-// 一、Callbacks註冊流
-// 1. 使用者透過公共API (onMousemove、onClick等) 創建事件監聽器，提供 CallbackConfig 配置
-//    - 每個公共API函數指定特定的事件類型(MOUSE_EVENT_TYPE)，如onClick -> MOUSE_EVENT_TYPE.Click
-//    - 使用者提供的配置會被添加type屬性，明確指定事件類型
-// 2. 內部調用 addEventListeners 統一處理註冊邏輯:
-//    - 生成唯一ID (若未提供)
-//    - 將 callbacks 統一轉換為數組格式
-//    - 使用 wrapCallback 處理節流(throttle)和防抖(debounce)包裝
-//    - 創建 WrappedCallbackConfig 並以 ID 為鍵存入 _callbackRegistry.registeredCallbackConfigs
-//    - 標記快取為髒數據(isDirty = true)
-//    - 檢查特定事件類型是否已有註冊回調，若無則為該類型啟動監聽
-//    - 返回 MouseListenerHandle 物件，包含 registeredCallbacks 數組和移除監聽器的函數
-// 3. 對於每種事件類型(MOUSE_EVENT_TYPE)的首次註冊:
-//    - 調用 startListening(eventType) 啟動對該特定類型事件的監聽
-//    - 每種事件類型都獨立註冊自己的事件處理器，但共用相同的 handleMouseEvent 函數
-// 4. 調用 rebuildCache() 重建緩存，確保數據一致性
-//
-// 二、Events註冊流
-// 1. startListening 函數針對特定事件類型向 window 註冊監聽器:
-//    - 接收 eventType 參數(如MOUSE_EVENT_TYPE.Move, MOUSE_EVENT_TYPE.Click等)
-//    - 為每種事件類型單獨向 window 添加 handleMouseEvent 事件處理器
-//    - 所有事件類型共用相同的 handleMouseEvent 處理函數，但透過 eventType 識別
-//    - 首次啟動任一事件類型監聽時，同時啟動 startAnimationLoop 處理循環
-// 2. handleMouseEvent 作為所有事件類型的統一入口點:
-//    - 更新滑鼠位置、懸停狀態、按鍵狀態等內部狀態
-//    - 從原生事件中獲取 eventType，並確保該類型的事件隊列已初始化
-//    - 將接收到的原生事件按類型存入 _callbackRegistry.pendingEvents[eventType] 隊列
-//    - 不直接執行回調，而是等待動畫幀處理
-//
-// 三、事件處理流
-// 1. startAnimationLoop 使用 requestAnimationFrame 建立統一的處理循環
-// 2. 每個動畫幀執行:
-//    - 遍歷 _callbackRegistry.pendingEvents 中每個事件類型(eventType)的隊列
-//    - 針對每種事件類型，使用 viewRegisteredCallbackConfigs(eventType) 獲取該類型的所有註冊回調
-//      - 若快取髒標記為true，則自動調用 rebuildCache 重建按類型的回調索引
-//      - 每種事件類型有自己的回調集合，確保只有相關回調會被執行
-//    - 特殊處理移動事件(MOUSE_EVENT_TYPE.Move)，僅保留隊列中最後一個事件以提高性能
-//    - 針對每個事件類型，通過 processEventsForType 處理該類型的所有待處理事件
-//      - 檢查每個回調的過濾條件(checkEventFilter)
-//      - 執行符合條件的包裝後回調函數(wrappedCallbacks)，傳入對應事件物件
-//      - 處理一次性回調的自動移除(once=true)
-//    - 清理各事件類型的已處理事件隊列
-//    - 安排下一幀
-//
-// 四、資源管理
-// 1. 透過 MouseListenerHandle 返回的函數移除特定回調
-// 2. removeRegisteredCallbackConfigs 負責從注冊表中移除回調:
-//    - 將回調從 _callbackRegistry.registeredCallbackConfigs 中刪除
-//    - 標記快取為髒數據
-//    - 檢查特定事件類型是否還有回調，若無則針對該特定事件類型調用 stopListening(eventType)
-// 3. stopListening 函數按事件類型移除監聽器:
-//    - 如提供特定 eventType，則只移除該類型的事件監聽器
-//    - 如未提供 eventType，則遍歷所有已註冊的事件類型並逐一移除
-//    - 當所有事件類型的監聽都被移除時，停止動畫循環並清理相關狀態
-// 4. clearAllCallbacks 可完全清空所有回調與事件監聽
-//
-// 五、核心數據結構
-// 1. _callbackRegistry 為中央儲存庫，包含:
-//    - registeredCallbackConfigs (Map<string, WrappedCallbackConfig>): 以ID為鍵的回調配置主存儲
-//      每個 WrappedCallbackConfig 都包含 type 屬性指定其事件類型
-//    - configCache (Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>): 按事件類型組織的快取
-//      每個事件類型(MOUSE_EVENT_TYPE)對應一個回調數組
-//    - pendingEvents (Map<MOUSE_EVENT_TYPE, (MouseEvent | WheelEvent)[]>): 按事件類型組織的待處理事件隊列
-//      每個事件類型有自己的事件隊列，確保類型隔離
-//    - isDirty: 快取髒標記，指示是否需要重建快取
-// 2. viewRegisteredCallbackConfigs 函數:
-//    - 作為資料存取層，提供統一的按事件類型查詢能力
-//    - 接收可選的 eventType 參數，能夠查詢特定事件類型的回調集合
-//    - 自動檢查並重建快取(如果髒標記為true)
-//    - 提供兩種操作模式: 按特定事件類型查詢或返回完整的按類型索引映射
-
-// 拖曳處理控制說明：
-// 1. 拖曳狀態定義：使用 DRAG_STATE 枚舉定義四種狀態 (Idle, Start, Dragging, End)，用 _dragState 物件追蹤當前狀態
-// 2. 事件觸發流程：mousedown 觸發拖曳開始、mousemove 觸發拖曳過程、mouseup 觸發拖曳結束
-// 3. 拖曳資料處理：createDragInfo 建立拖曳物件，包含起始座標、當前座標、位移量等資訊傳遞給回調函數
-// 4. 高階 API：提供 onDrag 和 makeDraggable 兩個公共函數，前者用於自訂拖曳邏輯，後者直接實現元素拖曳功能
-// 5. 拖曳識別機制：使用 id 前綴 "drag_" 標記拖曳相關回調，在 processDragCallbacks 中篩選並處理
-// 6. 錯誤處理：確保回調執行錯誤不會影響整體拖曳功能的運作
-
-// 2023重構摘要：
-// 1. 數據結構變更：將 registeredCallbackConfigs 從 Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]> 改為 Map<string, WrappedCallbackConfig>
-// 2. 新增快取系統：添加 configCache 按事件類型組織回調，使用 isDirty 標記管理快取一致性
-// 3. 視圖函數：添加 viewRegisteredCallbackConfigs 統一提供按事件類型查詢能力
-// 4. 原始資料變更：CallbackConfig 類型添加必要的 type 屬性，維持與 DragCallbackConfig 兼容
-// 5. 效能優化：主數據結構提供 O(1) 查詢刪除能力，快取機制減少重複計算
-
 // -------------- 類型定義 --------------
 
 // 鼠標事件類型
@@ -108,14 +16,6 @@ export enum MOUSE_EVENT_TYPE {
   Over = "mouseover",
   Out = "mouseout",
   Wheel = "wheel",
-}
-
-// 拖拽狀態
-enum DRAG_STATE {
-  Idle = "idle",
-  Start = "start",
-  Dragging = "dragging",
-  End = "end",
 }
 
 // 拖拽信息
@@ -189,20 +89,6 @@ const _mouseButtons = {
   left: false,
   right: false,
   middle: false,
-};
-
-export const _dragState = {
-  isDragging: false,
-  startX: 0,
-  startY: 0,
-  lastX: 0,
-  lastY: 0,
-  get deltaX() {
-    return this.lastX - this.startX;
-  },
-  get deltaY() {
-    return this.lastY - this.startY;
-  },
 };
 
 /**
@@ -392,64 +278,6 @@ const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
 
   // 添加到待處理事件隊列
   _callbackRegistry.pendingEvents.get(eventType)!.push(event);
-};
-
-// 更新拖拽狀態
-const updateDragState = (event: MouseEvent) => {
-  // 處理拖拽開始
-  if (event.type === MOUSE_EVENT_TYPE.Down && !_dragState.isDragging) {
-    logger.debug(
-      `Mouse down event at (${event.clientX}, ${event.clientY}), buttons=${event.buttons}`
-    );
-
-    // 更新按鍵狀態，確保 _mouseButtons.left 是正確的
-    updateMouseButtons(event);
-
-    if (_mouseButtons.left) {
-      logger.debug(
-        `Left button pressed - Starting drag at (${event.clientX}, ${event.clientY})`
-      );
-      _dragState.isDragging = true;
-      _dragState.startX = event.clientX;
-      _dragState.startY = event.clientY;
-      _dragState.lastX = event.clientX;
-      _dragState.lastY = event.clientY;
-
-      // 處理所有拖拽回調 - 開始狀態
-      processDragCallbacks(event, DRAG_STATE.Start);
-      return;
-    } else {
-      logger.debug(
-        `Left mouse button not detected (buttons=${event.buttons}), drag not started`
-      );
-    }
-  }
-
-  // 如果未在拖拽中，直接返回
-  if (!_dragState.isDragging) return;
-
-  // 處理拖拽移動
-  if (event.type === MOUSE_EVENT_TYPE.Move) {
-    // 處理所有拖拽回調 - 拖拽狀態
-    processDragCallbacks(event, DRAG_STATE.Dragging);
-
-    _dragState.lastX = event.clientX;
-    _dragState.lastY = event.clientY;
-    return;
-  }
-
-  // 處理拖拽結束
-  if (event.type === MOUSE_EVENT_TYPE.Up) {
-    // 處理所有拖拽回調 - 結束狀態
-    processDragCallbacks(event, DRAG_STATE.End);
-
-    // 重置狀態
-    _dragState.isDragging = false;
-    _dragState.startX = 0;
-    _dragState.startY = 0;
-    _dragState.lastX = 0;
-    _dragState.lastY = 0;
-  }
 };
 
 // -------------- 處理核心 --------------
@@ -671,99 +499,6 @@ const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
   _hoverState.hoveredElements.clear();
 };
 
-// -------------- 拖拽輔助函數 --------------
-
-/**
- * 處理拖拽回調
- *
- * 此函數負責根據當前拖拽狀態，執行所有註冊的拖拽相關回調。
- * 重構後，它使用 viewRegisteredCallbackConfigs 視圖函數獲取按事件類型組織的回調，
- * 然後過濾出拖拽相關的回調（ID 以 drag_ 開頭）並執行它們。
- *
- * 工作流程：
- * 1. 透過視圖函數獲取所有 Move 事件相關回調
- * 2. 創建包含完整拖拽狀態信息的 DragInfo 對象
- * 3. 過濾出以 "drag_" 開頭的回調，這些是由 onDrag 函數註冊的
- * 4. 執行符合條件的回調，傳遞 event 參數
- * 5. onDrag 函數內部會將 event 轉換為 dragInfo 後傳給使用者註冊的回調
- *
- * @param event 觸發拖拽的鼠標事件
- * @param state 當前拖拽狀態（開始、拖拽中、結束）
- */
-const processDragCallbacks = (event: MouseEvent, state: DRAG_STATE) => {
-  // 使用視圖函數獲取移動事件相關的回調 - 重構關鍵點
-  const moveCallbacks = viewRegisteredCallbackConfigs(MOUSE_EVENT_TYPE.Move);
-  if (!moveCallbacks || moveCallbacks.length === 0) return;
-
-  const dragInfo = createDragInfo(state, event); // 建立拖拽信息對象
-  logger.debug(
-    `Processing drag callbacks: ${state}, pos: (${event.clientX}, ${event.clientY})`
-  );
-
-  // 過濾出拖拽相關回調 (ID 以 drag_ 開頭)
-  const dragCallbacks = moveCallbacks.filter((callback) =>
-    callback.id.includes("drag_")
-  );
-
-  dragCallbacks.forEach((registeredCallback) => {
-    if (!checkEventFilter(event, registeredCallback)) return;
-
-    // 只處理包裝後的回調
-    if (registeredCallback.wrappedCallbacks) {
-      try {
-        // 注意：這裡我們不再嘗試直接傳遞 dragInfo，因為它與回調函數預期的 MouseEvent | WheelEvent 不匹配
-        // 而是在 onDrag 函數內部直接處理了拖拽信息
-        registeredCallback.wrappedCallbacks.forEach((callback) => {
-          callback(event);
-        });
-      } catch (error) {
-        logger.error(
-          `執行拖拽回調 ID:${registeredCallback.id} 時發生錯誤: ${error}`
-        );
-      }
-    }
-  });
-};
-
-/**
- * 創建拖拽信息對象
- *
- * 此函數負責根據當前鼠標事件和模塊內部追蹤的拖拽狀態，創建包含完整拖拽信息的 DragInfo 對象。
- * DragInfo 包含了拖拽的所有相關信息，包括起始位置、當前位置、移動距離等，這些信息對實現
- * 拖拽功能至關重要，比原始的鼠標事件更易於使用。
- *
- * 計算的關鍵屬性包括：
- * - deltaX/deltaY: 相對於上一次移動的位移
- * - totalDeltaX/totalDeltaY: 相對於起始位置的總位移
- *
- * 重構對此函數無影響，因為它只依賴模塊級別的 _dragState，不涉及回調註冊系統。
- *
- * @param state 拖拽狀態（開始、拖拽中、結束）
- * @param event 鼠標事件
- * @returns DragInfo 拖拽信息對象
- */
-const createDragInfo = (state: DRAG_STATE, event: MouseEvent): DragInfo => {
-  const drag = _dragState;
-  return {
-    state,
-    startX: drag.startX,
-    startY: drag.startY,
-    currentX: event.clientX,
-    currentY: event.clientY,
-    deltaX: event.clientX - drag.lastX,
-    deltaY: event.clientY - drag.lastY,
-    totalDeltaX: event.clientX - drag.startX,
-    totalDeltaY: event.clientY - drag.startY,
-    event,
-  };
-};
-
-/**
- * 執行拖拽回調
- * @param dragInfo 拖拽信息
- * @param callbacks 拖拽回調函數數組
- */
-
 // -------------- 公共 API -------------- 註冊事件
 
 /**
@@ -859,27 +594,6 @@ export function onWheel(
 /**
  * 實現拖拽功能
  *
- * 此函數是一個高階 API，用於輕鬆實現拖拽行為。它結合了 mousedown、mousemove 和 mouseup 三個事件，
- * 創建了一個統一的拖拽體驗，並為回調提供豐富的拖拽信息（如起始位置、當前位置、位移量等）。
- *
- * 重構後的變更：
- * - 保持了與原始 API 的兼容性，DragCallbackConfig 不需要添加 type 屬性
- * - 內部使用特殊前綴 "drag_" 標記拖拽回調，使 processDragCallbacks 能識別它們
- * - 在內部使用重構後的視圖函數獲取回調，但對外部 API 無影響
- *
- * 使用例子：
- * ```
- * onDrag({
- *   target: myElement,
- *   preventDefault: true,
- *   callbacks: (dragInfo) => {
- *     if (dragInfo.state === DRAG_STATE.Dragging) {
- *       myElement.style.left = `${dragInfo.currentX}px`;
- *     }
- *   }
- * });
- * ```
- *
  * @param dragCallbackConfig 拖拽配置參數，包含回調函數
  * @returns 監聽器句柄，用於移除拖拽功能
  */
@@ -946,7 +660,7 @@ export function onDrag(
       dragState.currentY = event.clientY;
       dragState.isDragging = false;
       logger.debug(
-        `Drag ended: total movement (${_dragState.deltaX}, ${_dragState.deltaY})`
+        `Drag ended: total movement (${dragState.deltaX}, ${dragState.deltaY})`
       );
     },
   });
@@ -964,7 +678,7 @@ export function onDrag(
       // 移除所有註冊的回調
       removeRegisteredCallbackConfigs(registeredCallbacks);
     },
-    { registeredCallbacks }
+    { registeredCallbacks, dragState }
   );
 }
 

@@ -73,7 +73,7 @@ import { startMouseEvent } from "../utils/mouseEvents";
 const modalStore = useModalStore();
 const taskStore = useTasks();
 const callbackRegistry = useCallBackRedistry();
-
+let mouseEvent: any = null
 
 const change_settings = (task: Task) => {
   if (task.selected) {
@@ -129,7 +129,8 @@ const toggleTaskSelection = (
 
 onMounted(() => {
   taskStore.initTasks();
-  callbackRegistry.registeredBackgroundEvents.push(startMouseEvent(),
+  mouseEvent = startMouseEvent();
+  callbackRegistry.registeredBackgroundEvents.push(
     onKeys(
       callbackRegistry.eventsProxy.taskLists as MakeOptional<
         KeyCallbackConfig,
@@ -144,6 +145,8 @@ onUnmounted(() => {
   // 清理事件監聽
   callbackRegistry.registeredBackgroundEvents.forEach((cleanup) => cleanup());
   callbackRegistry.registeredBackgroundEvents = [];
+  mouseEvent()
+  mouseEvent = null
 });
 </script>
 

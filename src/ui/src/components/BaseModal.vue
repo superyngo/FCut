@@ -25,8 +25,10 @@
 import { ref, onMounted, onUnmounted, defineModel } from 'vue';
 import { logger } from '../utils/logger';
 import { makeDraggable, MouseListenerHandle, onDrag, _dragState } from '../utils/mouseEvents';
+import { KeyListenerHandle } from "../utils/keyEvents";
+import { useCallBackRedistry } from "../stores/stores";
 
-let draggableEvent: MouseListenerHandle[] = []
+const callbackRegistry = useCallBackRedistry();
 
 type Props = {
     title?: string;
@@ -42,7 +44,7 @@ const props = withDefaults(defineProps<Props>(), {
     title: '',
     modalClass: '',
     contentStyle: () => ({}),
-    closeOnOverlayClick: false,
+    closeOnOverlayClick: true,
     headless: false,
     showBackButton: false,
 });
@@ -62,66 +64,36 @@ const closeModal = () => {
 const onBackClick = () => {
     emit('back-clicked');
 };
-
 const handleOverlayClick = () => {
-    if (!isDragging && props.closeOnOverlayClick) {
+    if (props.closeOnOverlayClick) {
         closeModal();
     }
 };
 
-// 可選：簡易拖曳功能 (如果需要，可以進一步完善)
+let draggableEvent: MouseListenerHandle[] = []
+
 const modalWindow = ref<HTMLElement | null>(null);
 const modalHeader = ref<HTMLElement | null>(null);
-let isDragging = false;
-let startX = 0;
-let startY = 0;
-let origX = 0;
-let origY = 0;
-
-const startDrag = (event: MouseEvent) => {
-    logger.info('start dragging');
-    if (!modalHeader.value || !modalWindow.value) return;
-    const rect = modalWindow.value.getBoundingClientRect();
-    isDragging = true;
-    startX = event.clientX
-    startY = event.clientY
-    origX = rect.left;
-    origY = rect.top;
-    document.addEventListener('mousemove', dragging);
-    document.addEventListener('mouseup', stopDrag);
-};
-
-const dragging = (event: MouseEvent) => {
-    if (!isDragging || !modalHeader.value || !modalWindow.value) return;
-    const dx = event.clientX - startX;
-    const dy = event.clientY - startY;
-    modalWindow.value.style.left = origX + dx + "px";
-    modalWindow.value.style.top = origY + dy + "px";
-    // 確保 modal 不會被拖出視窗外 (可選)
-};
-
-const stopDrag = (event: MouseEvent) => {
-    isDragging = false;
-    document.removeEventListener('mousemove', dragging);
-    document.removeEventListener('mouseup', stopDrag);
-};
 
 onMounted(() => {
     if (modalHeader.value && modalWindow.value && !props.headless) {
-        // draggableEvent.push(onDrag({ target: modalHeader.value, callbacks: (_) => logger.info(_dragState) }));
         draggableEvent.push(makeDraggable(modalWindow.value, modalHeader.value)!)
-
-        // modalHeader.value.addEventListener('mousedown', startDrag);
     }
+    callbackRegistry.registeredBackgroundEvents.forEach((handle) => {
+        (handle as KeyListenerHandle).registeredConfigs.forEach((config) => {
+            if (config.key === 'Escape') {
+                config.callback = config.swap(closeModal)
+            } else {
+                config.callback = config.swap(() => { })
+            }
+        })
+    });
 });
 
 onUnmounted(() => {
     if (draggableEvent) {
         draggableEvent.forEach((c) => c())
-        // modalHeader.value.removeEventListener('mousedown', startDrag);
     }
-    // document.removeEventListener('mousemove', dragging); // 確保移除事件
-    // document.removeEventListener('mouseup', stopDrag); // 確保移除事件
 });
 
 </script>
