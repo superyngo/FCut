@@ -24,7 +24,7 @@
 // defineModel 通常在 <script setup> 中是編譯器宏，無需顯式導入，但若 Linter 提示可加上
 import { ref, onMounted, onUnmounted, defineModel } from 'vue';
 import { logger } from '../utils/logger';
-import { makeDraggable, MouseListenerHandle, onDrag } from '../utils/mouseEvents';
+import { makeDraggable, MouseListenerHandle, onDrag, _dragState } from '../utils/mouseEvents';
 
 let draggableEvent: MouseListenerHandle[] = []
 
@@ -108,9 +108,9 @@ const stopDrag = (event: MouseEvent) => {
 
 onMounted(() => {
     if (modalHeader.value && modalWindow.value && !props.headless) {
-        draggableEvent.push(onDrag({ target: modalHeader.value, callbacks: (info) => logger.info('dragging', info) }));
-        // draggableEvent.push(makeDraggable(modalWindow.value, modalHeader.value))
-        logger.info(draggableEvent)
+        // draggableEvent.push(onDrag({ target: modalHeader.value, callbacks: (_) => logger.info(_dragState) }));
+        draggableEvent.push(makeDraggable(modalWindow.value, modalHeader.value)!)
+
         // modalHeader.value.addEventListener('mousedown', startDrag);
     }
 });

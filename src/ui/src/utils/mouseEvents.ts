@@ -1,5 +1,5 @@
 import { logger } from "./logger";
-import { throttle, debounce } from "lodash-es";
+import { throttle, debounce, isArray } from "lodash-es";
 
 // 模塊概述:
 // 本模塊提供滑鼠事件處理的完整解決方案，包含基本事件監聽、複合拖拽功能、效能優化與資源管理機制。
@@ -119,21 +119,23 @@ enum DRAG_STATE {
 }
 
 // 拖拽信息
-type DragInfo = {
-  state: DRAG_STATE;
+type DragState = {
+  isDragging: boolean;
   startX: number;
   startY: number;
   currentX: number;
   currentY: number;
   deltaX: number;
   deltaY: number;
-  totalDeltaX: number;
-  totalDeltaY: number;
-  event: MouseEvent;
 };
 
-// 拖拽回調函數
-export type DragCallbackFunction = (info: DragInfo) => any;
+type DragEvent = MouseEvent & { dragState: DragState };
+
+type DragCallbackFunction = {
+  mousedown?: (event: DragEvent) => any;
+  mousemove: (event: DragEvent) => any;
+  mouseup?: (event: DragEvent) => any;
+};
 
 export type DragCallbackConfig = {
   id?: string; // 唯一標識符
@@ -141,7 +143,7 @@ export type DragCallbackConfig = {
   debounce?: number; // 防抖間隔(ms)
   target?: HTMLElement | string | null; // 目標元素或選擇器
   preventDefault?: boolean; // 是否阻止默認行為
-  callbacks: DragCallbackFunction | DragCallbackFunction[]; // 拖拽回調函數或回調函數數組
+  callbacks: DragCallbackFunction;
 };
 
 // 基本鼠標回調函數
@@ -189,12 +191,18 @@ const _mouseButtons = {
   middle: false,
 };
 
-const _dragState = {
+export const _dragState = {
   isDragging: false,
   startX: 0,
   startY: 0,
   lastX: 0,
   lastY: 0,
+  get deltaX() {
+    return this.lastX - this.startX;
+  },
+  get deltaY() {
+    return this.lastY - this.startY;
+  },
 };
 
 /**
@@ -374,9 +382,6 @@ const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
         `Mouse ${event.type}: buttons=${event.buttons}, left=${_mouseButtons.left}`
       );
     }
-
-    // 處理拖拽狀態
-    updateDragState(event);
   }
 
   // 獲取事件類型並確保事件隊列初始化
@@ -882,75 +887,66 @@ export function onDrag(
   dragCallbackConfig: DragCallbackConfig
 ): MouseListenerHandle {
   // 獲取回調函數並統一轉換為數組
-  let { callbacks: dragCallbacks, ...restConfig } = dragCallbackConfig;
-  dragCallbacks = Array.isArray(dragCallbacks)
-    ? dragCallbacks
-    : [dragCallbacks];
-
-  // 為拖拽創建一個唯一ID
-  const dragId = `drag_${crypto.randomUUID()}`;
-  const callbackConfig = {
-    id: dragId,
-    ...restConfig,
+  let { mousedown, mousemove, mouseup } = dragCallbackConfig.callbacks;
+  const dragState = {
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    currentX: 0,
+    currentY: 0,
+    get deltaX() {
+      return this.currentX - this.startX;
+    },
+    get deltaY() {
+      return this.currentY - this.startY;
+    },
   };
 
   // 鼠標按下處理 - 拖拽開始信號由通用拖拽處理器處理
   const downHandle = onMousedown({
-    ...callbackConfig,
-    callbacks: () => {},
+    ...dragCallbackConfig,
+    id: `drag_mousedown_${crypto.randomUUID()}`,
+    callbacks: (event) => {
+      dragState.isDragging = true;
+      dragState.startX = event.clientX;
+      dragState.startY = event.clientY;
+      mousedown && mousedown({ ...event, dragState });
+    },
   });
 
   // 鼠標移動處理
   const moveHandle = onMousemove({
-    ...callbackConfig,
+    ...dragCallbackConfig,
+    target: null,
+    id: `drag_mousemove_${crypto.randomUUID()}`,
     callbacks: (event) => {
-      if (!_dragState.isDragging) return;
-
-      // 創建拖拽信息並執行回調 - 確保直接傳遞拖拽信息對象給回調函數
-      const dragInfo = createDragInfo(DRAG_STATE.Dragging, event);
-
-      // 直接在這裡執行回調，確保參數正確
-      dragCallbacks.forEach((callback) => {
-        try {
-          // 明確傳遞 dragInfo 而非 event
-          callback(dragInfo);
-        } catch (error) {
-          logger.error(`執行拖拽回調時發生錯誤: ${error}`);
-        }
-      });
-
-      // 輸出日誌用於調試
+      if (!dragState.isDragging) return;
+      dragState.currentX = event.clientX;
+      dragState.currentY = event.clientY;
       logger.debug(
-        `Drag moving: ${event.clientX}, ${event.clientY}, delta: (${dragInfo.deltaX}, ${dragInfo.deltaY})`
+        `Drag moving: ${event.clientX}, ${event.clientY}, delta: (${dragState.deltaX}, ${dragState.deltaY})`
       );
-
-      // 更新最後位置
-      _dragState.lastX = event.clientX;
-      _dragState.lastY = event.clientY;
+      mousemove({ ...event, dragState });
     },
   });
 
   // 鼠標釋放處理
   const upHandle = onMouseup({
-    ...callbackConfig,
+    ...dragCallbackConfig,
+    target: null,
+    id: `drag_mouseup_${crypto.randomUUID()}`,
     callbacks: (event) => {
-      if (!_dragState.isDragging) return;
+      if (!dragState.isDragging) return;
 
-      // 創建拖拽信息並直接執行回調
-      const dragInfo = createDragInfo(DRAG_STATE.End, event);
+      mouseup && mouseup({ ...event, dragState });
 
-      // 直接在這裡執行回調，確保參數正確
-      dragCallbacks.forEach((callback) => {
-        try {
-          // 明確傳遞 dragInfo 而非 event
-          callback(dragInfo);
-        } catch (error) {
-          logger.error(`執行拖拽結束回調時發生錯誤: ${error}`);
-        }
-      });
-
+      dragState.startX = 0;
+      dragState.startY = 0;
+      dragState.currentX = event.clientX;
+      dragState.currentY = event.clientY;
+      dragState.isDragging = false;
       logger.debug(
-        `Drag ended: total movement (${dragInfo.totalDeltaX}, ${dragInfo.totalDeltaY})`
+        `Drag ended: total movement (${_dragState.deltaX}, ${_dragState.deltaY})`
       );
     },
   });
@@ -967,7 +963,6 @@ export function onDrag(
     (): void => {
       // 移除所有註冊的回調
       removeRegisteredCallbackConfigs(registeredCallbacks);
-      registeredCallbacks.length = 0;
     },
     { registeredCallbacks }
   );
@@ -983,11 +978,19 @@ export function makeDraggable(
   target: HTMLElement,
   dragPoint: HTMLElement = target
 ): MouseListenerHandle {
-  // 記錄初始位置和樣式
-  let initialX: number = 0;
-  let initialY: number = 0;
-  let targetInitialLeft: number = 0;
-  let targetInitialTop: number = 0;
+  // 早期返回：參數檢查
+  if (!target) {
+    logger.warning("makeDraggable: 目標元素不存在");
+    // 返回一個空的監聽器句柄，避免調用者需要檢查null
+    return Object.assign(() => {}, { registeredCallbacks: [] });
+  }
+
+  // 如果未提供拖曳點，使用目標元素作為拖曳點
+  dragPoint = dragPoint || target;
+
+  // 初始化位置變數
+  let origX: number;
+  let origY: number;
 
   // 確保目標元素可以被定位
   const computedStyle = window.getComputedStyle(target);
@@ -997,37 +1000,36 @@ export function makeDraggable(
     position !== "relative" &&
     position !== "fixed"
   ) {
+    // 設置為可定位的元素
     target.style.position = "relative";
+    logger.debug(`已將元素定位方式設為 'relative'`);
   }
 
   // 註冊拖拽事件
   return onDrag({
-    target: dragPoint,
     preventDefault: true,
-    callbacks: (dragInfo: DragInfo) => {
-      // 拖拽開始時保存初始位置
-      if (dragInfo.state === DRAG_STATE.Start) {
-        initialX = dragInfo.startX;
-        initialY = dragInfo.startY;
-
-        // 獲取目標元素當前位置
-        targetInitialLeft = parseInt(target.style.left || "0", 10);
-        targetInitialTop = parseInt(target.style.top || "0", 10);
-      }
-
-      // 拖拽過程中更新位置
-      if (
-        dragInfo.state === DRAG_STATE.Dragging ||
-        dragInfo.state === DRAG_STATE.End
-      ) {
-        // 計算新位置
-        const newLeft = targetInitialLeft + (dragInfo.currentX - initialX);
-        const newTop = targetInitialTop + (dragInfo.currentY - initialY);
-
-        // 更新目標元素樣式
-        target.style.left = `${newLeft}px`;
-        target.style.top = `${newTop}px`;
-      }
+    target: dragPoint,
+    callbacks: {
+      mousedown: (dragEvent) => {
+        // 保存初始位置
+        const rect = target.getBoundingClientRect();
+        origX = rect.left;
+        origY = rect.top;
+        logger.debug(`開始拖曳元素: 初始位置 (${origX}, ${origY})`);
+      },
+      mousemove: (dragEvent) => {
+        // 計算新位置並應用
+        const newLeft = origX + dragEvent.dragState.deltaX;
+        const newTop = origY + dragEvent.dragState.deltaY;
+        target.style.left = newLeft + "px";
+        target.style.top = newTop + "px";
+      },
+      mouseup: (dragEvent) => {
+        // 更新最終位置
+        origX = origX + dragEvent.dragState.deltaX;
+        origY = origY + dragEvent.dragState.deltaY;
+        logger.debug(`結束拖曳: 最終位置 (${origX}, ${origY})`);
+      },
     },
   });
 }
