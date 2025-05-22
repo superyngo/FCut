@@ -6,15 +6,77 @@ import { throttle, debounce } from "lodash-es";
 // 2023年重構主要針對回調註冊系統進行了優化，提高了查詢效率並添加了快取層。
 
 // 流程控制說明:
-// 1. 提供公共 API：onMousemove, onClick, onMousedown, onMouseup, onWheel 等監聽函數，以及 onDrag, makeDraggable 等複合事件處理函數
-// 2. 所有事件監聽都透過 addEventListeners 統一處理，內部創建 WrappedCallbackConfig 並以 ID 為鍵存入 _callbackRegistry.registeredCallbackConfigs，同時標記快取為髒數據
-// 3. 對節流/防抖控制：使用 wrapCallback 處理節流（throttle）和防抖（debounce）
-// 4. 啟動事件監聽：startListening 向 window 註冊 handleMouseEvent 事件處理器並啟動 startAnimationLoop
-// 5. 事件收集處理：handleMouseEvent 接收原始事件，更新滑鼠狀態並將事件存入 _callbackRegistry.pendingEvents
-// 6. 動畫幀處理：startAnimationLoop 使用 requestAnimationFrame 建立循環，通過 viewRegisteredCallbackConfigs 獲取回調並呼叫
-// 7. 快取管理：viewRegisteredCallbackConfigs 提供按事件類型查詢回調的能力，使用 isDirty 標記確保快取一致性
-// 8. 拖曳處理：processDragCallbacks 特殊處理拖曳相關事件，創建 DragInfo 並執行回調
-// 9. 資源釋放：removeRegisteredCallbackConfigs, clearCallbacks 或監聽句柄函數移除監聽器和清理資源
+//
+// 一、Callbacks註冊流
+// 1. 使用者透過公共API (onMousemove、onClick等) 創建事件監聽器，提供 CallbackConfig 配置
+//    - 每個公共API函數指定特定的事件類型(MOUSE_EVENT_TYPE)，如onClick -> MOUSE_EVENT_TYPE.Click
+//    - 使用者提供的配置會被添加type屬性，明確指定事件類型
+// 2. 內部調用 addEventListeners 統一處理註冊邏輯:
+//    - 生成唯一ID (若未提供)
+//    - 將 callbacks 統一轉換為數組格式
+//    - 使用 wrapCallback 處理節流(throttle)和防抖(debounce)包裝
+//    - 創建 WrappedCallbackConfig 並以 ID 為鍵存入 _callbackRegistry.registeredCallbackConfigs
+//    - 標記快取為髒數據(isDirty = true)
+//    - 檢查特定事件類型是否已有註冊回調，若無則為該類型啟動監聽
+//    - 返回 MouseListenerHandle 物件，包含 registeredCallbacks 數組和移除監聽器的函數
+// 3. 對於每種事件類型(MOUSE_EVENT_TYPE)的首次註冊:
+//    - 調用 startListening(eventType) 啟動對該特定類型事件的監聽
+//    - 每種事件類型都獨立註冊自己的事件處理器，但共用相同的 handleMouseEvent 函數
+// 4. 調用 rebuildCache() 重建緩存，確保數據一致性
+//
+// 二、Events註冊流
+// 1. startListening 函數針對特定事件類型向 window 註冊監聽器:
+//    - 接收 eventType 參數(如MOUSE_EVENT_TYPE.Move, MOUSE_EVENT_TYPE.Click等)
+//    - 為每種事件類型單獨向 window 添加 handleMouseEvent 事件處理器
+//    - 所有事件類型共用相同的 handleMouseEvent 處理函數，但透過 eventType 識別
+//    - 首次啟動任一事件類型監聽時，同時啟動 startAnimationLoop 處理循環
+// 2. handleMouseEvent 作為所有事件類型的統一入口點:
+//    - 更新滑鼠位置、懸停狀態、按鍵狀態等內部狀態
+//    - 從原生事件中獲取 eventType，並確保該類型的事件隊列已初始化
+//    - 將接收到的原生事件按類型存入 _callbackRegistry.pendingEvents[eventType] 隊列
+//    - 不直接執行回調，而是等待動畫幀處理
+//
+// 三、事件處理流
+// 1. startAnimationLoop 使用 requestAnimationFrame 建立統一的處理循環
+// 2. 每個動畫幀執行:
+//    - 遍歷 _callbackRegistry.pendingEvents 中每個事件類型(eventType)的隊列
+//    - 針對每種事件類型，使用 viewRegisteredCallbackConfigs(eventType) 獲取該類型的所有註冊回調
+//      - 若快取髒標記為true，則自動調用 rebuildCache 重建按類型的回調索引
+//      - 每種事件類型有自己的回調集合，確保只有相關回調會被執行
+//    - 特殊處理移動事件(MOUSE_EVENT_TYPE.Move)，僅保留隊列中最後一個事件以提高性能
+//    - 針對每個事件類型，通過 processEventsForType 處理該類型的所有待處理事件
+//      - 檢查每個回調的過濾條件(checkEventFilter)
+//      - 執行符合條件的包裝後回調函數(wrappedCallbacks)，傳入對應事件物件
+//      - 處理一次性回調的自動移除(once=true)
+//    - 清理各事件類型的已處理事件隊列
+//    - 安排下一幀
+//
+// 四、資源管理
+// 1. 透過 MouseListenerHandle 返回的函數移除特定回調
+// 2. removeRegisteredCallbackConfigs 負責從注冊表中移除回調:
+//    - 將回調從 _callbackRegistry.registeredCallbackConfigs 中刪除
+//    - 標記快取為髒數據
+//    - 檢查特定事件類型是否還有回調，若無則針對該特定事件類型調用 stopListening(eventType)
+// 3. stopListening 函數按事件類型移除監聽器:
+//    - 如提供特定 eventType，則只移除該類型的事件監聽器
+//    - 如未提供 eventType，則遍歷所有已註冊的事件類型並逐一移除
+//    - 當所有事件類型的監聽都被移除時，停止動畫循環並清理相關狀態
+// 4. clearAllCallbacks 可完全清空所有回調與事件監聽
+//
+// 五、核心數據結構
+// 1. _callbackRegistry 為中央儲存庫，包含:
+//    - registeredCallbackConfigs (Map<string, WrappedCallbackConfig>): 以ID為鍵的回調配置主存儲
+//      每個 WrappedCallbackConfig 都包含 type 屬性指定其事件類型
+//    - configCache (Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]>): 按事件類型組織的快取
+//      每個事件類型(MOUSE_EVENT_TYPE)對應一個回調數組
+//    - pendingEvents (Map<MOUSE_EVENT_TYPE, (MouseEvent | WheelEvent)[]>): 按事件類型組織的待處理事件隊列
+//      每個事件類型有自己的事件隊列，確保類型隔離
+//    - isDirty: 快取髒標記，指示是否需要重建快取
+// 2. viewRegisteredCallbackConfigs 函數:
+//    - 作為資料存取層，提供統一的按事件類型查詢能力
+//    - 接收可選的 eventType 參數，能夠查詢特定事件類型的回調集合
+//    - 自動檢查並重建快取(如果髒標記為true)
+//    - 提供兩種操作模式: 按特定事件類型查詢或返回完整的按類型索引映射
 
 // 拖曳處理控制說明：
 // 1. 拖曳狀態定義：使用 DRAG_STATE 枚舉定義四種狀態 (Idle, Start, Dragging, End)，用 _dragState 物件追蹤當前狀態
@@ -288,9 +350,17 @@ const wrapCallback = (
   return callbacks;
 };
 
-// -------------- 事件處理器 --------------
+// -------------- Events處理器 --------------
 
-// 通用滑鼠事件處理程序
+/**
+ * event流
+ * 所有event的入口(不分event type)
+ * 不實際調用callback
+ * 而是將event依照type註冊到_callbackRegistry.pendingEvents
+ * 讓AniamtionLoop去匹配調用
+ * 更新事件狀態
+ *
+ * */
 const handleMouseEvent = (event: MouseEvent | WheelEvent) => {
   // 更新滑鼠狀態 (僅針對 MouseEvent)
   if (event instanceof MouseEvent) {
@@ -377,7 +447,7 @@ const updateDragState = (event: MouseEvent) => {
   }
 };
 
-// -------------- 核心功能 --------------
+// -------------- 處理核心 --------------
 
 // 更新幀速率計算
 const updateFrameStats = (timestamp: number): void => {
@@ -412,6 +482,7 @@ const updateFrameStats = (timestamp: number): void => {
 };
 
 /**
+ * 處理流(將events投射到callbacks上)
  * 使用 requestAnimationFrame 的處理循環 - 最核心執行所有註冊事件的地方
  *
  * 此函數創建動畫循環，在每個幀中處理所有待處理的事件，是整個模塊的核心調度中心。
@@ -525,7 +596,14 @@ const removeOneTimeCallback = (callbackId: string) => {
   }
 };
 
-// 開始全局各類Mouse Events事件監聽
+/**
+ * events流
+ * 按照eventType註冊listner到handleMouseEvent
+ * 啟動startAnimationLoop
+ *
+ * @param eventType
+ * @returns
+ */
 const startListening = (eventType: MOUSE_EVENT_TYPE) => {
   if (typeof window === "undefined") return;
 
@@ -557,6 +635,8 @@ const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
   if (eventType) {
     window.removeEventListener(eventType, handleMouseEvent as EventListener);
     logger.debug(`已移除 ${eventType} 的全局事件監聽器`);
+
+    _callbackRegistry.pendingEvents.delete(eventType);
 
     // 如果還有其他事件註冊，提前返回
     if (_callbackRegistry.registeredCallbackConfigs.size > 0) return;
@@ -952,6 +1032,97 @@ export function makeDraggable(
   });
 }
 
+/**
+ * 清空所有回調並停止監聽
+ *
+ * 清除操作包括：
+ * 1. 清空 registeredCallbackConfigs 中所有註冊的回調
+ * 2. 重置快取狀態標記
+ * 3. 清空 configCache 快取
+ * 4. 停止所有事件監聽
+ */
+export function clearAllCallbacks(): void {
+  // 清空所有事件配置
+  _callbackRegistry.registeredCallbackConfigs.clear();
+
+  // 清空快取
+  _callbackRegistry.configCache.clear();
+
+  // 重置髒標記 (不需要重建快取，因為已經清空了)
+  _callbackRegistry.isDirty = false;
+
+  // 停止所有事件監聽
+  stopListening();
+  logger.debug("已清除所有鼠標事件回調與快取");
+}
+
+/**
+ * 設置低功耗模式
+ * @param enable 是否啟用
+ * @param frequency 低功耗模式下的更新頻率 (默認 30fps)
+ */
+export function setLowPowerMode(enable: boolean, frequency: number = 30): void {
+  _performance.lowPowerMode = enable;
+  if (frequency > 0) {
+    _performance.lowPowerFrequency = frequency;
+  }
+  logger.debug(
+    `低功耗模式已${enable ? "啟用" : "停用"}，頻率: ${frequency}fps`
+  );
+}
+
+/**
+ * 創建虛擬鼠標事件 (用於測試)
+ * @param type 事件類型
+ * @param x X座標
+ * @param y Y座標
+ * @param options 其他選項
+ */
+export function createVirtualMouseEvent(
+  type: MOUSE_EVENT_TYPE,
+  x: number,
+  y: number,
+  options: {
+    buttons?: number;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+    target?: HTMLElement | null;
+  } = {}
+): void {
+  // 預設目標為文檔
+  const target = options.target || document.documentElement;
+
+  // 創建事件
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    view: window,
+    detail: 1,
+    screenX: x,
+    screenY: y,
+    clientX: x,
+    clientY: y,
+    ctrlKey: options.ctrlKey || false,
+    altKey: options.altKey || false,
+    shiftKey: options.shiftKey || false,
+    button: 0,
+    buttons: options.buttons || 0,
+    relatedTarget: null,
+  });
+
+  // 派發事件
+  target.dispatchEvent(event);
+  logger.debug(`已創建虛擬鼠標事件 ${type} 在座標 (${x}, ${y})`);
+}
+
+// -------------- 初始化 --------------
+
+export function startMouseEvent(): MouseListenerHandle {
+  logger.debug("開始監聽滑鼠事件");
+  return onMousemove({ callbacks: (event) => {} });
+}
+
 // -------------- 公共 API -------------- 回傳滑鼠狀態
 
 /**
@@ -1009,7 +1180,7 @@ export function isHovering(element: HTMLElement | string): boolean {
  * @returns 所有註冊回調的唯讀副本，按事件類型組織 Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>
  */
 export function allCallbacks(): WrappedCallbackConfig[] {
-  const result: WrappedCallbackConfig[] = [] as const;
+  const result: WrappedCallbackConfig[] = [];
 
   // 直接從緩存中獲取按事件類型組織的數據
   viewRegisteredCallbackConfigs().forEach((wrappedCallbackConfig) => {
@@ -1124,7 +1295,7 @@ function addEventListeners(
  * @param registeredCallbacks 事件類型和對應回調的映射
  * @returns 是否成功移除至少一個回調
  */
-export function removeRegisteredCallbackConfigs(
+function removeRegisteredCallbackConfigs(
   registeredCallbacks: WrappedCallbackConfig[]
 ): boolean {
   let removed = false;
@@ -1205,20 +1376,19 @@ function viewRegisteredCallbackConfigs(): Map<
   MOUSE_EVENT_TYPE,
   WrappedCallbackConfig[]
 >;
-
 function viewRegisteredCallbackConfigs(
   types?: MOUSE_EVENT_TYPE | MOUSE_EVENT_TYPE[]
 ): WrappedCallbackConfig[] | Map<MOUSE_EVENT_TYPE, WrappedCallbackConfig[]> {
-  const typesArray = Array.isArray(types) ? types : [types];
-
   // 檢查快取是否需要重建
   if (_callbackRegistry.isDirty) {
     rebuildCache();
   }
 
-  if (!types) {
+  if (types === undefined) {
     return _callbackRegistry.configCache;
   }
+
+  const typesArray = Array.isArray(types) ? types : [types];
 
   // 合併多種類型的結果
   let result: WrappedCallbackConfig[] = [];
@@ -1260,108 +1430,15 @@ function rebuildCache(): void {
 
   // 遍歷所有註冊的回調配置
   _callbackRegistry.registeredCallbackConfigs.forEach((config) => {
-    if (config.type) {
-      // 初始化該類型的快取數組
-      if (!_callbackRegistry.configCache.has(config.type)) {
-        _callbackRegistry.configCache.set(config.type, []);
-      }
-
-      // 添加到對應類型的快取數組
-      _callbackRegistry.configCache.get(config.type)!.push(config);
+    // 初始化該類型的快取數組
+    if (!_callbackRegistry.configCache.has(config.type)) {
+      _callbackRegistry.configCache.set(config.type, []);
     }
+
+    // 添加到對應類型的快取數組
+    _callbackRegistry.configCache.get(config.type)!.push(config);
   });
 
   // 重置髒標記
   _callbackRegistry.isDirty = false;
-}
-
-/**
- * 清空所有回調並停止監聽
- *
- * 清除操作包括：
- * 1. 清空 registeredCallbackConfigs 中所有註冊的回調
- * 2. 重置快取狀態標記
- * 3. 清空 configCache 快取
- * 4. 停止所有事件監聽
- */
-export function clearAllCallbacks(): void {
-  // 清空所有事件配置
-  _callbackRegistry.registeredCallbackConfigs.clear();
-
-  // 清空快取
-  _callbackRegistry.configCache.clear();
-
-  // 重置髒標記 (不需要重建快取，因為已經清空了)
-  _callbackRegistry.isDirty = false;
-
-  // 停止所有事件監聽
-  stopListening();
-  logger.debug("已清除所有鼠標事件回調與快取");
-}
-
-/**
- * 設置低功耗模式
- * @param enable 是否啟用
- * @param frequency 低功耗模式下的更新頻率 (默認 30fps)
- */
-export function setLowPowerMode(enable: boolean, frequency: number = 30): void {
-  _performance.lowPowerMode = enable;
-  if (frequency > 0) {
-    _performance.lowPowerFrequency = frequency;
-  }
-  logger.debug(
-    `低功耗模式已${enable ? "啟用" : "停用"}，頻率: ${frequency}fps`
-  );
-}
-
-/**
- * 創建虛擬鼠標事件 (用於測試)
- * @param type 事件類型
- * @param x X座標
- * @param y Y座標
- * @param options 其他選項
- */
-export function createVirtualMouseEvent(
-  type: MOUSE_EVENT_TYPE,
-  x: number,
-  y: number,
-  options: {
-    buttons?: number;
-    ctrlKey?: boolean;
-    shiftKey?: boolean;
-    altKey?: boolean;
-    target?: HTMLElement | null;
-  } = {}
-): void {
-  // 預設目標為文檔
-  const target = options.target || document.documentElement;
-
-  // 創建事件
-  const event = new MouseEvent(type, {
-    bubbles: true,
-    cancelable: true,
-    view: window,
-    detail: 1,
-    screenX: x,
-    screenY: y,
-    clientX: x,
-    clientY: y,
-    ctrlKey: options.ctrlKey || false,
-    altKey: options.altKey || false,
-    shiftKey: options.shiftKey || false,
-    button: 0,
-    buttons: options.buttons || 0,
-    relatedTarget: null,
-  });
-
-  // 派發事件
-  target.dispatchEvent(event);
-  logger.debug(`已創建虛擬鼠標事件 ${type} 在座標 (${x}, ${y})`);
-}
-
-// -------------- 初始化 --------------
-
-export function startMouseevent(): MouseListenerHandle {
-  logger.debug("開始監聽滑鼠事件");
-  return onMousemove({ callbacks: (event) => {} });
 }

@@ -6,13 +6,12 @@ import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { ref, computed } from "vue";
 
+import { MODIFIER_KEYS, KeyListenerHandle } from "../utils/keyEvents"; // 引入 on_shift 工具函數
 import {
-  onKeys,
-  MODIFIER_KEYS,
-  KeyCallbackConfig,
-  KeyListenerHandle,
-} from "../utils/keyEvents"; // 引入 on_shift 工具函數
-import { onMousemove, coordinate } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
+  onMousemove,
+  coordinate,
+  MouseListenerHandle,
+} from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 // 使用組合式 API 定義 AppState store
@@ -262,8 +261,10 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const taskStore = useTasks();
 
   // 清理函數，用於移除事件監聽器
-  let registeredKeyEvents = ref<KeyListenerHandle[]>([]);
-  let registeredMouseEvents = ref<(() => void)[]>([]);
+  let registeredBackgroundEvents = ref<
+    (KeyListenerHandle | MouseListenerHandle)[]
+  >([]);
+  let registeredEvents = ref<(KeyListenerHandle | MouseListenerHandle)[]>([]);
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = ref((event: any) => {
@@ -294,7 +295,7 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const onShiftPress = ref(() => {
     taskStore.isShiftOn = true;
     findNearestTaskToMouse.value(null);
-    registeredMouseEvents.value.push(
+    registeredEvents.value.push(
       onMousemove({
         callbacks: findNearestTaskToMouse.value,
       })
@@ -304,9 +305,9 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const onShiftRelease = ref(() => {
     taskStore.isShiftOn = false;
     taskStore.mouseNearestIndex = -1;
-    if (registeredMouseEvents.value) {
-      registeredMouseEvents.value.forEach((event) => event());
-      registeredMouseEvents.value = [];
+    if (registeredEvents.value) {
+      registeredEvents.value.forEach((event) => event());
+      registeredEvents.value = [];
     }
   });
 
@@ -343,8 +344,8 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
 
   return {
     eventsProxy,
-    registeredKeyEvents,
-    registeredMouseEvents,
+    registeredBackgroundEvents,
+    registeredEvents,
     onShiftPress,
     onShiftRelease,
     findNearestTaskToMouse,
