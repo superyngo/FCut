@@ -1,43 +1,41 @@
 <template>
   <!-- Menu Modal -->
   <BaseModal v-if="modalStore.activeModals.menu.isOpen" v-model:is-open="modalStore.activeModals.menu.isOpen"
-    :title="modalStore.activeModals.menu.title" modal-class="menu-modal" :content-style="modalStore.menuModalStyle"
-    @close="modalStore.closeMenu()">
+    :title="modalStore.activeModals.menu.title" modal-class="menu-modal" :content-style="modalStore.menuModalStyle">
     <MenuOptions />
   </BaseModal>
 
   <!-- Task Settings Modal -->
   <BaseModal v-if="modalStore.activeModals.taskSettings.isOpen"
     v-model:is-open="modalStore.activeModals.taskSettings.isOpen" :title="modalStore.activeModals.taskSettings.title"
-    modal-class="settings-modal" :content-style="modalStore.settingsModalStyle" @close="closeTaskSettingsModal">
-    <TaskSettingsForm v-if="taskStore.tempTask" @close="closeTaskSettingsModal" />
+    modal-class="settings-modal" :content-style="modalStore.settingsModalStyle">
+    <TaskSettingsForm v-if="taskStore.tempTask" />
   </BaseModal>
 
   <!-- Settings Page Modal -->
   <BaseModal v-if="modalStore.activeModals.settingsPage.isOpen"
     v-model:is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
-    modal-class="page-modal" @close="modalStore.closeSettingsPage()" :show-back-button="true"
-    @back-clicked="handlePageBackNavigation">
+    modal-class="page-modal" :show-back-button="true" @back-clicked="handlePageBackNavigation">
     <SettingsPage />
   </BaseModal>
 
   <!-- About Page Modal -->
   <BaseModal v-if="modalStore.activeModals.aboutPage.isOpen" v-model:is-open="modalStore.activeModals.aboutPage.isOpen"
-    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" @close="modalStore.closeAboutPage()"
-    :show-back-button="true" @back-clicked="handlePageBackNavigation">
+    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" :show-back-button="true"
+    @back-clicked="handlePageBackNavigation">
     <AboutPage />
   </BaseModal>
 
   <!-- Help Page Modal -->
   <BaseModal v-if="modalStore.activeModals.helpPage.isOpen" v-model:is-open="modalStore.activeModals.helpPage.isOpen"
-    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" @close="modalStore.closeHelpPage()"
-    :show-back-button="true" @back-clicked="handlePageBackNavigation">
+    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" :show-back-button="true"
+    @back-clicked="handlePageBackNavigation">
     <HelpPage />
   </BaseModal>
 </template>
 
 <script setup lang="ts">
-import { useModalStore, useTasks, useCallBackRedistry } from "../stores/stores";
+import { useModalStore, useTasks } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
 import MenuOptions from "./MenuOptions.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
@@ -47,20 +45,8 @@ import BaseModal from "./BaseModal.vue"; // 新增 BaseModal 的引入
 
 const modalStore = useModalStore();
 const taskStore = useTasks();
-const callBackRedistry = useCallBackRedistry();
 
-const closeTaskSettingsModal = () => {
-  modalStore.closeTaskSettings();
-  taskStore.selectedTaskID = null;
-  taskStore.tempTask = null;
-  callBackRedistry.registeredKeyEvents.forEach((keyEventHandle: any) => {
-    keyEventHandle.registeredConfigs.forEach((config: any) => {
-      if (config.swap && typeof config.swap === 'function') {
-        config.callback = config.swap(config.callback);
-      }
-    });
-  });
-};
+
 
 const handlePageBackNavigation = (event?: MouseEvent) => {
   modalStore.openMenuAndCloseCurrentPage(event);

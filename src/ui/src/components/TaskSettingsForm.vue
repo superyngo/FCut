@@ -34,7 +34,7 @@
 
     <div class="form-actions">
       <button @click="saveSettings" class="save-button">儲存</button>
-      <button @click="$emit('close')" class="cancel-button">取消</button>
+      <button @click="closeTaskSetting" class="cancel-button">取消</button>
     </div>
   </div>
 </template>
@@ -42,16 +42,21 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
-import { useTasks } from "../stores/stores";
+import { useTasks, useModalStore } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { InputRange, InputText, Selection, Button, Container } from "../models/elements";
 import SettingControl from "./SettingControl.vue";
 
+const modalStore = useModalStore();
 const taskStore = useTasks();
 const { tempTask } = storeToRefs(taskStore);
 
-const emit = defineEmits(["close"]);
+const closeTaskSetting = () => {
+  if (modalStore.activeModals.taskSettings.isOpen) { // 確保在 true 時才更新
+    modalStore.activeModals.taskSettings.isOpen = false;
+  }
+};
 
 // 創建本地數據的副本，以便在保存之前進行修改
 
@@ -100,7 +105,7 @@ const saveSettings = () => {
 
   // 保存更改到本地存儲
   taskStore.saveTasks();
-  emit("close");
+  closeTaskSetting();
 };
 </script>
 

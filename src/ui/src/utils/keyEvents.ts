@@ -7,28 +7,36 @@ export enum MODIFIER_KEYS {
   Alt = "Alt",
 }
 
+export enum KeyEvents {
+  keydown = "keydown",
+  keyup = "keyup",
+  keypress = "keypress",
+}
+
 // --- 類型定義 ---
 type CallbackFunction = (event?: Event) => any;
 
 // 查詢參數介面
 type KeyConfigQuery = {
   key?: string;
-  type?: "onPress" | "onRelease";
+  type?: KeyEvents;
 };
 
 // 修改後的回調配置
 type KeyCallbackConfig = {
   id: string; // 唯一標識配置的ID，內部生成
+  element: HTMLElement; // 監聽的元素，默認為 window
   key: string; // 監聽觸發的按鍵
-  type: "onPress" | "onRelease"; // 事件類型
+  type: KeyEvents; // 事件類型，使用 KeyEvents 枚舉
   callback: CallbackFunction | CallbackFunction[];
+  listnerOptions: AddEventListenerOptions;
   modifiers?: MODIFIER_KEYS[];
   preventDefault?: boolean;
   throttle?: number; // 節流間隔 (ms)
   debounce?: number; // 防抖間隔 (ms)
   ignoreWhenInputFocused?: boolean; // 是否在輸入框聚焦時忽略
   // 內部使用：存儲包裝後的回調
-  _wrappedCallback?: CallbackFunction[];
+  _wrappedCallback: CallbackFunction[];
 };
 
 // 監聽器操作句柄
@@ -45,20 +53,22 @@ type KeyListenerHandle = (() => void) & {
 // 視圖緩存
 type KeyConfigCache = {
   // 混合查詢緩存: key -> type -> configs[]
-  keyTypeQueries: Map<
-    string,
-    Map<"onPress" | "onRelease", KeyCallbackConfig[]>
-  >;
+  keyTypeQueries: Map<string, Map<KeyEvents, KeyCallbackConfig[]>>;
 
   // 按鍵查詢緩存: key -> configs[]
   keyQueries: Map<string, KeyCallbackConfig[]>;
 
   // 類型查詢緩存: type -> configs[]
-  typeQueries: Map<"onPress" | "onRelease", KeyCallbackConfig[]>;
+  typeQueries: Map<KeyEvents, KeyCallbackConfig[]>;
 
   // 緩存是否需要更新
   isDirty: boolean;
 };
+
+const _eventListenerRegistry: WeakMap<
+  HTMLElement,
+  Map<string, () => void>
+> = new WeakMap(); // 儲存事件監聽器的註冊表
 
 // 內部狀態管理
 const _keyEventsState = {
@@ -67,12 +77,9 @@ const _keyEventsState = {
   isListening: false,
   isInputFocused: false, // 輸入框是否聚焦
   configCache: {
-    keyTypeQueries: new Map<
-      string,
-      Map<"onPress" | "onRelease", KeyCallbackConfig[]>
-    >(),
+    keyTypeQueries: new Map<string, Map<KeyEvents, KeyCallbackConfig[]>>(),
     keyQueries: new Map<string, KeyCallbackConfig[]>(),
-    typeQueries: new Map<"onPress" | "onRelease", KeyCallbackConfig[]>(),
+    typeQueries: new Map<KeyEvents, KeyCallbackConfig[]>(),
     isDirty: true,
   } as KeyConfigCache, // 查詢緩存
 };
@@ -175,14 +182,14 @@ export function viewKeyCallbackConfig(
  * // 獲取所有按鍵配置
  * const allConfigs = viewKeyCallbackConfig();
  *
- * // 僅獲取指定按鍵的所有配置 (包括 onPress 和 onRelease)
+ * // 僅獲取指定按鍵的所有配置 (包括 keydown 和 keyup)
  * const escapeConfigs = viewKeyCallbackConfig({ key: "Escape" });
  *
  * // 僅獲取指定類型的所有配置 (包括所有按鍵)
- * const allPressConfigs = viewKeyCallbackConfig({ type: "onPress" });
+ * const allPressConfigs = viewKeyCallbackConfig({ type: KeyEvents.keydown });
  *
  * // 獲取特定按鍵和類型的配置
- * const escPressConfigs = viewKeyCallbackConfig({ key: "Escape", type: "onPress" });
+ * const escPressConfigs = viewKeyCallbackConfig({ key: "Escape", type: KeyEvents.keydown });
  *
  * // 未來可擴展查詢參數，例如:
  * // const shiftConfigs = viewKeyCallbackConfig({ modifiers: [MODIFIER_KEYS.Shift] });
@@ -315,12 +322,12 @@ function swapCallbacks(
   return originalCallback;
 }
 
-// --- Event Handlers ---
+// --- Callbakcs 入口  ---
 const handleKeyDown = (event: KeyboardEvent) => {
   const key = event.key;
 
   // 檢查按鍵是否有配置
-  const configs = viewKeyCallbackConfig({ key, type: "onPress" });
+  const configs = viewKeyCallbackConfig({ key, type: KeyEvents.keydown });
   if (configs.length === 0) return;
 
   // 更新按鍵狀態
@@ -369,7 +376,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
   }
 
   // 檢查按鍵是否有配置
-  const configs = viewKeyCallbackConfig({ key, type: "onRelease" });
+  const configs = viewKeyCallbackConfig({ key, type: KeyEvents.keyup });
   if (configs.length === 0) return;
 
   // 處理所有匹配的配置
@@ -392,6 +399,7 @@ const handleKeyUp = (event: KeyboardEvent) => {
   });
 };
 
+// --- 輔助修飾 ---
 const isInputElement = (element: HTMLElement | Element | null): boolean => {
   if (!element) return false;
   return (
@@ -402,7 +410,6 @@ const isInputElement = (element: HTMLElement | Element | null): boolean => {
   );
 };
 
-// 處理輸入框焦點
 const handleFocusIn = (event: FocusEvent) => {
   const target = event.target as HTMLElement;
   if (isInputElement(target)) {
@@ -425,7 +432,6 @@ const handleFocusOut = (event: FocusEvent) => {
   }
 };
 
-// 窗口失焦時重置按鍵狀態
 const handleBlur = () => {
   logger.debug("窗口失去焦點，重置按鍵狀態");
   // 添加完整的按鍵重置，保持一致性
@@ -497,7 +503,10 @@ export function removeKeyCallbacks(ids: string | string[]): void {
 }
 
 export function onKeys(
-  inputConfigs: MakeOptional<KeyCallbackConfig, "id">[]
+  inputConfigs: MakeOptional<
+    KeyCallbackConfig,
+    "id" | "element" | "_wrappedCallback"
+  >[]
 ): KeyListenerHandle {
   // 存儲添加的配置ID
   const addedIds: string[] = [];

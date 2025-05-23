@@ -6,7 +6,11 @@ import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { ref, computed } from "vue";
 
-import { MODIFIER_KEYS, KeyListenerHandle } from "../utils/keyEvents"; // 引入 on_shift 工具函數
+import {
+  MODIFIER_KEYS,
+  KeyListenerHandle,
+  KeyEvents,
+} from "../utils/keyEvents"; // 引入 on_shift 工具函數
 import {
   onMousemove,
   coordinate,
@@ -315,28 +319,28 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
     taskLists: [
       {
         key: "Shift",
-        type: "onPress",
+        type: KeyEvents.keydown,
         callback: onShiftPress.value,
       },
       {
         key: "Shift",
-        type: "onRelease",
+        type: KeyEvents.keyup,
         callback: onShiftRelease.value,
       },
       {
         key: "a",
-        type: "onPress",
+        type: KeyEvents.keydown,
         callback: taskStore.select_all_tasks,
         modifiers: [MODIFIER_KEYS.Control],
       },
       {
         key: "Escape",
-        type: "onPress",
+        type: KeyEvents.keydown,
         callback: taskStore.unselect_all_tasks,
       },
       {
         key: "Delete",
-        type: "onPress",
+        type: KeyEvents.keydown,
         callback: taskStore.clearAllTasks,
       },
     ],
@@ -355,7 +359,6 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
 // 使用組合式 API 定義 Modal store
 export const useModalStore = defineStore(crypto.randomUUID(), () => {
   const taskStore = useTasks(); // 假設 useTasks 已經被正確定義和匯出
-  const cakkbackRegistry = useCallBackRedistry();
   // State
   const storeId = ref("app_modals");
   const activeModals = ref({

@@ -24,41 +24,27 @@
   <div class="header" id="header">拖曳我移動視窗</div>
   <div class="content">這是內容</div>
 </div>
+<div class="window2" id="win2">
+  <div class="header2" id="header2">拖曳我移sq動視窗</div>
+  <div class="content2">這是內容</div>
+</div>
 
+<script src="./js/simpleDraggable.js"></script>
 <script>
-  const win = document.getElementById("win");
-  const header = document.getElementById("header");
+  document.addEventListener("DOMContentLoaded", () => {
+    // 使用 makeDraggable 函數讓視窗可拖曳，以 header 作為拖曳點
+    if (win && header) {
+      const dragHandle = makeDraggable(win, header);
 
-  let isDragging = false;
-  let startX = 0;
-  let startY = 0;
-  let origX = 0;
-  let origY = 0;
+      // 為了演示，記錄一下拖曳操作
+      console.log("已啟用視窗拖曳功能");
+    }
 
-  header.addEventListener("mousedown", (e) => {
-    isDragging = true;
+    if (win2 && header2) {
+      const dragHandle = makeDraggable(win2, header2);
 
-    const rect = win.getBoundingClientRect();
-    startX = e.clientX;
-    startY = e.clientY;
-    origX = rect.left;
-    origY = rect.top;
-
-    document.addEventListener("mousemove", onMouseMove);
-    document.addEventListener("mouseup", onMouseUp);
+      // 為了演示，記錄一下拖曳操作
+      console.log("已啟用視窗拖曳功能");
+    }
   });
-
-  function onMouseMove(e) {
-    if (!isDragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    win.style.left = origX + dx + "px";
-    win.style.top = origY + dy + "px";
-  }
-
-  function onMouseUp() {
-    isDragging = false;
-    document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", onMouseUp);
-  }
 </script>

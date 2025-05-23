@@ -35,6 +35,7 @@ import { logger } from "../utils/logger";
 import { useTasks, useModalStore } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
+import { makeDraggable } from "../utils/mouseEvents";
 
 const taskStore = useTasks();
 const modalStore = useModalStore();

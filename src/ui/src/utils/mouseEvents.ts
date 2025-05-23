@@ -1,5 +1,5 @@
 import { logger } from "./logger";
-import { throttle, debounce, isArray } from "lodash-es";
+import { throttle, debounce } from "lodash-es";
 
 // -------------- 類型定義 --------------
 
@@ -216,7 +216,7 @@ const checkEventFilter = (
 const getElement = (
   target: HTMLElement | string | null | undefined
 ): HTMLElement | null => {
-  if (!target) return document.documentElement;
+  if (!target) return null; // 修改這裡，返回 null 而不是 document.documentElement
   if (typeof target === "string") return document.querySelector(target);
   return target;
 };
@@ -314,6 +314,13 @@ const updateFrameStats = (timestamp: number): void => {
     : perf.normalFrequency;
 };
 
+// 定義適合批處理的事件類型集合
+const BATCH_PROCESSING_EVENTS = new Set([
+  MOUSE_EVENT_TYPE.Move,
+  MOUSE_EVENT_TYPE.Wheel,
+  // 未來可能的觸控事件如 TouchMove
+]);
+
 /**
  * 處理流(將events投射到callbacks上)
  * 使用 requestAnimationFrame 的處理循環 - 最核心執行所有註冊事件的地方
@@ -338,7 +345,7 @@ const startAnimationLoop = () => {
       }
 
       // 優化移動事件處理：只處理最後一個移動事件
-      if (eventType === MOUSE_EVENT_TYPE.Move && events.length > 1) {
+      if (BATCH_PROCESSING_EVENTS.has(eventType) && events.length > 1) {
         const lastEvent = events[events.length - 1];
         events.length = 0;
         events.push(lastEvent);
@@ -430,22 +437,51 @@ const removeOneTimeCallback = (callbackId: string) => {
 };
 
 /**
+ * 追蹤已註冊的事件監聽類型
+ * 用於分別管理 passive 和 non-passive 的事件監聽器
+ */
+const _eventListenerRegistry = {
+  passiveListeners: new Set<MOUSE_EVENT_TYPE>(), // 追蹤已註冊的被動監聽器
+  nonPassiveListeners: new Set<MOUSE_EVENT_TYPE>(), // 追蹤已註冊的非被動監聽器
+};
+
+/**
  * events流
  * 按照eventType註冊listner到handleMouseEvent
+ * 根據 isPassive 參數決定是否使用被動監聽器
  * 啟動startAnimationLoop
  *
- * @param eventType
+ * @param eventType 事件類型
+ * @param isPassive 是否使用被動監聽器
  * @returns
  */
-const startListening = (eventType: MOUSE_EVENT_TYPE) => {
+const startListening = (
+  eventType: MOUSE_EVENT_TYPE,
+  isPassive: boolean = false
+) => {
   if (typeof window === "undefined") return;
 
-  // 註冊特定事件類型的監聽器
+  // 檢查該事件類型與passive設置的組合是否已經註冊
+  const registry = isPassive
+    ? _eventListenerRegistry.passiveListeners
+    : _eventListenerRegistry.nonPassiveListeners;
+
+  if (registry.has(eventType)) {
+    // 如果已經註冊過相同類型和passive設置的監聽器，則不重複註冊
+    return;
+  }
+
+  // 註冊特定事件類型的監聽器，根據 isPassive 參數決定 passive 設置
   window.addEventListener(eventType, handleMouseEvent as EventListener, {
-    passive: false,
+    passive: isPassive,
   });
 
-  logger.debug(`已為 ${eventType} 事件添加滑鼠全局監聽器`);
+  // 記錄已註冊的監聽器類型
+  registry.add(eventType);
+
+  logger.debug(
+    `已為 ${eventType} 事件添加滑鼠全局監聽器 (passive: ${isPassive})`
+  );
 
   // 啟動動畫循環 (如果未啟動)
   if (!_performance.animationFrameId) {
@@ -466,8 +502,18 @@ const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
 
   // 如果提供了特定事件類型，只移除該類型的全局事件監聽器
   if (eventType) {
-    window.removeEventListener(eventType, handleMouseEvent as EventListener);
-    logger.debug(`已移除 ${eventType} 的全局事件監聽器`);
+    // 移除所有類型的監聽器（被動和非被動）
+    if (_eventListenerRegistry.passiveListeners.has(eventType)) {
+      window.removeEventListener(eventType, handleMouseEvent as EventListener);
+      _eventListenerRegistry.passiveListeners.delete(eventType);
+      logger.debug(`已移除 ${eventType} 的被動(passive)全局事件監聽器`);
+    }
+
+    if (_eventListenerRegistry.nonPassiveListeners.has(eventType)) {
+      window.removeEventListener(eventType, handleMouseEvent as EventListener);
+      _eventListenerRegistry.nonPassiveListeners.delete(eventType);
+      logger.debug(`已移除 ${eventType} 的非被動(non-passive)全局事件監聽器`);
+    }
 
     _callbackRegistry.pendingEvents.delete(eventType);
 
@@ -475,15 +521,19 @@ const stopListening = (eventType?: MOUSE_EVENT_TYPE) => {
     if (_callbackRegistry.registeredCallbackConfigs.size > 0) return;
   } else {
     // 沒有特定事件類型則移除所有已註冊的事件監聽器
-    viewRegisteredCallbackConfigs().forEach(
-      (_wrappedCallbackConfigs, eventType) => {
-        logger.debug(`已移除 ${eventType} 的全局事件監聽器`);
-        window.removeEventListener(
-          eventType,
-          handleMouseEvent as EventListener
-        );
-      }
-    );
+    // 移除所有被動(passive)監聽器
+    _eventListenerRegistry.passiveListeners.forEach((eventType) => {
+      window.removeEventListener(eventType, handleMouseEvent as EventListener);
+      logger.debug(`已移除 ${eventType} 的被動(passive)全局事件監聽器`);
+    });
+    _eventListenerRegistry.passiveListeners.clear();
+
+    // 移除所有非被動(non-passive)監聽器
+    _eventListenerRegistry.nonPassiveListeners.forEach((eventType) => {
+      window.removeEventListener(eventType, handleMouseEvent as EventListener);
+      logger.debug(`已移除 ${eventType} 的非被動(non-passive)全局事件監聽器`);
+    });
+    _eventListenerRegistry.nonPassiveListeners.clear();
   }
 
   logger.debug("全局鼠標事件監聽器已停止");
@@ -886,23 +936,18 @@ export function isHovering(element: HTMLElement | string): boolean {
  * 此函數是公開的 API，提供外部訪問所有註冊回調的能力，但以只讀方式返回以防止外部修改。
  * 它利用緩存系統優化性能，同時保持與舊版 API 的兼容性，即使內部存儲結構已更改為按 ID 索引。
  *
- * 重構相關說明：
- * 1. 檢查緩存狀態，必要時自動重建緩存
- * 2. 從緩存中按事件類型獲取回調，而非直接從主存儲遍歷
- * 3. 使用 Object.freeze 確保返回的數據是不可變的
- *
- * 注意：此函數維持了與重構前完全一致的返回類型，即使內部實現已改變
- *
  * @returns 所有註冊回調的唯讀副本，按事件類型組織 Map<MOUSE_EVENT_TYPE, readonly WrappedCallbackConfig[]>
  */
 export function allCallbacks(): WrappedCallbackConfig[] {
   const result: WrappedCallbackConfig[] = [];
 
   // 直接從緩存中獲取按事件類型組織的數據
-  viewRegisteredCallbackConfigs().forEach((wrappedCallbackConfig) => {
-    // 創建每個回調的淺拷貝並凍結數組
-    const frozenCallbackConfig = Object.freeze({ ...wrappedCallbackConfig });
-    result.push(frozenCallbackConfig);
+  viewRegisteredCallbackConfigs().forEach((callbackArray) => {
+    callbackArray.forEach((wrappedCallbackConfig) => {
+      // 創建每個回調的淺拷貝並凍結數組
+      const frozenCallbackConfig = Object.freeze({ ...wrappedCallbackConfig });
+      result.push(frozenCallbackConfig);
+    });
   });
 
   return result;
@@ -915,13 +960,6 @@ export function allCallbacks(): WrappedCallbackConfig[] {
  *
  * 該函數是所有公開註冊函數（如onMousemove、onClick等）的底層實現。
  * 重構後，它直接接受 CallbackConfig 類型，從中獲取事件類型。
- *
- * 重構變更：
- * 1. 函數參數從 Partial<Record<MOUSE_EVENT_TYPE, CallbackConfig>> 改為直接接受 CallbackConfig
- * 2. 不再使用事件類型作為中間映射鍵，直接從 callbackConfig.type 獲取事件類型
- * 3. 使用唯一ID作為回調在 registeredCallbackConfigs 中的鍵
- * 4. 添加回調後立即標記緩存為髒數據，以便下次訪問時重建
- * 5. 返回的 MouseListenerHandle 包含註冊的回調信息，便於後續移除
  *
  * @param callbackConfig 回調配置，必須包含 type 屬性指定事件類型
  * @returns 監聽器句柄，包含用於移除監聽的函數
@@ -970,12 +1008,27 @@ function addEventListeners(
     wrappedCallbackConfig
   );
 
+  // 確定是否可以使用被動監聽器
+  // 當 passive 選項明確設為 true 或者不需要 preventDefault 且 passive 未明確設為 false 時，使用被動監聽器
+  const usePassiveListener =
+    callbackConfig.passive === true ||
+    (!callbackConfig.preventDefault && callbackConfig.passive !== false);
+
   // 為該特定事件類型啟動監聽器（如果尚未啟動）
-  if (viewRegisteredCallbackConfigs(eventType).length === 0) {
-    startListening(eventType);
+  // 使用修改後的 startListening 函數，傳入 isPassive 參數
+  if (
+    viewRegisteredCallbackConfigs(eventType).length === 0 ||
+    (usePassiveListener &&
+      !_eventListenerRegistry.passiveListeners.has(eventType)) ||
+    (!usePassiveListener &&
+      !_eventListenerRegistry.nonPassiveListeners.has(eventType))
+  ) {
+    startListening(eventType, usePassiveListener);
   }
 
-  logger.debug(`已註冊 ${eventType} 事件監聽器 (ID: ${callbackId})`);
+  logger.debug(
+    `已註冊 ${eventType} 事件監聽器 (ID: ${callbackId}, passive: ${usePassiveListener})`
+  );
   rebuildCache();
 
   // 返回清理函數
@@ -996,12 +1049,6 @@ function addEventListeners(
  *
  * 此函數是重構後的回調刪除機制，支持直接從以 ID 為鍵的數據結構中刪除回調。
  * 該函數接受與舊 API 相同的參數格式（按事件類型索引的 Map），但內部實現已完全改變。
- *
- * 重構後的工作流程：
- * 1. 接收按事件類型組織的回調配置 Map
- * 2. 遍歷每個回調，根據 ID 直接從 registeredCallbackConfigs 中刪除
- * 3. 跟踪已更改的事件類型，檢查是否需要停止監聽
- * 4. 標記緩存為髒數據，確保下次訪問時重建
  *
  * 優化考量：
  * - 通過 ID 直接刪除操作是 O(1) 時間複雜度

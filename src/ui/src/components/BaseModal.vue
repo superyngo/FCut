@@ -3,8 +3,8 @@
         <div class="modal-overlay" @click.self="handleOverlayClick">
             <div class="modal-content" :class="modalClass" :style="contentStyle" ref="modalWindow">
                 <div v-if="!headless" class="modal-header draggable" ref="modalHeader">
-                    <svg v-if="showBackButton" @click="onBackClick" class="modal-back-icon" viewBox="0 0 24 24"
-                        fill="currentColor">
+                    <svg v-if="showBackButton" @click="modalStore.openMenuAndCloseCurrentPage" class="modal-back-icon"
+                        viewBox="0 0 24 24" fill="currentColor">
                         <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
                     </svg>
                     <h3 :class="{ 'with-back-button': showBackButton }">{{ title }}</h3>
@@ -24,11 +24,12 @@
 // defineModel 通常在 <script setup> 中是編譯器宏，無需顯式導入，但若 Linter 提示可加上
 import { ref, onMounted, onUnmounted, defineModel } from 'vue';
 import { logger } from '../utils/logger';
-import { makeDraggable, MouseListenerHandle, onDrag, _dragState } from '../utils/mouseEvents';
+import { makeDraggable, MouseListenerHandle } from '../utils/mouseEvents';
 import { KeyListenerHandle } from "../utils/keyEvents";
-import { useCallBackRedistry } from "../stores/stores";
+import { useCallBackRedistry, useModalStore } from "../stores/stores";
 
 const callbackRegistry = useCallBackRedistry();
+const modalStore = useModalStore();
 
 type Props = {
     title?: string;
@@ -48,22 +49,16 @@ const props = withDefaults(defineProps<Props>(), {
     headless: false,
     showBackButton: false,
 });
-const emit = defineEmits(['close', 'back-clicked']); // 新增 back-clicked 事件
 
 // 使用 defineModel 來處理 isOpen
 const isOpen = defineModel<boolean>('isOpen', { default: false });
 
 const closeModal = () => {
-    // 當 isOpen.value 被設置為 false 時，Vue 會自動 emit('update:isOpen', false)
-    if (isOpen.value) { // 確保在 true 時才更新，避免不必要的 emit
+    if (isOpen.value) { // 確保在 true 時才更新
         isOpen.value = false;
     }
-    emit('close'); // 保留 'close' 事件的發送
 };
 
-const onBackClick = () => {
-    emit('back-clicked');
-};
 const handleOverlayClick = () => {
     if (props.closeOnOverlayClick) {
         closeModal();
@@ -94,6 +89,12 @@ onUnmounted(() => {
     if (draggableEvent) {
         draggableEvent.forEach((c) => c())
     }
+    callbackRegistry.registeredBackgroundEvents.forEach((handle) => {
+        (handle as KeyListenerHandle).registeredConfigs.forEach((config) => {
+            config.callback = config.swap(config.callback)
+        })
+    });
+
 });
 
 </script>
