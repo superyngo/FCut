@@ -528,10 +528,10 @@ export function onKeys(
       : [config.callback];
 
     // 創建包裝後的回調
-    config._wrappedCallback = wrapCallback(config);
+    config._wrappedCallback = wrapCallback(config as KeyCallbackConfig);
 
     // 添加配置並記錄 ID
-    const id = addConfig(config);
+    const id = addConfig(config as KeyCallbackConfig);
     (inputConfig as KeyListenerHandleMethods).remove = () => removeConfig(id);
     (inputConfig as KeyListenerHandleMethods).swap = (callback) =>
       swapCallbacks(id, callback);

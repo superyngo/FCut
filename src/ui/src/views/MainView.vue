@@ -16,6 +16,16 @@ import TopBar from "../components/TopBar.vue";
 import MessageBar from "../components/MessageBar.vue";
 import TaskList from "../components/TaskList.vue";
 import AppModals from "../components/AppModals.vue";
+import { addEventListener, EventType } from "../utils/eventListner";
+import { logger } from "../utils/logger";
+
+
+window.test = addEventListener({
+  target: window, type: EventType.KeyDown, callback: function (e: KeyboardEvent) {
+    logger.info(e.key);
+  }
+});
+
 </script>
 
 <style scoped>
