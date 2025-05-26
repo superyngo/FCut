@@ -30,7 +30,6 @@ export enum TouchEventType {
 export enum KeyboardEventType {
   KeyDown = "keydown",
   KeyUp = "keyup",
-  KeyPress = "keypress",
 }
 
 // 表單相關事件
@@ -90,6 +89,7 @@ type ListenerConfig = {
   target: EventTarget;
   type: EventType;
   callback: EventHandler;
+  addHook?: () => void; // 用於在添加事件時執行的額外操作
   removeHook?: () => void; // 用於在移除事件時執行的額外操作
   options?: AddEventListenerOptions;
   decorateFn?: (fn: () => void) => EventHandler; //debounceFn or throttleFn
@@ -134,6 +134,7 @@ export function addEventListener(
 
   function add() {
     if (listenerConfig.target instanceof EventTarget) {
+      listenerConfig.addHook && listenerConfig.addHook();
       listenerConfig.target.addEventListener(listenerConfig.type, _callback, {
         signal: controller.signal,
         ...listenerConfig.options,
@@ -194,9 +195,22 @@ export enum MODIFIER_KEYS {
 }
 
 type KeyCallbackConfig = {
+  type: KeyboardEventType; // 鍵盤事件類型
   key: string; // 監聽觸發的按鍵
   modifiers?: MODIFIER_KEYS[];
   callback: EventHandler; // 事件回調函數
+};
+
+type onKeysConfig = {
+  config: KeyCallbackConfig[];
+  options?: AddEventListenerOptions;
+};
+
+type KeyListnerHandle = {
+  add: () => void;
+  remove: () => void;
+  swap: (swapCallback: EventHandler) => EventHandler;
+  config: onKeysConfig;
 };
 
 /**
@@ -291,14 +305,29 @@ export function createKeyEventCallback(
 }
 
 const _keyEventsRegistry = {
-  keyEventListeners: new Map<KeyboardEventType, ListnerHandle>(),
+  // 儲存3種鍵盤事件的註冊資訊，每個事件只能註冊一次
+  keyEventListeners: new Map<KeyboardEventType, EventHandler>(),
+  // 儲存已註冊的鍵盤按鍵，並記錄當下是否被按下
   registeredKeysOn: new Map<string, boolean>(),
 };
 
-function registerKeysEvent(type: KeyboardEventType, key: string) {}
-function unregisterKeysEvent(type: KeyboardEventType, key: string) {}
-function updateKeysOn(type: KeyboardEventType, key: string) {}
+/**
+ * 1.使用createKeyEventCallback將 config 轉成 EventHandler "mainKeyEventHandler"
+ * 2.註冊_keyEventsRegistry.keyEventListeners ，鍵值為 type，value 為呼叫 updateKeysOn 和 mainKeyCallback 封裝後的EventHandler
+ * 2.1 如果_keyEventsRegistry.keyEventListeners[type] 已經存在，則logger錯誤訊息並返回Result.err(null)
+ * 3.內部定義let listnerHandle: ListnerHandle
+ * 3.內部定義function add：使用 addEventListener 註冊 _keyEventsRegistry.keyEventListeners[type] 到 window 上的鍵盤事件，並取得原始的 ListnerHandle
+ * 4.內部定義function remove：使用 ListnerHandle.remove() 移除事件監聽，並且移除 _keyEventsRegistry.keyEventListeners[type] 中的事件處理器
+ * 5.內部定義function swap(swapCallback: EventHandler)：將updateKeysOn 和 swapCallback 重新封裝後 和 _keyEventsRegistry.keyEventListeners[type] 中的EventHandler 交換
+ * 6.listnerHandle=add()
+ * 7.返回Result.ok({add, remove, swap, config: {type, config, options}) 的物件
+ */
 
-function onKeysDown() {}
-function onKeysUp() {}
-function onKeysPress() {}
+function onKeys(
+  type: KeyboardEventType,
+  config: KeyCallbackConfig | KeyCallbackConfig[],
+  options?: AddEventListenerOptions
+): Result<KeyListnerHandle, null> {}
+
+function updateKeysOn(event: EventWithId) {}
+function isKeyOn(key: string): boolean {}
