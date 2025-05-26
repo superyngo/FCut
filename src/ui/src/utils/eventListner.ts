@@ -1,6 +1,10 @@
-import { MakeOptional } from "./types";
+import { MakeOptional, Result } from "./types";
+import { logger } from "./logger";
 
-export enum EventType {
+// ==== types ====
+
+// 滑鼠相關事件
+export enum MouseEventType {
   Click = "click",
   Mousemove = "mousemove",
   MouseOver = "mouseover",
@@ -9,38 +13,71 @@ export enum EventType {
   MouseLeave = "mouseleave",
   MouseDown = "mousedown",
   MouseUp = "mouseup",
+  DblClick = "dblclick",
+  ContextMenu = "contextmenu",
+  Wheel = "wheel",
+}
+
+// 觸控相關事件
+export enum TouchEventType {
   TouchStart = "touchstart",
   TouchEnd = "touchend",
   TouchMove = "touchmove",
   TouchCancel = "touchcancel",
-  Wheel = "wheel",
-  ContextMenu = "contextmenu",
-  Scroll = "scroll",
-  Resize = "resize",
-  Copy = "copy",
-  Cut = "cut",
-  Paste = "paste",
-  DblClick = "dblclick",
-  Select = "select",
+}
+
+// 鍵盤相關事件
+export enum KeyboardEventType {
   KeyDown = "keydown",
   KeyUp = "keyup",
   KeyPress = "keypress",
+}
+
+// 表單相關事件
+export enum FormEventType {
   Focus = "focus",
   Blur = "blur",
   Change = "change",
   Input = "input",
+  Select = "select",
+}
+
+// 剪貼簿相關事件
+export enum ClipboardEventType {
+  Copy = "copy",
+  Cut = "cut",
+  Paste = "paste",
+}
+
+// 拖放相關事件
+export enum DragDropEventType {
   Drag = "drag",
   Drop = "drop",
 }
 
+// 其他事件
+export enum OtherEventType {
+  Scroll = "scroll",
+  Resize = "resize",
+}
+
+// 所有事件類型的聯合
+export type EventType =
+  | MouseEventType
+  | TouchEventType
+  | KeyboardEventType
+  | FormEventType
+  | ClipboardEventType
+  | DragDropEventType
+  | OtherEventType;
+
+// ==== Event Listner Core  ====
+type EventWithId = {
+  id?: string;
+} & CustomEvent;
+
 type EventHandler = (event: EventWithId) => void;
 
-export enum MODIFIER_KEYS {
-  Alt = "Alt",
-  Control = "Control",
-  Shift = "Shift",
-  Meta = "Meta",
-}
 enum EventState {
   Init = "Init",
   Added = "Added",
@@ -53,25 +90,32 @@ type ListenerConfig = {
   target: EventTarget;
   type: EventType;
   callback: EventHandler;
+  removeHook?: () => void; // 用於在移除事件時執行的額外操作
   options?: AddEventListenerOptions;
   decorateFn?: (fn: () => void) => EventHandler; //debounceFn or throttleFn
 };
-type EventWithId = {
-  id?: string;
-} & CustomEvent;
 
-type ListnerHandle = AbortController & {
+export type ListnerHandle = AbortController & {
   add: () => void;
   remove: () => void;
-  swap: (swapCallback: (event: Event) => void) => (event: EventWithId) => void;
+  swap: (swapCallback: EventHandler) => EventHandler;
   config: ListenerConfig;
   state: EventState;
 };
 
 export function addEventListener(
-  listenerConfig: MakeOptional<ListenerConfig, "id">
-): ListnerHandle {
+  listenerConfig: MakeOptional<ListenerConfig, "id" | "target">
+): Result<ListnerHandle, null> {
+  if (typeof window === "undefined") {
+    logger.warning(
+      "addEventListener is not available in the current environment."
+    );
+    return Result.err(null);
+  }
+
   listenerConfig.id = listenerConfig.id || crypto.randomUUID();
+  listenerConfig.target = listenerConfig.target || window;
+
   if (listenerConfig.decorateFn) {
     listenerConfig.callback = listenerConfig.decorateFn(() =>
       listenerConfig.callback(event as EventWithId)
@@ -94,9 +138,12 @@ export function addEventListener(
         signal: controller.signal,
         ...listenerConfig.options,
       });
+      logger.debug(
+        `已註冊 ${listenerConfig.type} 事件 ${listenerConfig.id} 到 ${listenerConfig.target}.`
+      );
       state = EventState.Added;
     } else {
-      console.error(
+      logger.error(
         `Element with id ${listenerConfig.id} is not a valid Event target.`
       );
       state = EventState.Error;
@@ -104,75 +151,81 @@ export function addEventListener(
   }
   function remove() {
     if (state === EventState.Added) {
-      listenerConfig.target.removeEventListener(
+      listenerConfig.removeHook && listenerConfig.removeHook();
+      listenerConfig.target!.removeEventListener(
         listenerConfig.type,
         _callback,
         listenerConfig.options
       );
     }
+    logger.debug(
+      `已移除 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
+    );
     state = EventState.Removed;
   }
 
   add();
-
-  return Object.assign(controller, {
-    add,
-    remove,
-    swap: (swapCallback: (event: Event) => void) => {
-      [listenerConfig.callback, swapCallback] = [
-        swapCallback,
-        listenerConfig.callback,
-      ];
-      return swapCallback;
-    },
-    config: listenerConfig as ListenerConfig,
-    state,
-  });
+  return Result.ok(
+    Object.assign(controller, {
+      add,
+      remove,
+      swap: (swapCallback: EventHandler) => {
+        [listenerConfig.callback, swapCallback] = [
+          swapCallback,
+          listenerConfig.callback,
+        ];
+        logger.debug(
+          `已置換 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
+        );
+        return swapCallback;
+      },
+      config: listenerConfig as ListenerConfig,
+      state,
+    })
+  );
 }
 
-type KeyCallbackConfig = Omit<ListenerConfig, "type"> & {
-  type: EventType.KeyUp | EventType.KeyDown | EventType.KeyPress; // 事件類型，使用 KeyEvents 枚舉
+// ==== Key Events  ====
+export enum MODIFIER_KEYS {
+  Alt = "Alt",
+  Control = "Control",
+  Shift = "Shift",
+  Meta = "Meta",
+}
+
+type KeyCallbackConfig = {
   key: string; // 監聽觸發的按鍵
   modifiers?: MODIFIER_KEYS[];
+  callback: EventHandler; // 事件回調函數
 };
 
 /**
- * 創建一個統一的鍵盤事件回調函數，可處理多種按鍵配置
- * @param configs 鍵盤事件配置陣列
+ * 創建一個統一的鍵盤事件回調函數，可處理單一或多個按鍵配置
+ * @param config 鍵盤事件配置或配置陣列
  * @returns 可註冊至事件監聽器的事件處理函數
  */
 export function createKeyEventCallback(
-  configs: KeyCallbackConfig[]
+  config: KeyCallbackConfig | KeyCallbackConfig[]
 ): EventHandler {
+  // 將單一配置轉換為陣列
+  const configs = Array.isArray(config) ? config : [config];
+
   return (event: EventWithId) => {
     // 將事件轉換為鍵盤事件
     const keyboardEvent = event as unknown as KeyboardEvent;
     const key = keyboardEvent.key;
-    const type = event.type as
-      | EventType.KeyDown
-      | EventType.KeyUp
-      | EventType.KeyPress;
-
-    // 檢查是否為鍵盤事件
-    if (
-      type !== EventType.KeyDown &&
-      type !== EventType.KeyUp &&
-      type !== EventType.KeyPress
-    ) {
-      return;
-    }
 
     // 迭代所有配置
-    for (const config of configs) {
-      // 檢查事件類型和按鍵是否匹配
-      if (config.type === type && config.key === key) {
+    for (const cfg of configs) {
+      // 檢查按鍵是否匹配
+      if (cfg.key === key) {
         // 檢查修飾鍵
-        const hasModifiers = config.modifiers && config.modifiers.length > 0;
+        const hasModifiers = cfg.modifiers && cfg.modifiers.length > 0;
         let modifiersMatch = true;
 
-        if (hasModifiers && config.modifiers) {
+        if (hasModifiers && cfg.modifiers) {
           // 檢查是否所有要求的修飾鍵都被按下
-          modifiersMatch = config.modifiers.every((modifier) => {
+          modifiersMatch = cfg.modifiers.every((modifier) => {
             switch (modifier) {
               case MODIFIER_KEYS.Alt:
                 return keyboardEvent.altKey;
@@ -195,19 +248,17 @@ export function createKeyEventCallback(
             MODIFIER_KEYS.Meta,
           ];
           const unexpectedModifiers = allModifiers.filter((mod) => {
-            if (!config.modifiers) return false;
+            if (!cfg.modifiers) return false;
 
             switch (mod) {
               case MODIFIER_KEYS.Alt:
-                return !config.modifiers.includes(mod) && keyboardEvent.altKey;
+                return !cfg.modifiers.includes(mod) && keyboardEvent.altKey;
               case MODIFIER_KEYS.Control:
-                return !config.modifiers.includes(mod) && keyboardEvent.ctrlKey;
+                return !cfg.modifiers.includes(mod) && keyboardEvent.ctrlKey;
               case MODIFIER_KEYS.Shift:
-                return (
-                  !config.modifiers.includes(mod) && keyboardEvent.shiftKey
-                );
+                return !cfg.modifiers.includes(mod) && keyboardEvent.shiftKey;
               case MODIFIER_KEYS.Meta:
-                return !config.modifiers.includes(mod) && keyboardEvent.metaKey;
+                return !cfg.modifiers.includes(mod) && keyboardEvent.metaKey;
               default:
                 return false;
             }
@@ -231,7 +282,7 @@ export function createKeyEventCallback(
 
         // 如果修飾鍵也匹配，執行回調函數
         if (modifiersMatch) {
-          config.callback(event);
+          cfg.callback(event);
           return; // 找到匹配的配置並執行後返回
         }
       }
@@ -239,49 +290,15 @@ export function createKeyEventCallback(
   };
 }
 
-/**
- * 使用示例：
- *
- * ```typescript
- * // 定義快捷鍵配置
- * const keyConfigs: KeyCallbackConfig[] = [
- *   {
- *     key: "Shift",
- *     type: EventType.KeyDown,
- *     callback: onShiftPress,
- *   },
- *   {
- *     key: "Shift",
- *     type: EventType.KeyUp,
- *     callback: onShiftRelease,
- *   },
- *   {
- *     key: "a",
- *     type: EventType.KeyDown,
- *     callback: selectAllTasks,
- *     modifiers: [MODIFIER_KEYS.Control],
- *   },
- *   {
- *     key: "Escape",
- *     type: EventType.KeyDown,
- *     callback: unselectAllTasks,
- *   },
- * ];
- *
- * // 創建統一的鍵盤事件處理器
- * const keyEventHandler = createKeyEventCallback(keyConfigs);
- *
- * // 註冊到事件監聽器
- * const keydownListener = addEventListener({
- *   target: document,
- *   type: EventType.KeyDown,
- *   callback: keyEventHandler,
- * });
- *
- * const keyupListener = addEventListener({
- *   target: document,
- *   type: EventType.KeyUp,
- *   callback: keyEventHandler,
- * });
- * ```
- */
+const _keyEventsRegistry = {
+  keyEventListeners: new Map<KeyboardEventType, ListnerHandle>(),
+  registeredKeysOn: new Map<string, boolean>(),
+};
+
+function registerKeysEvent(type: KeyboardEventType, key: string) {}
+function unregisterKeysEvent(type: KeyboardEventType, key: string) {}
+function updateKeysOn(type: KeyboardEventType, key: string) {}
+
+function onKeysDown() {}
+function onKeysUp() {}
+function onKeysPress() {}

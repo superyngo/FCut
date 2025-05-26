@@ -16,6 +16,12 @@ import {
   coordinate,
   MouseListenerHandle,
 } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
+import {
+  addEventListener,
+  createKeyEventCallback,
+  KeyboardEventType,
+  ListnerHandle,
+} from "../utils/eventListner";
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 // 使用組合式 API 定義 AppState store
@@ -266,7 +272,7 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
 
   // 清理函數，用於移除事件監聽器
   let registeredBackgroundEvents = ref<
-    (KeyListenerHandle | MouseListenerHandle)[]
+    (KeyListenerHandle | MouseListenerHandle | ListnerHandle)[]
   >([]);
   let registeredEvents = ref<(KeyListenerHandle | MouseListenerHandle)[]>([]);
 
@@ -316,34 +322,30 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   });
 
   const eventsProxy = ref({
-    taskLists: [
+    taskListsKeyDown: [
       {
         key: "Shift",
-        type: KeyEvents.keydown,
         callback: onShiftPress.value,
       },
-      {
-        key: "Shift",
-        type: KeyEvents.keyup,
-        callback: onShiftRelease.value,
-      },
+
       {
         key: "a",
-        type: KeyEvents.keydown,
         callback: taskStore.select_all_tasks,
         modifiers: [MODIFIER_KEYS.Control],
       },
       {
         key: "Escape",
-        type: KeyEvents.keydown,
         callback: taskStore.unselect_all_tasks,
       },
       {
         key: "Delete",
-        type: KeyEvents.keydown,
         callback: taskStore.clearAllTasks,
       },
     ],
+    taskListsKeyUp: {
+      key: "Shift",
+      callback: onShiftRelease.value,
+    },
   });
 
   return {
