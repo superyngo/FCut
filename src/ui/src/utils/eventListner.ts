@@ -73,14 +73,14 @@ export type EventType =
 // ==== Event Listner Core  ====
 type EventWithId = {
   id?: string;
-} & CustomEvent;
+} & (CustomEvent | KeyboardEvent | MouseEvent | TouchEvent | Event);
 
 type EventHandler = (event: EventWithId) => void;
 
-enum EventState {
-  Init = "Init",
+enum ListnerState {
+  Inited = "Inited",
   Added = "Added",
-  Removed = "removed",
+  Removed = "Removed",
   Error = "Error",
 }
 
@@ -100,7 +100,7 @@ export type ListnerHandle = AbortController & {
   remove: () => void;
   swap: (swapCallback: EventHandler) => EventHandler;
   config: ListenerConfig;
-  state: EventState;
+  state: ListnerState;
 };
 
 export function addEventListener(
@@ -130,9 +130,9 @@ export function addEventListener(
     listenerConfig.callback(eventWithId);
   };
 
-  let state: EventState = EventState.Init;
+  let state: ListnerState = ListnerState.Inited;
 
-  function add() {
+  function add(): Result<true, false> {
     if (listenerConfig.target instanceof EventTarget) {
       listenerConfig.addHook && listenerConfig.addHook();
       listenerConfig.target.addEventListener(listenerConfig.type, _callback, {
@@ -142,48 +142,58 @@ export function addEventListener(
       logger.debug(
         `已註冊 ${listenerConfig.type} 事件 ${listenerConfig.id} 到 ${listenerConfig.target}.`
       );
-      state = EventState.Added;
+      state = ListnerState.Added;
+      return Result.ok(true);
     } else {
       logger.error(
         `Element with id ${listenerConfig.id} is not a valid Event target.`
       );
-      state = EventState.Error;
+      state = ListnerState.Error;
+      return Result.err(false);
     }
   }
-  function remove() {
-    if (state === EventState.Added) {
+  function remove(): Result<true, false> {
+    if (state === ListnerState.Added) {
       listenerConfig.removeHook && listenerConfig.removeHook();
       listenerConfig.target!.removeEventListener(
         listenerConfig.type,
         _callback,
         listenerConfig.options
       );
+      logger.debug(
+        `已移除 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
+      );
+      state = ListnerState.Removed;
+      return Result.ok(true);
+    } else {
+      logger.error(
+        `Cannot remove event listener ${listenerConfig.id} because it is not in the Added state. Current state: ${state}.`
+      );
+      return Result.err(false);
     }
-    logger.debug(
-      `已移除 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
-    );
-    state = EventState.Removed;
   }
 
-  add();
-  return Result.ok(
-    Object.assign(controller, {
-      add,
-      remove,
-      swap: (swapCallback: EventHandler) => {
-        [listenerConfig.callback, swapCallback] = [
-          swapCallback,
-          listenerConfig.callback,
-        ];
-        logger.debug(
-          `已置換 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
-        );
-        return swapCallback;
-      },
-      config: listenerConfig as ListenerConfig,
-      state,
-    })
-  );
+  let adddResult = add();
+  if (adddResult.isOk()) {
+    return Result.ok(
+      Object.assign(controller, {
+        add,
+        remove,
+        swap: (swapCallback: EventHandler) => {
+          [listenerConfig.callback, swapCallback] = [
+            swapCallback,
+            listenerConfig.callback,
+          ];
+          logger.debug(
+            `已置換 ${listenerConfig.type} 事件 ${listenerConfig.id} 從 ${listenerConfig.target}.`
+          );
+          return swapCallback;
+        },
+        config: listenerConfig as ListenerConfig,
+        state,
+      })
+    );
+  } else return Result.err(null);
 }
 
 // ==== Key Events  ====
@@ -194,6 +204,14 @@ export enum MODIFIER_KEYS {
   Meta = "Meta",
 }
 
+// Key Modifiers 與 Event FnKey屬性的映射
+const modifierKeyMap: { [key in MODIFIER_KEYS]: keyof KeyboardEvent } = {
+  [MODIFIER_KEYS.Alt]: "altKey",
+  [MODIFIER_KEYS.Control]: "ctrlKey",
+  [MODIFIER_KEYS.Shift]: "shiftKey",
+  [MODIFIER_KEYS.Meta]: "metaKey",
+};
+
 type KeyCallbackConfig = {
   type: KeyboardEventType; // 鍵盤事件類型
   key: string; // 監聽觸發的按鍵
@@ -201,133 +219,228 @@ type KeyCallbackConfig = {
   callback: EventHandler; // 事件回調函數
 };
 
-type onKeysConfig = {
-  config: KeyCallbackConfig[];
-  options?: AddEventListenerOptions;
-};
+export class ShortCutKey {
+  private _registeredKeysOn: Map<string, boolean> = new Map<string, boolean>();
+  private _keyCallbackConfigs: KeyCallbackConfig[] = [];
+  private _cacheConfigsByType: Map<KeyboardEventType, KeyCallbackConfig[]> =
+    new Map();
+  private _isListing: boolean = false;
+  private _listenerHandles: ListnerHandle[] = [];
+  private _initialOptions?: AddEventListenerOptions;
 
-type KeyListnerHandle = {
-  add: () => void;
-  remove: () => void;
-  swap: (swapCallback: EventHandler) => EventHandler;
-  config: onKeysConfig;
-};
+  constructor(
+    initialConfig: KeyCallbackConfig | KeyCallbackConfig[],
+    initialOptions?: AddEventListenerOptions
+  ) {
+    // Directly initialize _keyCallbackConfigs with the provided initialConfig
+    this._keyCallbackConfigs = this._deepCloneKeyCallbackConfigs(initialConfig);
+    this._initialOptions = initialOptions;
+  }
 
-/**
- * 創建一個統一的鍵盤事件回調函數，可處理單一或多個按鍵配置
- * @param config 鍵盤事件配置或配置陣列
- * @returns 可註冊至事件監聽器的事件處理函數
- */
-export function createKeyEventCallback(
-  config: KeyCallbackConfig | KeyCallbackConfig[]
-): EventHandler {
-  // 將單一配置轉換為陣列
-  const configs = Array.isArray(config) ? config : [config];
+  private _deepCloneKeyCallbackConfigs(
+    config: KeyCallbackConfig | KeyCallbackConfig[]
+  ): KeyCallbackConfig[] {
+    const configsArray = Array.isArray(config) ? config : [config];
+    return configsArray.map((c) => ({
+      ...c,
+      modifiers: c.modifiers ? [...c.modifiers] : undefined,
+      // Ensure callback is also preserved correctly if it's part of a more complex object,
+      // but typically callbacks are functions and are assigned by reference.
+    }));
+  }
 
-  return (event: EventWithId) => {
-    // 將事件轉換為鍵盤事件
-    const keyboardEvent = event as unknown as KeyboardEvent;
-    const key = keyboardEvent.key;
+  private _isShortcutMatch(
+    event: KeyboardEvent,
+    config: Pick<KeyCallbackConfig, "key" | "modifiers">
+  ): boolean {
+    if (event.key !== config.key) {
+      return false;
+    }
+    const requiredModifiers = new Set(config.modifiers || []);
+    return Object.values(MODIFIER_KEYS).every((modifier) => {
+      const property = modifierKeyMap[modifier];
+      const isPressed = event[property as keyof KeyboardEvent] as boolean;
+      const isRequired = requiredModifiers.has(modifier);
+      return isPressed === isRequired;
+    });
+  }
 
-    // 迭代所有配置
-    for (const cfg of configs) {
-      // 檢查按鍵是否匹配
-      if (cfg.key === key) {
-        // 檢查修飾鍵
-        const hasModifiers = cfg.modifiers && cfg.modifiers.length > 0;
-        let modifiersMatch = true;
+  private _updateKeysOn(keyboardEvent: KeyboardEvent): void {
+    const isKeyDown = keyboardEvent.type === KeyboardEventType.KeyDown;
 
-        if (hasModifiers && cfg.modifiers) {
-          // 檢查是否所有要求的修飾鍵都被按下
-          modifiersMatch = cfg.modifiers.every((modifier) => {
-            switch (modifier) {
-              case MODIFIER_KEYS.Alt:
-                return keyboardEvent.altKey;
-              case MODIFIER_KEYS.Control:
-                return keyboardEvent.ctrlKey;
-              case MODIFIER_KEYS.Shift:
-                return keyboardEvent.shiftKey;
-              case MODIFIER_KEYS.Meta:
-                return keyboardEvent.metaKey;
-              default:
-                return false;
-            }
-          });
+    if (this._registeredKeysOn.has(keyboardEvent.key)) {
+      this._registeredKeysOn.set(keyboardEvent.key, isKeyDown);
+    }
 
-          // 檢查是否有未指定但被按下的修飾鍵
-          const allModifiers = [
-            MODIFIER_KEYS.Alt,
-            MODIFIER_KEYS.Control,
-            MODIFIER_KEYS.Shift,
-            MODIFIER_KEYS.Meta,
-          ];
-          const unexpectedModifiers = allModifiers.filter((mod) => {
-            if (!cfg.modifiers) return false;
+    // Update modifier keys based on the event's state
+    this._registeredKeysOn.set(MODIFIER_KEYS.Alt, keyboardEvent.altKey);
+    this._registeredKeysOn.set(MODIFIER_KEYS.Control, keyboardEvent.ctrlKey);
+    this._registeredKeysOn.set(MODIFIER_KEYS.Shift, keyboardEvent.shiftKey);
+    this._registeredKeysOn.set(MODIFIER_KEYS.Meta, keyboardEvent.metaKey);
+  }
 
-            switch (mod) {
-              case MODIFIER_KEYS.Alt:
-                return !cfg.modifiers.includes(mod) && keyboardEvent.altKey;
-              case MODIFIER_KEYS.Control:
-                return !cfg.modifiers.includes(mod) && keyboardEvent.ctrlKey;
-              case MODIFIER_KEYS.Shift:
-                return !cfg.modifiers.includes(mod) && keyboardEvent.shiftKey;
-              case MODIFIER_KEYS.Meta:
-                return !cfg.modifiers.includes(mod) && keyboardEvent.metaKey;
-              default:
-                return false;
-            }
-          });
-
-          // 如果有未指定但被按下的修飾鍵，那麼不匹配
-          if (unexpectedModifiers.length > 0) {
-            modifiersMatch = false;
-          }
-        } else {
-          // 如果沒有要求修飾鍵，但有修飾鍵被按下，則不匹配
-          if (
-            keyboardEvent.altKey ||
-            keyboardEvent.ctrlKey ||
-            keyboardEvent.shiftKey ||
-            keyboardEvent.metaKey
-          ) {
-            modifiersMatch = false;
-          }
-        }
-
-        // 如果修飾鍵也匹配，執行回調函數
-        if (modifiersMatch) {
-          cfg.callback(event);
-          return; // 找到匹配的配置並執行後返回
-        }
+  private _initializeRegisteredKeysOn(configs: KeyCallbackConfig[]): void {
+    this._registeredKeysOn.clear();
+    configs.forEach((cfg) => {
+      this._registeredKeysOn.set(cfg.key, false);
+      if (cfg.modifiers) {
+        cfg.modifiers.forEach((modifier) => {
+          this._registeredKeysOn.set(modifier, false);
+        });
       }
+    });
+  }
+
+  private _cacheKeyConfigsByType(): void {
+    this._cacheConfigsByType.clear();
+    this._cacheConfigsByType.set(KeyboardEventType.KeyDown, []);
+    this._cacheConfigsByType.set(KeyboardEventType.KeyUp, []);
+
+    this._keyCallbackConfigs.forEach((config) => {
+      const typeCache = this._cacheConfigsByType.get(config.type);
+      if (typeCache) {
+        typeCache.push(config);
+      } else {
+        // Should not happen if initialized correctly
+        this._cacheConfigsByType.set(config.type, [config]);
+      }
+    });
+  }
+
+  private _keyEventHandler = (event: EventWithId): void => {
+    if (!(event instanceof KeyboardEvent)) {
+      return;
+    }
+    const keyboardEvent = event as KeyboardEvent;
+    // It's important to update key states before checking for matches,
+    // especially for KeyUp, to correctly reflect the state when the key is released.
+    this._updateKeysOn(keyboardEvent);
+
+    const specificConfigs =
+      this._cacheConfigsByType.get(keyboardEvent.type as KeyboardEventType) ||
+      [];
+
+    const matchedConfig = specificConfigs.find((cfg) =>
+      this._isShortcutMatch(keyboardEvent, cfg)
+    );
+
+    if (matchedConfig) {
+      // Call the callback for the matched configuration.
+      // _updateKeysOn was already called, so the state is current.
+      matchedConfig.callback(keyboardEvent as EventWithId);
     }
   };
+
+  add(): this {
+    if (this._isListing) {
+      logger.warning("ShortCutKey.add: This instance is already listening.");
+      return this; // Return this even on handled failure for chaining
+    }
+    if (typeof window === "undefined") {
+      logger.warning(
+        "ShortCutKey.add: window is not available in the current environment."
+      );
+      return this; // Return this even on handled failure for chaining
+    }
+
+    // Now, add uses the current _keyCallbackConfigs, which are set by constructor or swap.
+    this._initializeRegisteredKeysOn(this._keyCallbackConfigs);
+    this._cacheKeyConfigsByType();
+
+    const keyDownListenerResult = addEventListener({
+      target: window,
+      type: KeyboardEventType.KeyDown,
+      callback: this._keyEventHandler,
+      options: this._initialOptions,
+    });
+
+    if (keyDownListenerResult.isErr()) {
+      logger.error("ShortCutKey.add: Failed to add keydown listener.");
+      // _isListing remains false, state indicates failure
+      return this; // Return this even on handled failure for chaining
+    }
+    this._listenerHandles.push(keyDownListenerResult.unwrap());
+
+    const keyUpListenerResult = addEventListener({
+      target: window,
+      type: KeyboardEventType.KeyUp,
+      callback: this._keyEventHandler,
+      options: this._initialOptions,
+    });
+
+    if (keyUpListenerResult.isErr()) {
+      logger.error("ShortCutKey.add: Failed to add keyup listener.");
+      this._listenerHandles.forEach((handle) => handle.remove()); // Clean up added keydown listener
+      this._listenerHandles = [];
+      // _isListing remains false, state indicates failure
+      return this; // Return this even on handled failure for chaining
+    }
+    this._listenerHandles.push(keyUpListenerResult.unwrap());
+
+    this._isListing = true;
+    logger.debug(
+      "ShortCutKey: Event listeners added and instance is now active."
+    );
+    return this;
+  }
+
+  remove(): this {
+    if (!this._isListing) {
+      logger.debug("ShortCutKey.remove: Instance is not currently listening.");
+      // Even if not listening, the operation to ensure it's removed (or stays removed) can be seen as successful.
+      // Or, one might argue this should also set an error state if strictness is required.
+      // For chaining, returning `this` is consistent.
+    }
+    this._listenerHandles.forEach((listnerHandle) => listnerHandle.remove());
+    this._listenerHandles = [];
+    this._registeredKeysOn.clear();
+    this._keyCallbackConfigs = [];
+    this._cacheConfigsByType.clear();
+    this._isListing = false; // Ensure state is correctly set to not listening
+
+    logger.debug(
+      "ShortCutKey: Event listeners removed and instance is no longer active."
+    );
+    return this;
+  }
+
+  swap(
+    newConfig: KeyCallbackConfig | KeyCallbackConfig[]
+  ): Result<KeyCallbackConfig[], null> {
+    const oldKeyCallbackConfigs = this._deepCloneKeyCallbackConfigs(
+      this._keyCallbackConfigs
+    );
+
+    // Update current working configs
+    this._keyCallbackConfigs = this._deepCloneKeyCallbackConfigs(newConfig);
+
+    // Re-initialize based on new configs
+    this._initializeRegisteredKeysOn(this._keyCallbackConfigs);
+    this._cacheKeyConfigsByType();
+
+    logger.debug("ShortCutKey: Configurations swapped.");
+    return Result.ok(oldKeyCallbackConfigs);
+  }
+
+  isKeyOn(key: string): boolean | null {
+    if (this._registeredKeysOn.has(key)) {
+      return this._registeredKeysOn.get(key)!; // The key exists, so get() will not be undefined
+    }
+    return null;
+  }
+
+  get state(): boolean {
+    return this._isListing;
+  }
+
+  get config(): {
+    config: KeyCallbackConfig[];
+    options?: AddEventListenerOptions;
+  } {
+    return {
+      // Return a deep clone of the current _keyCallbackConfigs
+      config: this._deepCloneKeyCallbackConfigs(this._keyCallbackConfigs),
+      options: this._initialOptions, // Options are typically simple objects, shallow copy is fine
+    };
+  }
 }
-
-const _keyEventsRegistry = {
-  // 儲存3種鍵盤事件的註冊資訊，每個事件只能註冊一次
-  keyEventListeners: new Map<KeyboardEventType, EventHandler>(),
-  // 儲存已註冊的鍵盤按鍵，並記錄當下是否被按下
-  registeredKeysOn: new Map<string, boolean>(),
-};
-
-/**
- * 1.使用createKeyEventCallback將 config 轉成 EventHandler "mainKeyEventHandler"
- * 2.註冊_keyEventsRegistry.keyEventListeners ，鍵值為 type，value 為呼叫 updateKeysOn 和 mainKeyCallback 封裝後的EventHandler
- * 2.1 如果_keyEventsRegistry.keyEventListeners[type] 已經存在，則logger錯誤訊息並返回Result.err(null)
- * 3.內部定義let listnerHandle: ListnerHandle
- * 3.內部定義function add：使用 addEventListener 註冊 _keyEventsRegistry.keyEventListeners[type] 到 window 上的鍵盤事件，並取得原始的 ListnerHandle
- * 4.內部定義function remove：使用 ListnerHandle.remove() 移除事件監聽，並且移除 _keyEventsRegistry.keyEventListeners[type] 中的事件處理器
- * 5.內部定義function swap(swapCallback: EventHandler)：將updateKeysOn 和 swapCallback 重新封裝後 和 _keyEventsRegistry.keyEventListeners[type] 中的EventHandler 交換
- * 6.listnerHandle=add()
- * 7.返回Result.ok({add, remove, swap, config: {type, config, options}) 的物件
- */
-
-function onKeys(
-  type: KeyboardEventType,
-  config: KeyCallbackConfig | KeyCallbackConfig[],
-  options?: AddEventListenerOptions
-): Result<KeyListnerHandle, null> {}
-
-function updateKeysOn(event: EventWithId) {}
-function isKeyOn(key: string): boolean {}

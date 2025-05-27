@@ -18,7 +18,7 @@ import {
 } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 import {
   addEventListener,
-  createKeyEventCallback,
+  ShortCutKey,
   KeyboardEventType,
   ListnerHandle,
 } from "../utils/eventListner";
@@ -272,7 +272,7 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
 
   // 清理函數，用於移除事件監聽器
   let registeredBackgroundEvents = ref<
-    (KeyListenerHandle | MouseListenerHandle | ListnerHandle)[]
+    (KeyListenerHandle | MouseListenerHandle | ListnerHandle | ShortCutKey)[]
   >([]);
   let registeredEvents = ref<(KeyListenerHandle | MouseListenerHandle)[]>([]);
 
@@ -322,30 +322,34 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   });
 
   const eventsProxy = ref({
-    taskListsKeyDown: [
+    taskListsShortCutKey: [
       {
         key: "Shift",
+        type: KeyboardEventType.KeyDown,
         callback: onShiftPress.value,
       },
-
+      {
+        key: "Shift",
+        type: KeyboardEventType.KeyUp,
+        callback: onShiftRelease.value,
+      },
       {
         key: "a",
+        type: KeyboardEventType.KeyDown,
         callback: taskStore.select_all_tasks,
         modifiers: [MODIFIER_KEYS.Control],
       },
       {
         key: "Escape",
+        type: KeyboardEventType.KeyDown,
         callback: taskStore.unselect_all_tasks,
       },
       {
         key: "Delete",
+        type: KeyboardEventType.KeyDown,
         callback: taskStore.clearAllTasks,
       },
     ],
-    taskListsKeyUp: {
-      key: "Shift",
-      callback: onShiftRelease.value,
-    },
   });
 
   return {

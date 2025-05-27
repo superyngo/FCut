@@ -68,7 +68,7 @@ import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 import { MakeOptional } from "../utils/types";
 import { onKeys, KeyCallbackConfig } from "../utils/keyEvents";
-import { addEventListener, createKeyEventCallback, KeyboardEventType } from "../utils/eventListner";
+import { addEventListener, ShortCutKey, KeyboardEventType } from "../utils/eventListner";
 import { startMouseEvent } from "../utils/mouseEvents";
 
 const modalStore = useModalStore();
@@ -132,17 +132,8 @@ onMounted(() => {
   taskStore.initTasks();
   mouseEvent = startMouseEvent();
   callbackRegistry.registeredBackgroundEvents.push(
-    addEventListener({
-      target: window,
-      type: KeyboardEventType.KeyDown,
-      callback: createKeyEventCallback(callbackRegistry.eventsProxy.taskListsKeyDown)
-    }).unwrap(),
-    addEventListener({
-      target: window,
-      type: KeyboardEventType.KeyUp,
-      callback: createKeyEventCallback(callbackRegistry.eventsProxy.taskListsKeyUp)
-    }).unwrap()
-  );
+    new ShortCutKey(callbackRegistry.eventsProxy.taskListsShortCutKey).add()
+  )
 });
 
 // 組件卸載時清理事件監聽
