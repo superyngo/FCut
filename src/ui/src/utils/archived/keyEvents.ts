@@ -1,6 +1,6 @@
-import { logger } from "./logger";
+import { logger } from "../logger";
 import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
-import { MakeOptional } from "./types";
+import { MakeOptional } from "../types";
 export enum MODIFIER_KEYS {
   Shift = "Shift",
   Control = "Control",

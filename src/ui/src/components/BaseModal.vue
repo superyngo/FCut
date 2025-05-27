@@ -25,8 +25,8 @@
 import { ref, onMounted, onUnmounted, defineModel } from 'vue';
 import { logger } from '../utils/logger';
 import { makeDraggable, MouseListenerHandle } from '../utils/mouseEvents';
-import { KeyListenerHandle } from "../utils/keyEvents";
 import { useCallBackRedistry, useModalStore } from "../stores/stores";
+import { KeyboardEventType, KeyCallbackConfig } from "../utils/eventListner";
 
 const callbackRegistry = useCallBackRedistry();
 const modalStore = useModalStore();
@@ -70,30 +70,23 @@ let draggableEvent: MouseListenerHandle[] = []
 const modalWindow = ref<HTMLElement | null>(null);
 const modalHeader = ref<HTMLElement | null>(null);
 
+let tempConfig: KeyCallbackConfig[]
 onMounted(() => {
     if (modalHeader.value && modalWindow.value && !props.headless) {
         draggableEvent.push(makeDraggable(modalWindow.value, modalHeader.value)!)
     }
-    callbackRegistry.registeredBackgroundEvents.forEach((handle) => {
-        (handle as KeyListenerHandle).registeredConfigs.forEach((config) => {
-            if (config.key === 'Escape') {
-                config.callback = config.swap(closeModal)
-            } else {
-                config.callback = config.swap(() => { })
-            }
-        })
-    });
+    tempConfig = callbackRegistry.shortCutKey!.swap({
+        key: "Escape",
+        type: KeyboardEventType.KeyDown,
+        callback: closeModal,
+    })
 });
 
 onUnmounted(() => {
     if (draggableEvent) {
         draggableEvent.forEach((c) => c())
     }
-    callbackRegistry.registeredBackgroundEvents.forEach((handle) => {
-        (handle as KeyListenerHandle).registeredConfigs.forEach((config) => {
-            config.callback = config.swap(config.callback)
-        })
-    });
+    callbackRegistry.shortCutKey!.swap(tempConfig);
 
 });
 

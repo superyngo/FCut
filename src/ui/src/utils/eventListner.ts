@@ -1,5 +1,6 @@
 import { MakeOptional, Result } from "./types";
 import { logger } from "./logger";
+import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
 
 // ==== types ====
 
@@ -92,7 +93,7 @@ type ListenerConfig = {
   addHook?: () => void; // 用於在添加事件時執行的額外操作
   removeHook?: () => void; // 用於在移除事件時執行的額外操作
   options?: AddEventListenerOptions;
-  decorateFn?: (fn: () => void) => EventHandler; //debounceFn or throttleFn
+  decorateFn?: (handler: EventHandler) => EventHandler; //debounceFn or throttleFn
 };
 
 export type ListnerHandle = AbortController & {
@@ -117,8 +118,9 @@ export function addEventListener(
   listenerConfig.target = listenerConfig.target || window;
 
   if (listenerConfig.decorateFn) {
-    listenerConfig.callback = listenerConfig.decorateFn(() =>
-      listenerConfig.callback(event as EventWithId)
+    // 直接將原始 callback 傳遞給 decorateFn
+    listenerConfig.callback = listenerConfig.decorateFn(
+      listenerConfig.callback
     );
   }
 
@@ -212,7 +214,7 @@ const modifierKeyMap: { [key in MODIFIER_KEYS]: keyof KeyboardEvent } = {
   [MODIFIER_KEYS.Meta]: "metaKey",
 };
 
-type KeyCallbackConfig = {
+export type KeyCallbackConfig = {
   type: KeyboardEventType; // 鍵盤事件類型
   key: string; // 監聽觸發的按鍵
   modifiers?: MODIFIER_KEYS[];
@@ -270,6 +272,7 @@ export class ShortCutKey {
 
     if (this._registeredKeysOn.has(keyboardEvent.key)) {
       this._registeredKeysOn.set(keyboardEvent.key, isKeyDown);
+      logger.debug(`${keyboardEvent.key} is ${isKeyDown ? "down" : "up"}`);
     }
 
     // Update modifier keys based on the event's state
@@ -311,6 +314,10 @@ export class ShortCutKey {
     if (!(event instanceof KeyboardEvent)) {
       return;
     }
+
+    // 防止重複觸發 (長按)
+    if (event.repeat) return;
+
     const keyboardEvent = event as KeyboardEvent;
     // It's important to update key states before checking for matches,
     // especially for KeyUp, to correctly reflect the state when the key is released.
@@ -406,7 +413,7 @@ export class ShortCutKey {
 
   swap(
     newConfig: KeyCallbackConfig | KeyCallbackConfig[]
-  ): Result<KeyCallbackConfig[], null> {
+  ): KeyCallbackConfig[] {
     const oldKeyCallbackConfigs = this._deepCloneKeyCallbackConfigs(
       this._keyCallbackConfigs
     );
@@ -419,7 +426,7 @@ export class ShortCutKey {
     this._cacheKeyConfigsByType();
 
     logger.debug("ShortCutKey: Configurations swapped.");
-    return Result.ok(oldKeyCallbackConfigs);
+    return oldKeyCallbackConfigs;
   }
 
   isKeyOn(key: string): boolean | null {

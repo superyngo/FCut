@@ -66,9 +66,7 @@ import { logger } from "../utils/logger";
 import { useTasks, useModalStore, useCallBackRedistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
-import { MakeOptional } from "../utils/types";
-import { onKeys, KeyCallbackConfig } from "../utils/keyEvents";
-import { addEventListener, ShortCutKey, KeyboardEventType } from "../utils/eventListner";
+import {  ShortCutKey } from "../utils/eventListner";
 import { startMouseEvent } from "../utils/mouseEvents";
 
 const modalStore = useModalStore();
@@ -131,16 +129,14 @@ const toggleTaskSelection = (
 onMounted(() => {
   taskStore.initTasks();
   mouseEvent = startMouseEvent();
-  callbackRegistry.registeredBackgroundEvents.push(
-    new ShortCutKey(callbackRegistry.eventsProxy.taskListsShortCutKey).add()
-  )
+  callbackRegistry.shortCutKey=new ShortCutKey(callbackRegistry.eventsProxy.taskListsShortCutKey).add()
 });
 
 // 組件卸載時清理事件監聽
 onUnmounted(() => {
   // 清理事件監聽
-  callbackRegistry.registeredBackgroundEvents.forEach((cleanup) => cleanup());
-  callbackRegistry.registeredBackgroundEvents = [];
+  callbackRegistry.shortCutKey!.remove();
+  callbackRegistry.shortCutKey = null;
   mouseEvent()
   mouseEvent = null
 });

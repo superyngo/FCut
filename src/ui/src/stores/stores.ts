@@ -7,20 +7,14 @@ import { logger } from "../utils/logger";
 import { ref, computed } from "vue";
 
 import {
-  MODIFIER_KEYS,
-  KeyListenerHandle,
-  KeyEvents,
-} from "../utils/keyEvents"; // 引入 on_shift 工具函數
-import {
   onMousemove,
   coordinate,
   MouseListenerHandle,
 } from "../utils/mouseEvents"; // 引入 on_shift 工具函數
 import {
-  addEventListener,
+  MODIFIER_KEYS,
   ShortCutKey,
   KeyboardEventType,
-  ListnerHandle,
 } from "../utils/eventListner";
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
@@ -271,10 +265,8 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
   const taskStore = useTasks();
 
   // 清理函數，用於移除事件監聽器
-  let registeredBackgroundEvents = ref<
-    (KeyListenerHandle | MouseListenerHandle | ListnerHandle | ShortCutKey)[]
-  >([]);
-  let registeredEvents = ref<(KeyListenerHandle | MouseListenerHandle)[]>([]);
+  let shortCutKey = ref<ShortCutKey | null>();
+  let registeredEvents = ref<MouseListenerHandle[]>([]);
 
   // 找出滑鼠最近的任務索引
   const findNearestTaskToMouse = ref((event: any) => {
@@ -325,6 +317,7 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
     taskListsShortCutKey: [
       {
         key: "Shift",
+        modifiers: [MODIFIER_KEYS.Shift],
         type: KeyboardEventType.KeyDown,
         callback: onShiftPress.value,
       },
@@ -350,11 +343,16 @@ export const useCallBackRedistry = defineStore(crypto.randomUUID(), () => {
         callback: taskStore.clearAllTasks,
       },
     ],
+    modalShortCutKey: {
+      key: "Escape",
+      type: KeyboardEventType.KeyDown,
+      callback: taskStore.unselect_all_tasks,
+    },
   });
 
   return {
     eventsProxy,
-    registeredBackgroundEvents,
+    shortCutKey,
     registeredEvents,
     onShiftPress,
     onShiftRelease,
