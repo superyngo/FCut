@@ -7,20 +7,34 @@
                 <span class="visually-hidden">取消所有選取</span>
             </button>
         </div>
+        <!-- 警告圖標 -->
+        <div v-if="appState.messageQueue.length > 0" class="warning-icon">
+            ⚠️
+        </div>
         <div class="message-content">
-            <span>{{ message }}</span>
+            <Transition name="fade" mode="out-in">
+                <span :key="message" :class="{ 'warning-message': appState.messageQueue.length > 0 }">
+                    {{ message }}
+                </span>
+            </Transition>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useTasks } from "../stores/stores";
+import { computed, watch, onMounted, onUnmounted } from "vue";
+import { useTasks, useAppState } from "../stores/stores";
 
 const taskStore = useTasks();
+const appState = useAppState();
 
 // 計算要顯示的訊息
 const message = computed(() => {
+    // 優先顯示佇列中的訊息
+    if (appState.messageQueue.length > 0) {
+        return appState.messageQueue[0];
+    }
+
     if (taskStore.tasks.length === 0) {
         return "請新增檔案";
     }
@@ -33,10 +47,56 @@ const message = computed(() => {
     return "選擇影片以執行操作"; // 有檔案但沒有選取時顯示的訊息
 });
 
+// 監聽訊息佇列變化，自動移除顯示的訊息
+let timeoutId: number | null = null;
+
+watch(
+    () => appState.messageQueue.length,
+    (newLength) => {
+        if (newLength > 0) {
+            // 清除之前的計時器
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+
+            // 設置新的計時器，2秒後移除第一個訊息
+            timeoutId = window.setTimeout(() => {
+                appState.removeFirstMessage();
+                timeoutId = null;
+            }, 2000);
+        }
+    },
+    { immediate: true }
+);
+
 // 清除所有選取的任務
 const clearAllSelections = () => {
     taskStore.unselect_all_tasks();
 };
+
+// 組件卸載時清理計時器
+onUnmounted(() => {
+    if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+    }
+});
+
+// 開發模式下添加測試功能到全域
+if (import.meta.env.DEV) {
+    onMounted(() => {
+        (window as any).testMessageBar = {
+            addWarning: () => appState.addMessage("test.txt 不是媒體檔案"),
+            addInfo: () => appState.addMessage("檔案添加成功"),
+            addLongPath: () => appState.addMessage("C:\\Users\\user\\OneDrive - Chunghwa Telecom Co., Ltd\\文件\\Projects\\Very-Long-Project-Name\\src\\components\\some-very-long-filename-with-many-words.mp4 不是媒體檔案"),
+            addMultiple: () => {
+                appState.addMessage("document.pdf 不是媒體檔案");
+                setTimeout(() => appState.addMessage("C:\\Very\\Long\\Directory\\Path\\With\\Many\\Folders\\image.jpg 不是媒體檔案"), 500);
+                setTimeout(() => appState.addMessage("檔案處理完成"), 2500);
+            }
+        };
+    });
+}
 </script>
 
 <style scoped>
@@ -69,6 +129,39 @@ const clearAllSelections = () => {
     font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.3px;
+    overflow: hidden;
+    /* 確保動畫不溢出 */
+    white-space: nowrap;
+    /* 防止文字換行 */
+    text-overflow: ellipsis;
+    /* 如果仍然過長則顯示省略號 */
+    min-width: 0;
+    /* 確保 flex 項目可以縮小 */
+}
+
+/* 淡入淡出過渡動畫 */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+/* 警告訊息樣式 */
+.warning-message {
+    color: #ff4444 !important;
+    font-weight: 700 !important;
+    text-shadow: 0 0 5px rgba(255, 68, 68, 0.5);
+}
+
+/* 警告圖標樣式 */
+.warning-icon {
+    font-size: 18px;
+    margin-right: 8px;
+    opacity: 0.9;
 }
 
 /* 取消選取按鈕樣式 */

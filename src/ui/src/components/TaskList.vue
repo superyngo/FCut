@@ -13,7 +13,9 @@
           <div class="task-preview" :class="{ shifted: taskStore.shiftHoverRange.includes(index) }">
             <!-- Placeholder for video preview -->
             <img v-if="task.previewUrl" :src="task.previewUrl" alt="Preview" class="preview-image" />
-            <div v-else class="preview-placeholder">No Preview</div>
+            <div v-else class="preview-placeholder" :class="getFileTypeClass(task.videoName)">
+              {{ getFileExtension(task.videoName).toUpperCase() }}
+            </div>
           </div>
         </div>
         <div class="task-details">
@@ -66,13 +68,27 @@ import { logger } from "../utils/logger";
 import { useTasks, useModalStore, useCallBackRedistry } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
-import {  ShortCutKey } from "../utils/eventListner";
+import { ShortCutKey } from "../utils/eventListner";
 import { startMouseEvent } from "../utils/mouseEvents";
+import { getFileType, getFileExtension, FileType } from "../utils/types";
 
 const modalStore = useModalStore();
 const taskStore = useTasks();
 const callbackRegistry = useCallBackRedistry();
 let mouseEvent: any = null
+
+// 根據檔案名稱判斷檔案類型並返回對應的 CSS 類別
+const getFileTypeClass = (filename: string): string => {
+  const fileType = getFileType(filename);
+  switch (fileType) {
+    case FileType.AUDIO:
+      return 'file-type-audio';
+    case FileType.VIDEO:
+      return 'file-type-video';
+    default:
+      return 'file-type-unknown';
+  }
+};
 
 const change_settings = (task: Task) => {
   if (task.selected) {
@@ -129,7 +145,7 @@ const toggleTaskSelection = (
 onMounted(() => {
   taskStore.initTasks();
   mouseEvent = startMouseEvent();
-  callbackRegistry.shortCutKey=new ShortCutKey(callbackRegistry.eventsProxy.taskListsShortCutKey).add()
+  callbackRegistry.shortCutKey = new ShortCutKey(callbackRegistry.eventsProxy.taskListsShortCutKey).add()
 });
 
 // 組件卸載時清理事件監聽
@@ -300,6 +316,21 @@ onUnmounted(() => {
   border-radius: 4px;
   border: 1px solid #444;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-weight: 600;
+  transition: all 0.2s ease-in-out;
+}
+
+/* 不同檔案類型的顏色樣式 */
+.preview-placeholder.file-type-audio {
+  color: #e91e63;
+}
+
+.preview-placeholder.file-type-video {
+  color: #2196f3;
+}
+
+.preview-placeholder.file-type-unknown {
+  color: #fff;
 }
 
 /* 當 checkbox 被勾選時，preview-placeholder 的 scale 變成 0.9 */

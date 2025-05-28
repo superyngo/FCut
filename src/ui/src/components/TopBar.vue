@@ -32,13 +32,15 @@
 
 <script setup lang="ts">
 import { logger } from "../utils/logger";
-import { useTasks, useModalStore } from "../stores/stores";
+import { useTasks, useModalStore, useAppState } from "../stores/stores";
 import { pywebview } from "../services/pywebview";
 import { TASK_STATUS } from "../models/tasks";
-import { makeDraggable } from "../utils/mouseEvents";
+import { getFileType, FileType } from "../utils/types";
+import { createFileTypeWarningMessage } from "../utils/messageHelpers";
 
 const taskStore = useTasks();
 const modalStore = useModalStore();
+const appState = useAppState();
 
 const toggleMenu = () => {
   logger.debug("Menu toggled");
@@ -50,8 +52,16 @@ const addTask = async () => {
   if (!video_paths) {
     logger.debug("No video paths selected");
     return;
-  }
-  for (const videoPath of video_paths) {
+  } for (const videoPath of video_paths) {
+    // 檢查檔案類型
+    const fileType = getFileType(videoPath);
+    if (fileType === FileType.UNKNOWN) {
+      const message = createFileTypeWarningMessage(videoPath, 70); // 限制長度為70字符
+      appState.addMessage(message);
+      logger.warning(message);
+      continue; // 跳過這個檔案，繼續處理下一個
+    }
+
     logger.debug(`Adding video: ${videoPath}`);
     taskStore.addTask(videoPath);
   }

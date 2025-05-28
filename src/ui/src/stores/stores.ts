@@ -24,6 +24,7 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
   const error = ref(false);
   const loading = ref(true);
   const constants = ref<null | Record<string, any>>(null);
+  const messageQueue = ref<string[]>([]);
 
   // Actions
   async function initFromPython() {
@@ -45,13 +46,28 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
     }
   }
 
+  // 添加訊息到佇列
+  function addMessage(message: string) {
+    messageQueue.value.push(message);
+  }
+
+  // 移除佇列中的第一個訊息
+  function removeFirstMessage() {
+    if (messageQueue.value.length > 0) {
+      messageQueue.value.shift();
+    }
+  }
+
   // 返回所有需要暴露的狀態和方法
   return {
     storeId,
     error,
     loading,
     constants,
+    messageQueue,
     initFromPython,
+    addMessage,
+    removeFirstMessage,
   };
 });
 

@@ -8,6 +8,7 @@
     </div>
     <!-- 添加集中式的模態框組件 -->
     <AppModals />
+
   </div>
 </template>
 
@@ -17,9 +18,34 @@ import MessageBar from "../components/MessageBar.vue";
 import TaskList from "../components/TaskList.vue";
 import AppModals from "../components/AppModals.vue";
 import { logger } from "../utils/logger";
+import { useAppState } from "../stores/stores";
 
+const appState = useAppState();
 
+// 示例：可以在這裡添加測試訊息到佇列
+// appState.addMessage("這是一個測試訊息");
 
+// 添加測試按鈕來演示MessageBar功能
+const addTestWarning = () => {
+  appState.addMessage("test.txt 不是媒體檔案");
+};
+
+const addTestSuccess = () => {
+  appState.addMessage("檔案添加成功！");
+};
+
+// 暴露測試函數到全域，方便瀏覽器控制台測試
+if (typeof window !== 'undefined') {
+  (window as any).testMessageBar = {
+    addWarning: addTestWarning,
+    addSuccess: addTestSuccess,
+    addMultiple: () => {
+      appState.addMessage("document.pdf 不是媒體檔案");
+      setTimeout(() => appState.addMessage("image.jpg 不是媒體檔案"), 500);
+      setTimeout(() => appState.addMessage("presentation.pptx 不是媒體檔案"), 1000);
+    }
+  };
+}
 </script>
 
 <style scoped>

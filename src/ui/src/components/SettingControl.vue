@@ -8,13 +8,13 @@
       <span>{{ setting.value }}</span>
     </div>
   </div>
-
   <!-- InputText 類型 -->
   <div class="form-group" v-else-if="setting.type === 'InputText'">
-    <label :for="setting.id">{{ setting.label }}</label>
+    <label :for="setting.id">{{ JSON.stringify(setting.regexValidator) }}</label>
     <input type="text" :id="setting.id" v-model="setting.value"
       :title="typeof (setting as InputRange).title === 'function' ? (setting.title as () => string)() : setting.title"
-      :placeholder="typeof setting.label === 'string' ? setting.label : setting.label()" />
+      :placeholder="typeof setting.label === 'string' ? setting.label : setting.label()"
+      @input="validateInput($event, setting)" />
   </div>
 
   <!-- Selection 類型 -->
@@ -48,12 +48,40 @@
 
 <script setup lang="ts">
 import { defineModel } from 'vue';
-import { InputRange, InputText, Selection, Button } from "../models/elements";
+import { InputRange } from "../models/elements";
+import { logger } from '../utils/logger';
 
 // 使用 defineModel 代替 props 和 emit
 const setting = defineModel<any>({
   required: true
 });
+
+// 驗證輸入函數
+function validateInput(event: Event, setting: any) {
+  const target = event.target as HTMLInputElement;
+  const newValue = target.value;
+
+  // 檢查是否有 regexValidator
+  if (setting.regexValidator) {
+    let regex: RegExp;
+
+    // 如果是字串，轉換為 RegExp
+    if (typeof setting.regexValidator === 'string') {
+      regex = new RegExp(setting.regexValidator);
+    } else {
+      regex = setting.regexValidator;
+    }
+
+    // 如果不符合正則表達式，則恢復到之前的值
+    if (!regex.test(newValue)) {
+      target.value = setting.value;
+      return;
+    }
+  }
+
+  // 如果驗證通過或沒有驗證器，更新值
+  setting.value = newValue;
+}
 </script>
 
 <style scoped>

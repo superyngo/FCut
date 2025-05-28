@@ -9,7 +9,6 @@ class BaseElementData extends BaseClass {
   label: string | ((...args: any[]) => string) = "";
   title: string | ((...args: any[]) => string) = "";
   value: string | number = "";
-
   // 處理序列化，轉換方法為字符串標識
   toJSON(): Record<string, any> {
     // 建立物件的淺拷貝
@@ -21,6 +20,8 @@ class BaseElementData extends BaseClass {
 
       if (typeof value === "function") {
         json[key] = value.name; // 使用函數名稱作為標識
+      } else if (value instanceof RegExp) {
+        json[key] = value.toString(); // 將 RegExp 轉換為字串格式
       }
     }
 
@@ -64,6 +65,7 @@ export class InputRange extends BaseElementData {
 }
 export class InputText extends BaseElementData {
   type: string = "InputText";
+  regexValidator?: RegExp | string;
   constructor(
     data: Partial<InputText> & {
       [_: string]: any;
@@ -183,8 +185,16 @@ export function initElementsData(
 export function createCutCell() {
   return new Container({
     children: [
-      new InputText({ label: "Start", value: "00:00:000" }),
-      new InputText({ label: "End", value: "00:00:000" }),
+      new InputText({
+        label: "Start",
+        value: "00:00:000",
+        regexValidator: "123",
+      }),
+      new InputText({
+        label: "End",
+        value: "00:00:123",
+        regexValidator: /^\d{2}:\d{2}:\d{3}$/,
+      }),
       new Button(
         {
           label: "Remove",

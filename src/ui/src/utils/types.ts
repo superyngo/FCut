@@ -5,6 +5,57 @@ export type InstanceTypeOf<T> = T extends new (...args: any) => infer R
   ? R
   : never;
 
+// 音樂檔案副檔名
+export enum AudioExtensions {
+  MP3 = "mp3",
+  WAV = "wav",
+  FLAC = "flac",
+  AAC = "aac",
+  OGG = "ogg",
+  M4A = "m4a",
+  WMA = "wma",
+}
+
+// 影片檔案副檔名
+export enum VideoExtensions {
+  MP4 = "mp4",
+  AVI = "avi",
+  MOV = "mov",
+  MKV = "mkv",
+  WMV = "wmv",
+  FLV = "flv",
+  WEBM = "webm",
+  M4V = "m4v",
+}
+
+// 檔案類型
+export enum FileType {
+  AUDIO = "audio",
+  VIDEO = "video",
+  UNKNOWN = "unknown",
+}
+
+// 根據副檔名判斷檔案類型的工具函數
+export function getFileType(filename: string): FileType {
+  const extension = filename.split(".").pop()?.toLowerCase();
+  if (!extension) return FileType.UNKNOWN;
+
+  if (Object.values(AudioExtensions).includes(extension as AudioExtensions)) {
+    return FileType.AUDIO;
+  }
+
+  if (Object.values(VideoExtensions).includes(extension as VideoExtensions)) {
+    return FileType.VIDEO;
+  }
+
+  return FileType.UNKNOWN;
+}
+
+// 從檔名中提取副檔名
+export function getFileExtension(filename: string): string {
+  return filename.split(".").pop()?.toLowerCase() || "";
+}
+
 export class Result<T, E> {
   private constructor(
     private readonly _ok: boolean,
