@@ -45,7 +45,7 @@ import { storeToRefs } from "pinia";
 import { useTasks, useModalStore } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
-import { InputRange, InputText, Selection, Button, Container } from "../models/elements";
+import { Container } from "../models/elements";
 import SettingControl from "./SettingControl.vue";
 
 const modalStore = useModalStore();

@@ -90,13 +90,62 @@ export class TaskSettings extends BaseClass {
                 },
                 true
               ),
-            ]
+            ],
+        (self) => {
+          // 時間戳格式化函數
+          const formatTimestamp = (timeStr: string): string => {
+            if (!timeStr) return "00:00:000";
+
+            const parts = timeStr.split(":");
+            let minutes = "00";
+            let seconds = "00";
+            let milliseconds = "000";
+
+            if (parts.length >= 1) {
+              minutes = parts[0].padStart(2, "0");
+            }
+            if (parts.length >= 2) {
+              seconds = parts[1].padStart(2, "0");
+            }
+            if (parts.length >= 3) {
+              milliseconds = parts[2].padEnd(3, "0");
+            }
+
+            return `${minutes}:${seconds}:${milliseconds}`;
+          };
+
+          // 時間戳比較函數（轉換為總毫秒數進行比較）
+          const timestampToMs = (timeStr: string): number => {
+            const formatted = formatTimestamp(timeStr);
+            const [minutes, seconds, ms] = formatted.split(":").map(Number);
+            return minutes * 60000 + seconds * 1000 + ms;
+          };
+
+          // 格式化時間戳
+          const startTime = formatTimestamp(self[0].children[0].value);
+          const endTime = formatTimestamp(self[0].children[1].value);
+
+          // 更新格式化後的值
+          self[0].children[0].value = startTime;
+          self[0].children[1].value = endTime;
+
+          // 比較時間戳大小
+          const startMs = timestampToMs(startTime);
+          const endMs = timestampToMs(endTime);
+
+          if (endMs <= startMs) {
+            return { result: false, message: "End Time 應大於 Start Time" };
+          }
+
+          return { result: true, message: "Success" };
+        }
       ),
 
-      [ACTIONS.SPEEDUP]:
+      [ACTIONS.SPEEDUP]: initElementsData(
         ACTIONS.SPEEDUP in taskSettings
-          ? initElementsData(taskSettings[ACTIONS.SPEEDUP])
-          : [new InputRange({ label: "Multiple", value: 3 })],
+          ? taskSettings[ACTIONS.SPEEDUP]
+          : [new InputRange({ label: "Multiple", value: 3 })]
+      ),
 
       [ACTIONS.JUMPCUT]: initElementsData(
         taskSettings && ACTIONS.JUMPCUT in taskSettings

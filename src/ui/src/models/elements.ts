@@ -8,8 +8,7 @@ class BaseElementData extends BaseClass {
   id: string = crypto.randomUUID();
   label: string | ((...args: any[]) => string) = "";
   title: string | ((...args: any[]) => string) = "";
-  value: string | number = "";
-  // 處理序列化，轉換方法為字符串標識
+  value: string | number = ""; // 處理序列化，轉換方法為字符串標識
   toJSON(): Record<string, any> {
     // 建立物件的淺拷貝
     const json: Record<string, any> = { ...this };
@@ -21,14 +20,18 @@ class BaseElementData extends BaseClass {
       if (typeof value === "function") {
         json[key] = value.name; // 使用函數名稱作為標識
       } else if (value instanceof RegExp) {
-        json[key] = value.toString(); // 將 RegExp 轉換為字串格式
+        // 保存 RegExp 的 source 和 flags，而不是完整的字符串
+        json[key] = {
+          __type: "RegExp",
+          source: value.source,
+          flags: value.flags,
+        };
       }
     }
 
     return json;
   }
 }
-
 export class Button extends BaseElementData {
   type: string = "Button";
   icon?: string;
@@ -66,6 +69,7 @@ export class InputRange extends BaseElementData {
 export class InputText extends BaseElementData {
   type: string = "InputText";
   regexValidator?: RegExp | string;
+  oldValue?: string;
   constructor(
     data: Partial<InputText> & {
       [_: string]: any;
@@ -154,31 +158,77 @@ function registerMapMethods(data: Record<PropertyKey, any>): void {
   }
 }
 
-// Helper function to initialize elements
+// Helper class to initialize elements
+export class InitElementsData extends Array<AllBaseElements> {
+  private validator?: (self: any) => { result: boolean; message?: string };
+  constructor(
+    elementsData: AllBaseElements[] | InitElementsData,
+    validator?: (self: any) => { result: boolean; message?: string }
+  ) {
+    // 確保 elementsData 是陣列，即使它失去了原型鏈
+    let dataArray: AllBaseElements[];
+
+    if (Array.isArray(elementsData)) {
+      dataArray = elementsData;
+    } else if (elementsData && typeof elementsData === "object") {
+      // 如果是類似陣列的物件但失去了原型，嘗試轉換
+      if ("length" in elementsData) {
+        dataArray = Array.from(elementsData as ArrayLike<AllBaseElements>);
+      } else {
+        // 如果是普通對象，嘗試從其屬性中獲取陣列
+        const values = Object.values(elementsData);
+        if (values.length > 0 && typeof values[0] === "object") {
+          dataArray = values as AllBaseElements[];
+        } else {
+          dataArray = [];
+        }
+      }
+    } else {
+      dataArray = [];
+    }
+
+    const initializedElements = dataArray.map((elementData) => {
+      if (
+        allBaseElements.includes(
+          elementData.constructor as AllBaseElementClasses
+        )
+      ) {
+        return elementData;
+      }
+      switch (elementData.type) {
+        case "InputRange":
+          return new InputRange(elementData as InputRange);
+        case "InputText":
+          return new InputText(elementData as InputText);
+        case "Button":
+          return new Button(elementData as Button);
+        case "Selection":
+          return new Selection(elementData as Selection);
+        case "Container":
+          return new Container(elementData as Container);
+        default:
+          throw new Error("Invalid task elementData type");
+      }
+    });
+
+    super(...initializedElements);
+    this.validator = validator;
+  }
+
+  validate(): boolean {
+    if (this.validator) {
+      return this.validator(this);
+    }
+    return true;
+  }
+}
+
+// Keep the original function for backward compatibility
 export function initElementsData(
-  elementsData: AllBaseElements[]
+  elementsData: AllBaseElements[],
+  validator?: (self: any) => { result: boolean; message?: string }
 ): AllBaseElements[] {
-  return elementsData.map((elementData) => {
-    if (
-      allBaseElements.includes(elementData.constructor as AllBaseElementClasses)
-    ) {
-      return elementData;
-    }
-    switch (elementData.type) {
-      case "InputRange":
-        return new InputRange(elementData as InputRange);
-      case "InputText":
-        return new InputText(elementData as InputText);
-      case "Button":
-        return new Button(elementData as Button);
-      case "Selection":
-        return new Selection(elementData as Selection);
-      case "Container":
-        return new Container(elementData as Container);
-      default:
-        throw new Error("Invalid task elementData type");
-    }
-  });
+  return new InitElementsData(elementsData, validator);
 }
 
 // template
@@ -188,12 +238,14 @@ export function createCutCell() {
       new InputText({
         label: "Start",
         value: "00:00:000",
-        regexValidator: "123",
+        oldValue: "00:00:000",
+        regexValidator: /^\d{0,2}:\d{0,2}:\d{0,3}$/,
       }),
       new InputText({
         label: "End",
         value: "00:00:123",
-        regexValidator: /^\d{2}:\d{2}:\d{3}$/,
+        oldValue: "00:00:123",
+        regexValidator: /^\d{0,2}:\d{0,2}:\d{0,3}$/,
       }),
       new Button(
         {

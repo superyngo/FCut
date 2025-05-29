@@ -3,16 +3,72 @@ import { ReflectMapObject, ReflectObjectToMap } from "../utils/reflects";
 export abstract class BaseClass {
   _init(data: Record<PropertyKey, any> = {}): void {
     for (const [key, value] of Object.entries(data)) {
-      (this as any)[key] = value;
+      // 處理 RegExp 反序列化
+      if (value && typeof value === "object" && value.__type === "RegExp") {
+        (this as any)[key] = new RegExp(value.source, value.flags);
+      } else {
+        (this as any)[key] = value;
+      }
     }
   }
   toMap() {
     return new Proxy(this, ReflectObjectToMap);
   }
   clone(): this {
+    // 深度複製，保持對象的原型鏈
+    const cloneDeep = (obj: any): any => {
+      if (obj === null || typeof obj !== "object") return obj;
+
+      // 處理日期
+      if (obj instanceof Date) return new Date(obj.getTime());
+
+      // 處理陣列 (包括 InitElementsData)
+      if (Array.isArray(obj)) {
+        return obj.map((item) => cloneDeep(item));
+      }
+
+      // 處理正則表達式
+      if (obj instanceof RegExp) return new RegExp(obj);
+
+      // 處理普通對象
+      if (obj.constructor === Object) {
+        const cloned: any = {};
+        for (const key in obj) {
+          if (obj.hasOwnProperty(key)) {
+            cloned[key] = cloneDeep(obj[key]);
+          }
+        }
+        return cloned;
+      }
+
+      // 如果物件有 clone 方法，使用它
+      if (typeof obj.clone === "function") {
+        return obj.clone();
+      }
+
+      // 對於其他類型的物件，嘗試創建新實例
+      try {
+        if (obj.constructor) {
+          const cloned = Object.create(Object.getPrototypeOf(obj));
+          for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+              cloned[key] = cloneDeep(obj[key]);
+            }
+          }
+          return cloned;
+        }
+      } catch (e) {
+        // 如果失敗，回退到簡單複製
+        return { ...obj };
+      }
+
+      return obj;
+    };
+
+    const clonedData = cloneDeep(this);
     return new (this.constructor as new (
       data: Record<PropertyKey, any>
-    ) => this)({ ...this });
+    ) => this)(clonedData);
   }
   toString() {
     return `[object ${this.constructor.name}]`;

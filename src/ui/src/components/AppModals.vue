@@ -15,21 +15,19 @@
   <!-- Settings Page Modal -->
   <BaseModal v-if="modalStore.activeModals.settingsPage.isOpen"
     v-model:is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
-    modal-class="page-modal" :show-back-button="true" @back-clicked="handlePageBackNavigation">
+    modal-class="page-modal" :show-back-button="true">
     <SettingsPage />
   </BaseModal>
 
   <!-- About Page Modal -->
   <BaseModal v-if="modalStore.activeModals.aboutPage.isOpen" v-model:is-open="modalStore.activeModals.aboutPage.isOpen"
-    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" :show-back-button="true"
-    @back-clicked="handlePageBackNavigation">
+    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" :show-back-button="true">
     <AboutPage />
   </BaseModal>
 
   <!-- Help Page Modal -->
   <BaseModal v-if="modalStore.activeModals.helpPage.isOpen" v-model:is-open="modalStore.activeModals.helpPage.isOpen"
-    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" :show-back-button="true"
-    @back-clicked="handlePageBackNavigation">
+    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" :show-back-button="true">
     <HelpPage />
   </BaseModal>
 </template>
@@ -47,10 +45,6 @@ const modalStore = useModalStore();
 const taskStore = useTasks();
 
 
-
-const handlePageBackNavigation = (event?: MouseEvent) => {
-  modalStore.openMenuAndCloseCurrentPage(event);
-};
 </script>
 
 <style scoped>

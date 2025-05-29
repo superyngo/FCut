@@ -409,6 +409,7 @@ export const useModalStore = defineStore(crypto.randomUUID(), () => {
   }
 
   function openTaskSettings(task: Task) {
+    window.task = task;
     taskStore.selectedTaskID = task.id;
     taskStore.tempTask = new Task(task); // 創建副本以進行編輯
     activeModals.value.taskSettings.isOpen = true;

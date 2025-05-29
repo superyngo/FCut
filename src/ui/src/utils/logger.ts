@@ -95,6 +95,10 @@ export class logger {
       );
       return `[${items.join(", ")}]`;
     }
+    // 處理 RegExp
+    if (obj instanceof RegExp) {
+      return `RegExp(${obj.source}, ${obj.flags})`;
+    }
 
     // 處理其他物件
     try {
