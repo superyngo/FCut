@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
 import { onMounted, onUnmounted, ref } from "vue";
 import { logger } from "../../utils/logger";
-import { MODIFIER_KEYS } from "../../utils/keyEvents";
+import { MODIFIER_KEYS } from "../../utils/archived/keyEvents";
 import { throttle, debounce } from "lodash-es"; // 引入 lodash-es
 
 // --- Types ---

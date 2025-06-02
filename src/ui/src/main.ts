@@ -1,8 +1,14 @@
 import { waitForPyWebviewApi } from "./services/pywebview";
+import { injectMockPywebview } from "./services/pywebview-mock";
 import { createApp } from "vue";
 import { pinia } from "./stores/piniaInstance";
 import App from "./App.vue";
 import "./style.css";
+
+// 在開發模式下注入模擬的 pywebview API
+if (import.meta.env.DEV) {
+  injectMockPywebview();
+}
 
 await waitForPyWebviewApi();
 

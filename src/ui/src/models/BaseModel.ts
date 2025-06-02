@@ -15,51 +15,68 @@ export abstract class BaseClass {
     return new Proxy(this, ReflectObjectToMap);
   }
   clone(): this {
-    // 深度複製，保持對象的原型鏈
-    const cloneDeep = (obj: any): any => {
+    // 深度複製，保持對象的原型鏈，防止循環引用
+    const cloneDeep = (obj: any, visited = new WeakMap()): any => {
       if (obj === null || typeof obj !== "object") return obj;
 
+      // 檢查循環引用
+      if (visited.has(obj)) {
+        return visited.get(obj);
+      }
+
       // 處理日期
-      if (obj instanceof Date) return new Date(obj.getTime());
+      if (obj instanceof Date) {
+        const cloned = new Date(obj.getTime());
+        visited.set(obj, cloned);
+        return cloned;
+      }
 
       // 處理陣列 (包括 InitElementsData)
       if (Array.isArray(obj)) {
-        return obj.map((item) => cloneDeep(item));
+        const cloned: any[] = [];
+        visited.set(obj, cloned);
+        for (let i = 0; i < obj.length; i++) {
+          cloned[i] = cloneDeep(obj[i], visited);
+        }
+        return cloned;
       }
 
       // 處理正則表達式
-      if (obj instanceof RegExp) return new RegExp(obj);
+      if (obj instanceof RegExp) {
+        const cloned = new RegExp(obj);
+        visited.set(obj, cloned);
+        return cloned;
+      }
 
       // 處理普通對象
       if (obj.constructor === Object) {
         const cloned: any = {};
+        visited.set(obj, cloned);
         for (const key in obj) {
           if (obj.hasOwnProperty(key)) {
-            cloned[key] = cloneDeep(obj[key]);
+            cloned[key] = cloneDeep(obj[key], visited);
           }
         }
         return cloned;
       }
 
-      // 如果物件有 clone 方法，使用它
-      if (typeof obj.clone === "function") {
-        return obj.clone();
-      }
-
-      // 對於其他類型的物件，嘗試創建新實例
+      // 對於其他類型的物件，嘗試創建新實例（避免呼叫 clone 方法造成循環）
       try {
         if (obj.constructor) {
           const cloned = Object.create(Object.getPrototypeOf(obj));
+          visited.set(obj, cloned);
           for (const key in obj) {
             if (obj.hasOwnProperty(key)) {
-              cloned[key] = cloneDeep(obj[key]);
+              cloned[key] = cloneDeep(obj[key], visited);
             }
           }
           return cloned;
         }
       } catch (e) {
         // 如果失敗，回退到簡單複製
-        return { ...obj };
+        const cloned = { ...obj };
+        visited.set(obj, cloned);
+        return cloned;
       }
 
       return obj;

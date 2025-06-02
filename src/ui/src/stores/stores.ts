@@ -37,7 +37,7 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
         return;
       }
 
-      constants.value = await window.pywebview.api.get_constants();
+      constants.value = (await window.pywebview?.api?.get_constants?.()) || {};
     } catch (err) {
       console.error("Failed to fetch constants:", err);
       error.value = true;
@@ -407,11 +407,9 @@ export const useModalStore = defineStore(crypto.randomUUID(), () => {
   function closeMenu() {
     activeModals.value.menu.isOpen = false;
   }
-
   function openTaskSettings(task: Task) {
-    window.task = task;
     taskStore.selectedTaskID = task.id;
-    taskStore.tempTask = new Task(task); // 創建副本以進行編輯
+    taskStore.tempTask = task.clone(); // 使用深度複製避免共享引用
     activeModals.value.taskSettings.isOpen = true;
   }
   function closeTaskSettings() {

@@ -179,14 +179,15 @@ export class logger {
       })
       .join(" ");
   }
-
   static debug(...args: any[]): void {
     const message = this.formatMessage(...args);
     console.log(
       `%c[DEBUG] ${new Date().toISOString()}: ${message}`,
       this.COLORS.DEBUG
     );
-    pywebview.api.logger_debug(message);
+    if (pywebview?.api?.logger_debug) {
+      pywebview.api.logger_debug(message);
+    }
   }
 
   static error(...args: any[]): void {
@@ -195,7 +196,9 @@ export class logger {
       `%c[ERROR] ${new Date().toISOString()}: ${message}`,
       this.COLORS.ERROR
     );
-    pywebview.api.logger_error(message);
+    if (pywebview?.api?.logger_error) {
+      pywebview.api.logger_error(message);
+    }
   }
 
   static warning(...args: any[]): void {
@@ -204,7 +207,9 @@ export class logger {
       `%c[WANING] ${new Date().toISOString()}: ${message}`,
       this.COLORS.WANING
     );
-    pywebview.api.logger_warning(message);
+    if (pywebview?.api?.logger_warning) {
+      pywebview.api.logger_warning(message);
+    }
   }
 
   static info(...args: any[]): void {
@@ -213,6 +218,8 @@ export class logger {
       `%c[INFO] ${new Date().toISOString()}: ${message}`,
       this.COLORS.INFO
     );
-    pywebview.api.logger_info(message);
+    if (pywebview?.api?.logger_info) {
+      pywebview.api.logger_info(message);
+    }
   }
 }

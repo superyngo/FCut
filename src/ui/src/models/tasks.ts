@@ -1,14 +1,4 @@
 import { BaseClass } from "./BaseModel";
-import {
-  AllBaseElements,
-  initElementsData,
-  InputRange,
-  InputText,
-  Button,
-  Selection,
-  Container,
-  createCutCell,
-} from "./elements";
 
 export enum ACTIONS {
   CUT = "CUT",
@@ -48,176 +38,151 @@ export class Task extends BaseClass {
     readonly videoPath: string;
     previewUrl?: string;
     renderMethod?: string;
-    settings?: TaskSettings;
+    settings?: TaskSettings | Partial<ActionSettingsConfig>;
     status?: TASK_STATUS;
     selected?: boolean;
   }) {
-    let newSettings = new TaskSettings(data.settings);
+    let newSettings: TaskSettings;
+    if (data.settings instanceof TaskSettings) {
+      // 即使是 TaskSettings 實例，也要創建新的副本以避免共享引用
+      newSettings = new TaskSettings(data.settings);
+    } else {
+      newSettings = new TaskSettings(data.settings);
+    }
     super();
     this._init({ ...data, settings: newSettings });
   }
 }
 
-enum VIDEO_QUALITY {
-  "Very Low" = 1,
-  "Low" = 2,
-  "Medium" = 3,
-  "High" = 4,
-  "Very High" = 5,
+// 簡化的設定接口 - 直接使用原始數據類型
+export interface ActionSettingsConfig {
+  [ACTIONS.CUT]: {
+    segments: Array<{ start: string; end: string }>;
+  };
+  [ACTIONS.SPEEDUP]: {
+    multiple: number;
+  };
+  [ACTIONS.JUMPCUT]: {
+    p1_duration: number;
+    p2_duration: number;
+    p1_multiple: number;
+    p2_multiple: number;
+  };
+  [ACTIONS.CUT_SILENCE]: {
+    threshold: number; // dB value
+  };
+  [ACTIONS.CUT_MOTIONLESS]: {
+    threshold: number;
+  };
+  [ACTIONS.COMPRESS_VIDEO]: {
+    quality: number; // CRF value
+  };
+  [ACTIONS.CONVERT_TO_AUDIO]: {
+    quality: number;
+  };
 }
 
+// 預設設定值
+const DEFAULT_SETTINGS: ActionSettingsConfig = {
+  [ACTIONS.CUT]: {
+    segments: [{ start: "00:00:000", end: "00:00:123" }],
+  },
+  [ACTIONS.SPEEDUP]: {
+    multiple: 3,
+  },
+  [ACTIONS.JUMPCUT]: {
+    p1_duration: 2,
+    p2_duration: 2,
+    p1_multiple: 1,
+    p2_multiple: 8,
+  },
+  [ACTIONS.CUT_SILENCE]: {
+    threshold: -23,
+  },
+  [ACTIONS.CUT_MOTIONLESS]: {
+    threshold: 0.00095,
+  },
+  [ACTIONS.COMPRESS_VIDEO]: {
+    quality: 23,
+  },
+  [ACTIONS.CONVERT_TO_AUDIO]: {
+    quality: 6,
+  },
+};
+
 export class TaskSettings extends BaseClass {
-  [ACTIONS.CUT]: AllBaseElements[] = [];
-  [ACTIONS.SPEEDUP]: AllBaseElements[] = [];
-  [ACTIONS.JUMPCUT]: AllBaseElements[] = [];
-  [ACTIONS.CUT_SILENCE]: AllBaseElements[] = [];
-  [ACTIONS.CUT_MOTIONLESS]: AllBaseElements[] = [];
-  [ACTIONS.COMPRESS_VIDEO]: AllBaseElements[] = [];
-  [ACTIONS.CONVERT_TO_AUDIO]: AllBaseElements[] = [];
+  [ACTIONS.CUT]: ActionSettingsConfig[ACTIONS.CUT] =
+    DEFAULT_SETTINGS[ACTIONS.CUT];
+  [ACTIONS.SPEEDUP]: ActionSettingsConfig[ACTIONS.SPEEDUP] =
+    DEFAULT_SETTINGS[ACTIONS.SPEEDUP];
+  [ACTIONS.JUMPCUT]: ActionSettingsConfig[ACTIONS.JUMPCUT] =
+    DEFAULT_SETTINGS[ACTIONS.JUMPCUT];
+  [ACTIONS.CUT_SILENCE]: ActionSettingsConfig[ACTIONS.CUT_SILENCE] =
+    DEFAULT_SETTINGS[ACTIONS.CUT_SILENCE];
+  [ACTIONS.CUT_MOTIONLESS]: ActionSettingsConfig[ACTIONS.CUT_MOTIONLESS] =
+    DEFAULT_SETTINGS[ACTIONS.CUT_MOTIONLESS];
+  [ACTIONS.COMPRESS_VIDEO]: ActionSettingsConfig[ACTIONS.COMPRESS_VIDEO] =
+    DEFAULT_SETTINGS[ACTIONS.COMPRESS_VIDEO];
+  [ACTIONS.CONVERT_TO_AUDIO]: ActionSettingsConfig[ACTIONS.CONVERT_TO_AUDIO] =
+    DEFAULT_SETTINGS[ACTIONS.CONVERT_TO_AUDIO];
 
-  constructor(taskSettings: Record<ACTIONS, AllBaseElements[]> | {} = {}) {
-    let _taskSettings: Record<ACTIONS, AllBaseElements[]> = {
-      [ACTIONS.CUT]: initElementsData(
-        taskSettings && ACTIONS.CUT in taskSettings
-          ? taskSettings[ACTIONS.CUT]
-          : [
-              createCutCell(),
-              new Button(
-                {
-                  label: "Add",
-                  // 使用註冊的方法
-                  action: "call_tt",
-                },
-                true
-              ),
-            ],
-        (self) => {
-          // 時間戳格式化函數
-          const formatTimestamp = (timeStr: string): string => {
-            if (!timeStr) return "00:00:000";
-
-            const parts = timeStr.split(":");
-            let minutes = "00";
-            let seconds = "00";
-            let milliseconds = "000";
-
-            if (parts.length >= 1) {
-              minutes = parts[0].padStart(2, "0");
-            }
-            if (parts.length >= 2) {
-              seconds = parts[1].padStart(2, "0");
-            }
-            if (parts.length >= 3) {
-              milliseconds = parts[2].padEnd(3, "0");
-            }
-
-            return `${minutes}:${seconds}:${milliseconds}`;
-          };
-
-          // 時間戳比較函數（轉換為總毫秒數進行比較）
-          const timestampToMs = (timeStr: string): number => {
-            const formatted = formatTimestamp(timeStr);
-            const [minutes, seconds, ms] = formatted.split(":").map(Number);
-            return minutes * 60000 + seconds * 1000 + ms;
-          };
-
-          // 格式化時間戳
-          const startTime = formatTimestamp(self[0].children[0].value);
-          const endTime = formatTimestamp(self[0].children[1].value);
-
-          // 更新格式化後的值
-          self[0].children[0].value = startTime;
-          self[0].children[1].value = endTime;
-
-          // 比較時間戳大小
-          const startMs = timestampToMs(startTime);
-          const endMs = timestampToMs(endTime);
-
-          if (endMs <= startMs) {
-            return { result: false, message: "End Time 應大於 Start Time" };
-          }
-
-          return { result: true, message: "Success" };
-        }
-      ),
-
-      [ACTIONS.SPEEDUP]: initElementsData(
-        ACTIONS.SPEEDUP in taskSettings
-          ? taskSettings[ACTIONS.SPEEDUP]
-          : [new InputRange({ label: "Multiple", value: 3 })]
-      ),
-
-      [ACTIONS.JUMPCUT]: initElementsData(
-        taskSettings && ACTIONS.JUMPCUT in taskSettings
-          ? taskSettings[ACTIONS.JUMPCUT]
-          : [
-              new InputRange({
-                label: "p1_duration",
-                value: 2,
-                step: 0.1,
-                min: 0,
-              }),
-              new InputRange({
-                label: "p2_duration",
-                value: 2,
-                step: 0.1,
-                min: 0,
-              }),
-              new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
-              new InputRange({ label: "p1_multiple", value: 2, step: 0.1 }),
-            ]
-      ),
-
-      [ACTIONS.CUT_SILENCE]: initElementsData(
-        taskSettings && ACTIONS.CUT_SILENCE in taskSettings
-          ? taskSettings[ACTIONS.CUT_SILENCE]
-          : [new InputRange({ label: "dB", value: -23, min: -50, max: -5 })]
-      ),
-
-      [ACTIONS.CUT_MOTIONLESS]: initElementsData(
-        taskSettings && ACTIONS.CUT_MOTIONLESS in taskSettings
-          ? taskSettings[ACTIONS.CUT_MOTIONLESS]
-          : [
-              new InputRange({
-                label: "Threshold",
-                value: 0.00095,
-                min: 0,
-                max: 1,
-                step: 0.0001,
-              }),
-            ]
-      ),
-
-      [ACTIONS.COMPRESS_VIDEO]: initElementsData(
-        taskSettings && ACTIONS.COMPRESS_VIDEO in taskSettings
-          ? taskSettings[ACTIONS.COMPRESS_VIDEO]
-          : [
-              new InputRange({
-                label: "Quality",
-                title: "越大畫質越好，容量越大",
-                value: 23,
-                min: 0,
-                max: 51,
-              }),
-            ]
-      ), // crf 51 is best quality
-
-      [ACTIONS.CONVERT_TO_AUDIO]: initElementsData(
-        taskSettings && ACTIONS.CONVERT_TO_AUDIO in taskSettings
-          ? taskSettings[ACTIONS.CONVERT_TO_AUDIO]
-          : [
-              new InputRange({
-                label: "Quality",
-                title: "越小畫質越好，容量越大",
-                value: 6,
-                min: 0,
-                max: 9,
-              }),
-            ]
-      ), // -q:a 0 is best quality
-    };
-
+  constructor(settings: Partial<ActionSettingsConfig> = {}) {
     super();
-    this._init(_taskSettings);
+
+    // 合併傳入的設定與預設值
+    if (settings[ACTIONS.CUT]) {
+      this[ACTIONS.CUT] = {
+        ...DEFAULT_SETTINGS[ACTIONS.CUT],
+        ...settings[ACTIONS.CUT],
+      };
+    }
+    if (settings[ACTIONS.SPEEDUP]) {
+      this[ACTIONS.SPEEDUP] = {
+        ...DEFAULT_SETTINGS[ACTIONS.SPEEDUP],
+        ...settings[ACTIONS.SPEEDUP],
+      };
+    }
+    if (settings[ACTIONS.JUMPCUT]) {
+      this[ACTIONS.JUMPCUT] = {
+        ...DEFAULT_SETTINGS[ACTIONS.JUMPCUT],
+        ...settings[ACTIONS.JUMPCUT],
+      };
+    }
+    if (settings[ACTIONS.CUT_SILENCE]) {
+      this[ACTIONS.CUT_SILENCE] = {
+        ...DEFAULT_SETTINGS[ACTIONS.CUT_SILENCE],
+        ...settings[ACTIONS.CUT_SILENCE],
+      };
+    }
+    if (settings[ACTIONS.CUT_MOTIONLESS]) {
+      this[ACTIONS.CUT_MOTIONLESS] = {
+        ...DEFAULT_SETTINGS[ACTIONS.CUT_MOTIONLESS],
+        ...settings[ACTIONS.CUT_MOTIONLESS],
+      };
+    }
+    if (settings[ACTIONS.COMPRESS_VIDEO]) {
+      this[ACTIONS.COMPRESS_VIDEO] = {
+        ...DEFAULT_SETTINGS[ACTIONS.COMPRESS_VIDEO],
+        ...settings[ACTIONS.COMPRESS_VIDEO],
+      };
+    }
+    if (settings[ACTIONS.CONVERT_TO_AUDIO]) {
+      this[ACTIONS.CONVERT_TO_AUDIO] = {
+        ...DEFAULT_SETTINGS[ACTIONS.CONVERT_TO_AUDIO],
+        ...settings[ACTIONS.CONVERT_TO_AUDIO],
+      };
+    }
+  }
+  // 獲取特定動作的設定
+  getActionSettings(action: ACTIONS) {
+    return this[action];
+  }
+
+  // 更新特定動作的設定
+  updateActionSettings(action: ACTIONS, settings: any): void {
+    this[action] = { ...this[action], ...settings };
+  } // 重置特定動作的設定為預設值
+  resetActionSettings(action: ACTIONS): void {
+    (this as any)[action] = { ...DEFAULT_SETTINGS[action] };
   }
 }
