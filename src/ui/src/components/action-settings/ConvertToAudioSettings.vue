@@ -1,23 +1,23 @@
 <template>
     <div class="convert-audio-settings">
         <div class="form-group">
-            <label for="audio-quality">音訊品質</label>
+            <label for="audio-quality">{{ $t('actionSettings.ConvertToAudio.quality') }}</label>
             <div class="range-container">
                 <input id="audio-quality" type="range" v-model.number="audioQuality" :min="minQuality" :max="maxQuality"
                     :step="1" :disabled="disabled" class="quality-range" />
                 <span class="quality-value">{{ audioQuality }}</span>
             </div>
             <div class="quality-scale">
-                <span class="scale-label">最高品質</span>
-                <span class="scale-label">平衡</span>
-                <span class="scale-label">最小檔案</span>
+                <span class="scale-label">{{ $t('actionSettings.ConvertToAudio.qualityScale.highest') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.ConvertToAudio.qualityScale.balanced') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.ConvertToAudio.qualityScale.smallest') }}</span>
             </div>
             <div class="quality-description">
                 {{ getQualityDescription() }}
             </div>
         </div>
 
-        <div class="format-selection">
+        <!-- <div class="format-selection">
             <h4>輸出格式</h4>
             <div class="format-buttons">
                 <button v-for="format in audioFormats" :key="format.ext" @click="selectFormat(format)"
@@ -32,9 +32,9 @@
                     <div class="format-desc">{{ format.description }}</div>
                 </button>
             </div>
-        </div>
+        </div> -->
 
-        <div class="advanced-options">
+        <!-- <div class="advanced-options">
             <h4>進階選項</h4>
             <div class="options-grid">
                 <div class="form-group">
@@ -70,55 +70,53 @@
                     <small>只保留音軌，減少檔案大小</small>
                 </div>
             </div>
-        </div>
-
-        <!-- 動態估算 -->
+        </div> --> <!-- 動態估算 -->
         <div class="conversion-estimate">
-            <h4>轉換預估</h4>
+            <h4>{{ $t('actionSettings.ConvertToAudio.conversionEstimate') }}</h4>
             <div class="estimate-grid">
                 <div class="estimate-item">
                     <i class="fas fa-file-audio"></i>
                     <div class="estimate-info">
-                        <span class="estimate-label">輸出格式</span>
+                        <span class="estimate-label">{{ $t('actionSettings.ConvertToAudio.format') }}</span>
                         <span class="estimate-value">{{ selectedFormat.name }}</span>
                     </div>
                 </div>
                 <div class="estimate-item">
                     <i class="fas fa-compress-arrows-alt"></i>
                     <div class="estimate-info">
-                        <span class="estimate-label">預期大小</span>
+                        <span class="estimate-label">{{ $t('actionSettings.ConvertToAudio.estimateLabels.fileSize')
+                        }}</span>
                         <span class="estimate-value">{{ estimatedSize }}</span>
                     </div>
                 </div>
                 <div class="estimate-item">
                     <i class="fas fa-headphones"></i>
                     <div class="estimate-info">
-                        <span class="estimate-label">適用場景</span>
+                        <span class="estimate-label">{{ $t('actionSettings.ConvertToAudio.estimateLabels.usage')
+                        }}</span>
                         <span class="estimate-value">{{ getUsageScenario() }}</span>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- 靜態說明 -->
+        </div> <!-- 靜態說明 -->
         <div class="info-section">
-            <h4>品質等級說明</h4>
+            <h4>{{ $t('actionSettings.ConvertToAudio.estimateLabels.quality') }}</h4>
             <div class="info-grid">
                 <div class="info-item">
                     <span class="quality-level">0-1</span>
-                    <span>最高品質，適合音樂或重要音訊</span>
+                    <span>{{ $t('actionSettings.ConvertToAudio.qualityLevels.0-1') }}</span>
                 </div>
                 <div class="info-item">
                     <span class="quality-level">2-4</span>
-                    <span>高品質，適合語音內容</span>
+                    <span>{{ $t('actionSettings.ConvertToAudio.qualityLevels.2-4') }}</span>
                 </div>
                 <div class="info-item">
                     <span class="quality-level">5-6</span>
-                    <span>標準品質，平衡品質與檔案大小</span>
+                    <span>{{ $t('actionSettings.ConvertToAudio.qualityLevels.5-6') }}</span>
                 </div>
                 <div class="info-item">
                     <span class="quality-level">7-9</span>
-                    <span>較低品質，適合語音或儲存空間有限</span>
+                    <span>{{ $t('actionSettings.ConvertToAudio.qualityLevels.7-9') }}</span>
                 </div>
             </div>
         </div>
@@ -133,9 +131,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
-
+import { useAppState } from "@/stores/stores"
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 const props = defineProps<ActionSettingsProps>();
-const emit = defineEmits<ActionSettingsEmits>()
+const emit = defineEmits<ActionSettingsEmits>();
 
 const audioQuality = ref<number>(6);
 const sampleRate = ref<string>("44100");
@@ -186,13 +186,13 @@ const selectedFormat = ref(audioFormats[0]); // 預設選擇MP3
 // 獲取品質描述
 const getQualityDescription = (): string => {
     if (audioQuality.value <= 1) {
-        return '最高品質，適合音樂錄音或重要音訊內容';
+        return t('actionSettings.ConvertToAudio.qualityRange.highest');
     } else if (audioQuality.value <= 4) {
-        return '高品質，適合語音內容或音樂';
+        return t('actionSettings.ConvertToAudio.qualityRange.high');
     } else if (audioQuality.value <= 6) {
-        return '標準品質，平衡品質與檔案大小的最佳選擇';
+        return t('actionSettings.ConvertToAudio.qualityRange.standard');
     } else {
-        return '較低品質，適合語音或儲存空間有限的情況';
+        return t('actionSettings.ConvertToAudio.qualityRange.lower');
     }
 };
 
@@ -214,13 +214,13 @@ const estimatedSize = computed((): string => {
 // 獲取使用場景
 const getUsageScenario = (): string => {
     if (selectedFormat.value.ext === 'wav' || selectedFormat.value.ext === 'flac') {
-        return '專業音訊';
+        return t('actionSettings.ConvertToAudio.usageScenarios.music');
     } else if (audioQuality.value <= 2) {
-        return '音樂聆聽';
+        return t('actionSettings.ConvertToAudio.usageScenarios.music');
     } else if (audioQuality.value <= 6) {
-        return '一般用途';
+        return t('actionSettings.ConvertToAudio.usageScenarios.podcast');
     } else {
-        return '語音內容';
+        return t('actionSettings.ConvertToAudio.usageScenarios.speech');
     }
 };
 
@@ -325,7 +325,7 @@ defineExpose({
 
 .form-group label {
     font-weight: bold;
-    color: #333;
+    color: var(--app-text-color);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -354,9 +354,9 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -364,16 +364,16 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .quality-value {
     font-weight: bold;
     font-size: 16px;
-    color: #333;
+    color: var(--app-text-color);
     min-width: 30px;
     text-align: center;
     font-family: monospace;
@@ -383,18 +383,18 @@ defineExpose({
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #888;
+    color: var(--app-text-secondary-color);
     margin-top: 4px;
 }
 
 .quality-description {
     font-size: 13px;
-    color: #666;
+    color: var(--app-text-secondary-color);
     font-style: italic;
     padding: 8px 12px;
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     border-radius: 4px;
-    border-left: 3px solid #2196f3;
+    border-left: 3px solid var(--app-accent-color);
 }
 
 .format-selection h4 {
@@ -466,20 +466,15 @@ defineExpose({
 }
 
 .info-section {
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--app-border-color);
 }
 
 .info-section h4 {
     margin: 0 0 12px 0;
-    color: #333;
-}
-
-.info-grid {
-    display: grid;
-    gap: 6px;
+    color: var(--app-text-color);
 }
 
 .info-item {
@@ -492,7 +487,7 @@ defineExpose({
 .quality-level {
     font-family: monospace;
     font-weight: bold;
-    color: #666;
+    color: var(--app-text-secondary-color);
     min-width: 40px;
 }
 
@@ -533,15 +528,15 @@ small {
 }
 
 .conversion-estimate {
-    background: #f0f8ff;
+    background: var(--app-accent-background-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #cce7ff;
+    border: 1px solid var(--app-accent-border-color);
 }
 
 .conversion-estimate h4 {
     margin: 0 0 12px 0;
-    color: #1976d2;
+    color: var(--app-accent-color);
 }
 
 .estimate-grid {
@@ -555,13 +550,13 @@ small {
     align-items: center;
     gap: 10px;
     padding: 8px;
-    background: white;
+    background: var(--app-surface-color);
     border-radius: 4px;
-    border: 1px solid #e3f2fd;
+    border: 1px solid var(--app-accent-border-color);
 }
 
 .estimate-item i {
-    color: #2196f3;
+    color: var(--app-accent-color);
     font-size: 18px;
     width: 20px;
     text-align: center;
@@ -575,22 +570,22 @@ small {
 
 .estimate-label {
     font-size: 11px;
-    color: #666;
+    color: var(--app-text-secondary-color);
     text-transform: uppercase;
 }
 
 .estimate-value {
     font-size: 13px;
     font-weight: bold;
-    color: #1976d2;
+    color: var(--app-accent-color);
 }
 
 .error-message {
-    color: #d9534f;
-    background: #f9d6d5;
+    color: var(--app-error-color);
+    background: var(--app-error-background-color);
     padding: 12px;
     border-radius: 4px;
-    border: 1px solid #d9534f;
+    border: 1px solid var(--app-error-border-color);
     font-size: 14px;
     font-weight: bold;
     margin-top: 12px;

@@ -24,8 +24,8 @@ class Api:
     def logger_info(self, message) -> None:
         logger.info(message)
 
-    def logger_warning(self, message) -> None:
-        logger.warning(message)
+    def logger.warn(self, message) -> None:
+        logger.warn(message)
 
     def logger_error(self, message) -> None:
         logger.error(message)

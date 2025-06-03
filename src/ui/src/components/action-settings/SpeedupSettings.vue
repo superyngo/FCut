@@ -1,8 +1,7 @@
 <template>
-    <div class="speedup-settings">
-        <!-- 1. 輸入區 -->
+    <div class="speedup-settings"> <!-- 1. 輸入區 -->
         <div class="form-group">
-            <label for="speed-multiple">加速倍數</label>
+            <label for="speed-multiple">{{ $t('actionSettings.Speedup.speed') }}</label>
             <div class="range-container">
                 <input id="speed-multiple" type="range" v-model.number="speedMultiple" :min="minSpeed" :max="maxSpeed"
                     :step="stepSpeed" :disabled="disabled" class="speed-range" />
@@ -10,29 +9,25 @@
             </div>
             <!-- 2. 動態說明 -->
             <div class="quality-description">{{ getSpeedDescription() }}</div>
-        </div>
-
-        <!-- 3. 動態估算 -->
+        </div> <!-- 3. 動態估算 -->
         <div class="info-section">
             <div class="info-item">
                 <i class="fas fa-clock"></i>
-                <span>預估時間縮短：{{ estimatedReduction }}%</span>
+                <span>{{ $t('actionSettings.Speedup.estimated', { percent: estimatedReduction }) }}</span>
             </div>
         </div>
 
-        <!-- 4. 預設按鈕 -->
+        <!-- 4. 預設按鈕
         <div class="speed-presets">
             <button v-for="preset in speedPresets" :key="preset" @click="setSpeedPreset(preset)" :disabled="disabled"
                 :class="{ active: speedMultiple === preset }" class="preset-button">
                 {{ preset }}x
             </button>
-        </div>
-
-        <!-- 5. 靜態說明 -->
+        </div> --> <!-- 5. 靜態說明 -->
         <div class="info-section">
             <div class="info-item">
                 <i class="fas fa-info-circle"></i>
-                <span>建議範圍：1.25x - 4x，過高可能影響音質</span>
+                <span>{{ $t('actionSettings.Speedup.info') }}</span>
             </div>
         </div>
 
@@ -45,10 +40,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import { useAppState } from '../../stores/stores';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
 
 const props = defineProps<ActionSettingsProps>();
 const emit = defineEmits<ActionSettingsEmits>();
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 
 const speedMultiple = ref<number>(3);
 const minSpeed = 1;
@@ -61,11 +59,11 @@ const speedPresets = [1.25, 1.5, 2, 2.5, 3, 4, 5];
 
 // 動態說明
 const getSpeedDescription = (): string => {
-    if (speedMultiple.value <= 1.25) return '最接近原速，音質最佳';
-    if (speedMultiple.value <= 2) return '溫和加速，音質影響極小';
-    if (speedMultiple.value <= 4) return '明顯加速，音質略有損失';
-    if (speedMultiple.value <= 6) return '高倍速，音質明顯下降';
-    return '極高倍速，僅建議用於快速瀏覽';
+    if (speedMultiple.value <= 1.25) return t('actionSettings.Speedup.qualityRange.closest');
+    if (speedMultiple.value <= 2) return t('actionSettings.Speedup.qualityRange.gentle');
+    if (speedMultiple.value <= 4) return t('actionSettings.Speedup.qualityRange.obvious');
+    if (speedMultiple.value <= 6) return t('actionSettings.Speedup.qualityRange.high');
+    return t('actionSettings.Speedup.qualityRange.extreme');
 };
 
 // 計算預估時間縮短百分比
@@ -149,7 +147,7 @@ defineExpose({
 
 .form-group label {
     font-weight: bold;
-    color: #333;
+    color: var(--app-text-color);
     font-size: 14px;
 }
 
@@ -162,7 +160,7 @@ defineExpose({
 .speed-range {
     flex: 1;
     height: 6px;
-    background: #ddd;
+    background: var(--app-border-color);
     border-radius: 3px;
     outline: none;
     -webkit-appearance: none;
@@ -175,9 +173,9 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #4caf50;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
@@ -185,16 +183,16 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #4caf50;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .speed-value {
     font-weight: bold;
     font-size: 16px;
-    color: #4caf50;
+    color: var(--app-accent-color);
     min-width: 50px;
     text-align: center;
 }
@@ -207,24 +205,24 @@ defineExpose({
 
 .preset-button {
     padding: 6px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
-    background: white;
+    background: var(--app-surface-color);
     cursor: pointer;
     transition: all 0.2s;
     font-size: 12px;
-    color: #333;
+    color: var(--app-text-color);
 }
 
 .preset-button:hover:not(:disabled) {
-    background: #f0f0f0;
-    border-color: #4caf50;
+    background: var(--app-hover-color);
+    border-color: var(--app-accent-color);
 }
 
 .preset-button.active {
-    background: #4caf50;
+    background: var(--app-accent-color);
     color: white;
-    border-color: #4caf50;
+    border-color: var(--app-accent-color);
 }
 
 .preset-button:disabled {
@@ -233,10 +231,10 @@ defineExpose({
 }
 
 .info-section {
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     padding: 12px;
     border-radius: 6px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--app-border-color);
 }
 
 .info-item {
@@ -245,7 +243,7 @@ defineExpose({
     gap: 8px;
     margin-bottom: 8px;
     font-size: 13px;
-    color: #666;
+    color: var(--app-text-secondary-color);
 }
 
 .info-item:last-child {
@@ -253,16 +251,26 @@ defineExpose({
 }
 
 .info-item i {
-    color: #4caf50;
+    color: var(--app-accent-color);
     width: 16px;
 }
 
 .error-message {
-    color: #d9534f;
-    background: #f2dede;
-    border: 1px solid #ebccd1;
+    color: var(--app-error-color);
+    background: var(--app-error-background-color);
+    border: 1px solid var(--app-error-border-color);
     padding: 10px;
     border-radius: 4px;
     font-size: 14px;
+}
+
+.quality-description {
+    font-size: 13px;
+    color: var(--app-text-secondary-color);
+    font-style: italic;
+    padding: 8px 12px;
+    background: var(--app-background-secondary-color);
+    border-radius: 4px;
+    border-left: 3px solid var(--app-accent-color);
 }
 </style>

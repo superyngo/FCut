@@ -5,7 +5,7 @@ export interface MockPyWebviewApi {
   get_constants(): Promise<any>;
   logger_debug(message: string): void;
   logger_error(message: string): void;
-  logger_warning(message: string): void;
+  logger_warn(message: string): void;
   logger_info(message: string): void;
 }
 
@@ -41,7 +41,7 @@ class MockPyWebviewApiImpl implements MockPyWebviewApi {
     console.error(`[MOCK ERROR] ${message}`);
   }
 
-  logger_warning(message: string): void {
+  logger_warn(message: string): void {
     console.warn(`[MOCK WARNING] ${message}`);
   }
 

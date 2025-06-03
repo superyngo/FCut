@@ -45,7 +45,7 @@ const props = withDefaults(defineProps<Props>(), {
     title: '',
     modalClass: '',
     contentStyle: () => ({}),
-    closeOnOverlayClick: true,
+    closeOnOverlayClick: false,
     headless: false,
     showBackButton: false,
 });
@@ -107,9 +107,9 @@ onUnmounted(() => {
 }
 
 .modal-content {
-    background-color: #ffffff;
+    background-color: var(--app-surface-color);
     border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 16px var(--app-shadow-color);
     overflow: hidden;
     /* 避免內容溢出圓角 */
     width: 90%;
@@ -121,6 +121,7 @@ onUnmounted(() => {
     flex-direction: column;
     position: absolute;
     /* 為了拖曳定位 */
+    border: 1px solid var(--app-border-color);
 }
 
 .modal-header {
@@ -129,8 +130,8 @@ onUnmounted(() => {
     /* 動態調整對齊方式 */
     align-items: center;
     padding: 16px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #e0e0e0;
+    background-color: var(--app-hover-color);
+    border-bottom: 1px solid var(--app-border-color);
     cursor: grab;
 }
 
@@ -140,19 +141,20 @@ onUnmounted(() => {
     height: 24px;
     /* SVG 大小 */
     cursor: pointer;
-    color: #555;
+    color: var(--app-text-color);
     margin-right: 8px;
     /* 與標題間距 */
+    opacity: 0.7;
 }
 
 .modal-back-icon:hover {
-    color: #000;
+    opacity: 1;
 }
 
 .modal-header h3 {
     margin: 0;
     font-size: 18px;
-    color: #333;
+    color: var(--app-text-color);
     flex-grow: 1;
     /* 讓標題填滿可用空間 */
     text-align: center;
@@ -171,11 +173,16 @@ onUnmounted(() => {
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: #555;
+    color: var(--app-text-color);
     padding: 0;
     line-height: 1;
     margin-left: auto;
     /* 將關閉按鈕推到最右側 */
+    opacity: 0.7;
+}
+
+.close-button:hover {
+    opacity: 1;
 }
 
 .modal-body {

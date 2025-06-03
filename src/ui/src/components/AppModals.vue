@@ -1,50 +1,50 @@
 <template>
   <!-- Menu Modal -->
   <BaseModal v-if="modalStore.activeModals.menu.isOpen" v-model:is-open="modalStore.activeModals.menu.isOpen"
-    :title="modalStore.activeModals.menu.title" modal-class="menu-modal" :content-style="modalStore.menuModalStyle">
+    :title="$t('modal.menu')" modal-class="menu-modal" :content-style="modalStore.menuModalStyle">
     <MenuOptions />
   </BaseModal>
 
   <!-- Task Settings Modal -->
   <BaseModal v-if="modalStore.activeModals.taskSettings.isOpen"
-    v-model:is-open="modalStore.activeModals.taskSettings.isOpen" :title="modalStore.activeModals.taskSettings.title"
+    v-model:is-open="modalStore.activeModals.taskSettings.isOpen" :title="$t('modal.taskSettings')"
     modal-class="settings-modal" :content-style="modalStore.settingsModalStyle">
     <TaskSettingsForm v-if="taskStore.tempTask" />
   </BaseModal>
 
   <!-- Settings Page Modal -->
   <BaseModal v-if="modalStore.activeModals.settingsPage.isOpen"
-    v-model:is-open="modalStore.activeModals.settingsPage.isOpen" :title="modalStore.activeModals.settingsPage.title"
+    v-model:is-open="modalStore.activeModals.settingsPage.isOpen" :title="$t('modal.settingsPage')"
     modal-class="page-modal" :show-back-button="true">
     <SettingsPage />
   </BaseModal>
 
   <!-- About Page Modal -->
   <BaseModal v-if="modalStore.activeModals.aboutPage.isOpen" v-model:is-open="modalStore.activeModals.aboutPage.isOpen"
-    :title="modalStore.activeModals.aboutPage.title" modal-class="page-modal" :show-back-button="true">
+    :title="$t('modal.aboutPage')" modal-class="page-modal" :show-back-button="true">
     <AboutPage />
   </BaseModal>
 
   <!-- Help Page Modal -->
   <BaseModal v-if="modalStore.activeModals.helpPage.isOpen" v-model:is-open="modalStore.activeModals.helpPage.isOpen"
-    :title="modalStore.activeModals.helpPage.title" modal-class="page-modal" :show-back-button="true">
+    :title="$t('modal.helpPage')" modal-class="page-modal" :show-back-button="true">
     <HelpPage />
   </BaseModal>
 </template>
 
 <script setup lang="ts">
-import { useModalStore, useTasks } from "../stores/stores";
+import { useModalStore, useTasks, useAppState } from "../stores/stores";
 import TaskSettingsForm from "./TaskSettingsForm.vue";
 import MenuOptions from "./MenuOptions.vue";
 import SettingsPage from "./pages/SettingsPage.vue";
 import AboutPage from "./pages/AboutPage.vue";
 import HelpPage from "./pages/HelpPage.vue";
-import BaseModal from "./BaseModal.vue"; // 新增 BaseModal 的引入
+import BaseModal from "./BaseModal.vue";
 
 const modalStore = useModalStore();
 const taskStore = useTasks();
-
-
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 </script>
 
 <style scoped>

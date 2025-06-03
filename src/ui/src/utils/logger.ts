@@ -201,14 +201,14 @@ export class logger {
     }
   }
 
-  static warning(...args: any[]): void {
+  static warn(...args: any[]): void {
     const message = this.formatMessage(...args);
     console.log(
       `%c[WANING] ${new Date().toISOString()}: ${message}`,
       this.COLORS.WANING
     );
-    if (pywebview?.api?.logger_warning) {
-      pywebview.api.logger_warning(message);
+    if (pywebview?.api?.logger.warn) {
+      pywebview.api.logger.warn(message);
     }
   }
 

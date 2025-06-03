@@ -8,11 +8,11 @@
           <!-- Checkbox positioned at the top-left -->
           <div class="checkbox-wrapper">
             <input type="checkbox" v-model="task.selected" @change="changeSelected(task, index)" class="select-checkbox"
-              :class="{ 'is-selected': task.selected }" title="Select Task" />
+              :class="{ 'is-selected': task.selected }" :title="$t('taskList.selectTask')" />
           </div>
           <div class="task-preview" :class="{ shifted: taskStore.shiftHoverRange.includes(index) }">
             <!-- Placeholder for video preview -->
-            <img v-if="task.previewUrl" :src="task.previewUrl" alt="Preview" class="preview-image" />
+            <img v-if="task.previewUrl" :src="task.previewUrl" :alt="$t('taskList.previewAlt')" class="preview-image" />
             <div v-else class="preview-placeholder" :class="getFileTypeClass(task.videoName)">
               {{ getFileExtension(task.videoName).toUpperCase() }}
             </div>
@@ -25,16 +25,16 @@
               <select v-model="task.renderMethod" class="render-select" @change="change_settings(task as Task)"
                 :disabled="[TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status) || taskStore.isShiftOn"
                 @click.stop>
-                <option value="" disabled selected>選擇處理模式</option>
+                <option value="" disabled selected>{{ $t('taskList.selectRenderMethod') }}</option>
                 <option v-for="method of ACTIONS" :key="method" :value="method">
-                  {{ method }}
+                  {{ $t(method) }}
                 </option>
               </select>
               <div class="select-arrow"></div>
             </div>
-            <button @click.stop="modalStore.openTaskSettings(task as Task)" class="settings-button" title="更多設定"
-              :disabled="taskStore.isShiftOn">
-              <img src="../assets/settings-icon.svg" alt="設定" />
+            <button @click.stop="modalStore.openTaskSettings(task as Task)" class="settings-button"
+              :title="$t('taskList.moreSettings')" :disabled="taskStore.isShiftOn">
+              <img src="../assets/settings-icon.svg" :alt="$t('taskList.settings')" />
             </button>
           </div>
         </div>
@@ -42,7 +42,7 @@
           <span :class="[
             'status-badge',
             `status-${TASK_STATUS[task.status].toLowerCase()}`,
-          ]">{{ TASK_STATUS[task.status] }}</span>
+          ]">{{ $t('taskList.status.' + TASK_STATUS[task.status].toLowerCase()) }}</span>
         </div>
       </li>
     </ul>
@@ -57,7 +57,7 @@
           <path d="M10 16.5l2 2 2-2"></path>
         </svg>
       </div>
-      <p>請點擊"新增"按鈕添加影片</p>
+      <p>{{ $t('taskList.emptyHint') }}</p>
     </div>
   </div>
 </template>
@@ -65,7 +65,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
 import { logger } from "../utils/logger";
-import { useTasks, useModalStore, useCallBackRedistry } from "../stores/stores";
+import { useTasks, useModalStore, useCallBackRedistry, useAppState } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { Task } from "../models/tasks";
 import { ShortCutKey } from "../utils/eventListner";
@@ -75,6 +75,8 @@ import { getFileType, getFileExtension, FileType } from "../utils/types";
 const modalStore = useModalStore();
 const taskStore = useTasks();
 const callbackRegistry = useCallBackRedistry();
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 let mouseEvent: any = null
 
 // 根據檔案名稱判斷檔案類型並返回對應的 CSS 類別
@@ -169,14 +171,14 @@ onUnmounted(() => {
   max-height: calc(100vh - 140px);
   display: flex;
   flex-direction: column;
-  border: 1px solid #333;
+  border: 1px solid var(--app-border-color);
   border-radius: 0 0 8px 8px;
   /* 使用 calc() 和相對單位實現左右間距隨視窗寬度等比例縮小 */
   /* padding: 15px calc(4% + 10px); */
   /* 最小值為10px，最大約為30px，根據容器寬度等比例變化 */
-  background-color: #1a1a1a;
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  background-color: var(--app-surface-color);
+  color: var(--app-text-color);
+  box-shadow: 0 4px 12px var(--app-shadow-color);
   box-sizing: border-box;
   overflow: hidden;
   margin-top: -1px;
@@ -203,17 +205,17 @@ onUnmounted(() => {
 }
 
 .task-list ul::-webkit-scrollbar-track {
-  background: #222;
+  background: var(--scrollbar-track-color);
   border-radius: 4px;
 }
 
 .task-list ul::-webkit-scrollbar-thumb {
-  background: #444;
+  background: var(--scrollbar-thumb-color);
   border-radius: 4px;
 }
 
 .task-list ul::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: var(--scrollbar-thumb-hover-color);
 }
 
 /* 任務項目基本布局 */
@@ -223,7 +225,7 @@ onUnmounted(() => {
   padding: 10px 0;
   /* 調整上下 padding，左右 padding 由父元素控制 */
   border: 2px solid transparent;
-  border-bottom: 2px solid #333;
+  border-bottom: 2px solid var(--app-border-color);
   gap: calc(1.5% + 8px);
   /* 動態調整元素間間距，隨視窗寬度變化 */
   transition: all 0.2s ease;
@@ -239,8 +241,9 @@ onUnmounted(() => {
 }
 
 .task-item:has(.select-checkbox:checked) {
-  border: 2px solid #3394ee;
+  border: 2px solid var(--app-accent-color);
   border-bottom-color: transparent;
+  background-color: var(--app-hover-color);
   /* margin-bottom: 0; */
 }
 
@@ -251,19 +254,19 @@ onUnmounted(() => {
 
 /* 最後一個被選中的項目需要底部邊框 */
 .task-item:has(.select-checkbox:checked)+.task-item:has(.select-checkbox:not(:checked)) {
-  border-top: 2px solid #3394ee;
+  border-top: 2px solid var(--app-accent-color);
 }
 
 .task-item-ul>.task-item:last-child:has(.select-checkbox:checked) {
-  border-bottom-color: #3394ee;
+  border-bottom-color: var(--app-accent-color);
 
 }
 
 
 .task-item:hover,
 .shifted {
-  background-color: #242424;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  background-color: var(--app-hover-color);
+  box-shadow: 0 2px 5px var(--app-shadow-color);
   /* 懸停時增加陰影 */
 }
 
@@ -289,7 +292,7 @@ onUnmounted(() => {
 .task-preview {
   width: 100%;
   height: 100%;
-  background-color: #2c2c2c;
+  background-color: var(--app-surface-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -306,16 +309,16 @@ onUnmounted(() => {
 
 .preview-placeholder {
   font-size: 12px;
-  color: #fff;
-  background-color: #2c2c2c;
+  color: var(--app-text-color);
+  background-color: var(--app-surface-color);
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  border: 1px solid #444;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--app-border-color);
+  text-shadow: 0 1px 2px var(--app-shadow-color);
   font-weight: 600;
   transition: all 0.2s ease-in-out;
 }
@@ -323,14 +326,17 @@ onUnmounted(() => {
 /* 不同檔案類型的顏色樣式 */
 .preview-placeholder.file-type-audio {
   color: #e91e63;
+  background-color: rgba(233, 30, 99, 0.1);
 }
 
 .preview-placeholder.file-type-video {
   color: #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
 }
 
 .preview-placeholder.file-type-unknown {
-  color: #fff;
+  color: #757575;
+  background-color: rgba(117, 117, 117, 0.1);
 }
 
 /* 當 checkbox 被勾選時，preview-placeholder 的 scale 變成 0.9 */
@@ -445,8 +451,8 @@ onUnmounted(() => {
   max-width: 100%;
   line-height: 1.3;
   /* 調整行高 */
-  color: #ffffff;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  color: var(--app-text-color);
+  text-shadow: 0 1px 1px var(--app-shadow-color);
   padding-right: 5px;
   /* 減少右側 padding */
 }
@@ -475,9 +481,9 @@ onUnmounted(() => {
   width: 100%;
   padding: 8px 30px 8px 10px;
   font-size: 12px;
-  border: 1px solid #333;
-  background-color: #242424;
-  color: #fff;
+  border: 1px solid var(--app-border-color);
+  background-color: var(--app-surface-color);
+  color: var(--app-text-color);
   border-radius: 4px;
   appearance: none;
   cursor: pointer;
@@ -485,13 +491,14 @@ onUnmounted(() => {
 }
 
 .render-select:hover {
-  border-color: #666;
+  border-color: var(--app-accent-color);
+  background-color: var(--app-hover-color);
 }
 
 .render-select:focus {
   outline: none;
-  border-color: #3182ce;
-  box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.25);
+  border-color: var(--app-accent-color);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.25);
 }
 
 .render-select:disabled {
@@ -511,7 +518,7 @@ onUnmounted(() => {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  filter: invert(1);
+  filter: var(--app-icon-filter);
 }
 
 .settings-button {
@@ -536,11 +543,12 @@ onUnmounted(() => {
 .settings-button img {
   width: 16px;
   height: 16px;
-  filter: invert(1);
+  filter: var(--app-icon-filter);
 }
 
 .settings-button:hover {
-  background-color: #3a3a3a;
+  background-color: var(--app-hover-color);
+  border-radius: 4px;
 }
 
 /* 任務狀態樣式 */
@@ -626,7 +634,8 @@ onUnmounted(() => {
   height: 100%;
   min-height: 300px;
   width: 500px;
-  color: #888;
+  color: var(--app-text-color);
+  opacity: 0.6;
   text-align: center;
   flex: 1;
   /* 確保空狀態填充整個容器 */
@@ -655,7 +664,8 @@ onUnmounted(() => {
 .empty-icon svg {
   width: 80px;
   height: 80px;
-  stroke: #666;
+  stroke: var(--app-text-color);
+  opacity: 0.4;
 }
 
 .empty-state p {

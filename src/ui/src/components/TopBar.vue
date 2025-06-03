@@ -2,29 +2,29 @@
   <div class="top-bar">
     <!-- 左側菜單 -->
     <div class="left-section">
-      <button @click="toggleMenu" class="icon-button" title="菜單">
-        <img src="../assets/menu-hamburger.svg" alt="菜單" />
+      <button @click="toggleMenu" class="icon-button" :title="$t('topBar.menu')">
+        <img src="../assets/menu-hamburger.svg" :alt="$t('topBar.menu')" />
       </button>
     </div>
 
     <!-- 右側操作區 -->
     <div class="right-section">
-      <button @click="addTask" class="icon-button" title="新增檔案">
-        <img src="../assets/add-icon.svg" alt="新增" />
-        <span>新增</span>
+      <button @click="addTask" class="icon-button" :title="$t('topBar.addTitle')">
+        <img src="../assets/add-icon.svg" :alt="$t('topBar.add')" />
+        <span>{{ $t('topBar.add') }}</span>
       </button>
 
       <button @click="startRender" class="icon-button render-button"
         :disabled="taskStore.queuedTasks.length + taskStore.renderingTasks.length != 0"
-        :title="taskStore.hasTasksSelected ? '開始處理選取的檔案' : '開始處理所有檔案'">
-        <img src="../assets/render-icon.svg" alt="處理" />
-        <span>{{ taskStore.hasTasksSelected ? "Render" : "Render All" }}</span>
+        :title="taskStore.hasTasksSelected ? $t('topBar.renderSelectedTitle') : $t('topBar.renderAllTitle')">
+        <img src="../assets/render-icon.svg" :alt="$t('topBar.render')" />
+        <span>{{ taskStore.hasTasksSelected ? $t('topBar.render') : $t('topBar.renderAll') }}</span>
       </button>
 
       <button @click="taskStore.hasTasksSelected ? deleteTask() : clearDoneTasks()" class="icon-button remove-button"
-        :title="taskStore.hasTasksSelected ? '刪除選取' : '刪除所有'">
-        <img src="../assets/trash-icon.svg" alt="刪除" />
-        <span>{{ taskStore.hasTasksSelected ? "Remove" : "Clear Done" }}</span>
+        :title="taskStore.hasTasksSelected ? $t('topBar.removeSelectedTitle') : $t('topBar.clearDoneTitle')">
+        <img src="../assets/trash-icon.svg" :alt="$t('topBar.remove')" />
+        <span>{{ taskStore.hasTasksSelected ? $t('topBar.remove') : $t('topBar.clearDone') }}</span>
       </button>
     </div>
   </div>
@@ -38,9 +38,11 @@ import { TASK_STATUS } from "../models/tasks";
 import { getFileType, FileType } from "../utils/types";
 import { createFileTypeWarningMessage } from "../utils/messageHelpers";
 
+
 const taskStore = useTasks();
 const modalStore = useModalStore();
 const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 
 const toggleMenu = () => {
   logger.debug("Menu toggled");
@@ -58,7 +60,7 @@ const addTask = async () => {
     if (fileType === FileType.UNKNOWN) {
       const message = createFileTypeWarningMessage(videoPath, 70); // 限制長度為70字符
       appState.addMessage(message);
-      logger.warning(message);
+      logger.warn(message);
       continue; // 跳過這個檔案，繼續處理下一個
     }
 
@@ -156,9 +158,9 @@ const startRender = async () => {
   align-items: center;
   justify-content: space-between;
   padding: 0 20px;
-  background-color: #171717;
-  border-bottom: 1px solid #333;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  background-color: var(--app-bg-color);
+  border-bottom: 2px solid var(--app-border-color);
+  box-shadow: 0 2px 10px var(--app-shadow-color);
   position: fixed;
   top: 0;
   left: 0;
@@ -188,13 +190,13 @@ const startRender = async () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #2d2d2d;
-  border: 1px solid #444;
+  background: var(--app-hover-color);
+  border: 1px solid var(--app-border-color);
   border-radius: 8px;
   padding: 12px 12px;
   /* 增加上下間距 */
   cursor: pointer;
-  color: #ffffff;
+  color: var(--app-text-color);
   font-size: 12px;
   transition: all 0.2s ease;
   height: 60px;
@@ -206,15 +208,16 @@ const startRender = async () => {
   width: 20px;
   height: 20px;
   margin-bottom: 5px;
-  filter: invert(1);
-  /* 將 SVG 轉為白色 */
+  filter: var(--app-icon-filter);
+  /* 根據主題動態調整圖標顏色 */
   transition: transform 0.2s;
 }
 
 .icon-button:hover {
-  background-color: #3a3a3a;
+  background-color: var(--app-hover-color);
   transform: translateY(-1px);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 6px var(--app-shadow-color);
+  border-color: var(--app-accent-color);
 }
 
 .icon-button:hover img {
@@ -223,7 +226,7 @@ const startRender = async () => {
 
 .icon-button:active {
   transform: translateY(1px);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px var(--app-shadow-color);
 }
 
 /* 
@@ -263,7 +266,7 @@ const startRender = async () => {
 .icon-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background-color: #333333 !important;
+  background-color: var(--app-surface-color) !important;
   transform: none;
   box-shadow: none;
 }

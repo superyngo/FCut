@@ -123,13 +123,13 @@ defineExpose({
     align-items: center;
     justify-content: center;
     padding: 40px 20px;
-    color: #666;
+    color: var(--app-text-color);
     text-align: center;
 }
 
 .no-action-selected i {
     font-size: 48px;
-    color: #ddd;
+    color: var(--app-border-color);
     margin-bottom: 16px;
 }
 

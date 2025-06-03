@@ -744,7 +744,7 @@ export function makeDraggable(
 ): MouseListenerHandle {
   // 早期返回：參數檢查
   if (!target) {
-    logger.warning("makeDraggable: 目標元素不存在");
+    logger.warn("makeDraggable: 目標元素不存在");
     // 返回一個空的監聽器句柄，避免調用者需要檢查null
     return Object.assign(() => {}, { registeredCallbacks: [] });
   }

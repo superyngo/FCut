@@ -1,22 +1,22 @@
 <template>
     <div class="cut-motionless-settings">
         <div class="form-group">
-            <label for="motion-threshold">動作檢測閾值</label>
+            <label for="motion-threshold">{{ $t('actionSettings.CutMotionless.threshold') }}</label>
             <div class="range-container">
                 <input id="motion-threshold" type="range" v-model.number="motionThreshold" :min="minThreshold"
                     :max="maxThreshold" :step="stepThreshold" :disabled="disabled" class="motion-range" />
                 <span class="threshold-value">{{ formatThreshold(motionThreshold) }}</span>
             </div>
             <div class="threshold-scale">
-                <span class="scale-label">敏感</span>
-                <span class="scale-label">中等</span>
-                <span class="scale-label">寬鬆</span>
+                <span class="scale-label">{{ $t('actionSettings.CutMotionless.scaleLabels.sensitive') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.CutMotionless.scaleLabels.medium') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.CutMotionless.scaleLabels.loose') }}</span>
             </div>
             <!-- 動態說明 -->
             <div class="quality-description">{{ getThresholdDescription() }}</div>
         </div>
 
-        <div class="presets">
+        <!-- <div class="presets">
             <h4>場景預設</h4>
             <div class="preset-buttons">
                 <button v-for="preset in motionPresets" :key="preset.name" @click="applyPreset(preset)"
@@ -26,9 +26,9 @@
                     <div class="preset-desc">{{ preset.description }}</div>
                 </button>
             </div>
-        </div>
+        </div> -->
 
-        <div class="advanced-options">
+        <!-- <div class="advanced-options">
             <h4>進階選項</h4>
             <div class="option-grid">
                 <div class="form-group">
@@ -46,17 +46,18 @@
                     <small>避免產生過短的片段</small>
                 </div>
             </div>
-        </div>
-
-        <!-- 靜態說明 -->
+        </div> --> <!-- 靜態說明 -->
         <div class="info-section">
-            <h4>設定說明</h4>
+            <h4>{{ $t('actionSettings.CutMotionless.advancedOptions') }}</h4>
             <div class="info-content">
-                <p>動作檢測閾值決定了多少像素變化會被視為「有動作」：</p>
+                <p>{{ $t('actionSettings.CutMotionless.info') }}</p>
                 <ul>
-                    <li><strong>低閾值 (0.0001 - 0.001)</strong>：敏感檢測，保留微小動作</li>
-                    <li><strong>中閾值 (0.001 - 0.01)</strong>：平衡檢測，適合大多數場景</li>
-                    <li><strong>高閾值 (0.01 - 1.0)</strong>：只保留明顯的動作變化</li>
+                    <li><strong>{{ $t('actionSettings.CutMotionless.scaleLabels.sensitive') }} (0.0001 -
+                            0.001)</strong>：{{ $t('actionSettings.CutMotionless.descSensitive') }}</li>
+                    <li><strong>{{ $t('actionSettings.CutMotionless.scaleLabels.medium') }} (0.001 - 0.01)</strong>：{{
+                        $t('actionSettings.CutMotionless.descNormal') }}</li>
+                    <li><strong>{{ $t('actionSettings.CutMotionless.scaleLabels.loose') }} (0.01 - 1.0)</strong>：{{
+                        $t('actionSettings.CutMotionless.descMovie') }}</li>
                 </ul>
             </div>
         </div>
@@ -71,7 +72,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
-
+import { useAppState } from "@/stores/stores"
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 const props = defineProps<ActionSettingsProps>();
 const emit = defineEmits<ActionSettingsEmits>();
 
@@ -87,29 +90,24 @@ const validationError = ref<string>('');
 // 預設選項
 const motionPresets = [
     {
-        name: '靜態內容',
+        name: t('actionSettings.CutMotionless.presets.presentation'),
         value: 0.0005,
-        description: '簡報、文檔閱讀'
+        description: t('actionSettings.CutMotionless.presets.presentation')
     },
     {
-        name: '標準講座',
+        name: t('actionSettings.CutMotionless.presets.teaching'),
         value: 0.00095,
-        description: '人物講解、教學'
+        description: t('actionSettings.CutMotionless.presets.teaching')
     },
     {
-        name: '動態內容',
+        name: t('actionSettings.CutMotionless.presets.gaming'),
         value: 0.005,
-        description: '遊戲、演示操作'
+        description: t('actionSettings.CutMotionless.presets.gaming')
     },
     {
-        name: '運動影片',
+        name: t('actionSettings.CutMotionless.presets.sports'),
         value: 0.02,
-        description: '體感遊戲、運動'
-    },
-    {
-        name: '電影級',
-        value: 0.1,
-        description: '電影、高動作內容'
+        description: t('actionSettings.CutMotionless.presets.sports')
     }
 ];
 
@@ -127,13 +125,13 @@ const formatThreshold = (value: number): string => {
 // 獲取當前閾值描述
 const getThresholdDescription = (): string => {
     if (motionThreshold.value < 0.001) {
-        return '極敏感檢測，保留所有微小動作';
+        return t('actionSettings.CutMotionless.descSensitive');
     } else if (motionThreshold.value < 0.01) {
-        return '敏感檢測，適合靜態內容';
+        return t('actionSettings.CutMotionless.descStatic');
     } else if (motionThreshold.value < 0.1) {
-        return '標準檢測，適合一般動態內容';
+        return t('actionSettings.CutMotionless.descNormal');
     } else {
-        return '寬鬆檢測，只保留明顯動作';
+        return t('actionSettings.CutMotionless.descMovie');
     }
 };
 
@@ -233,7 +231,7 @@ defineExpose({
 
 .form-group label {
     font-weight: bold;
-    color: #333;
+    color: var(--app-text-color);
     font-size: 14px;
     display: flex;
     align-items: center;
@@ -262,9 +260,9 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -272,16 +270,16 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .threshold-value {
     font-weight: bold;
     font-size: 14px;
-    color: #333;
+    color: var(--app-text-color);
     min-width: 80px;
     text-align: center;
     font-family: monospace;
@@ -291,32 +289,32 @@ defineExpose({
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #888;
+    color: var(--app-text-secondary-color);
     margin-top: 4px;
 }
 
 .info-section {
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--app-border-color);
 }
 
 .info-section h4 {
     margin: 0 0 12px 0;
-    color: #333;
+    color: var(--app-text-color);
 }
 
 .info-content p {
     margin: 0 0 12px 0;
-    color: #555;
+    color: var(--app-text-color);
     font-size: 14px;
 }
 
 .info-content ul {
     margin: 0 0 12px 0;
     padding-left: 20px;
-    color: #555;
+    color: var(--app-text-color);
     font-size: 13px;
 }
 
@@ -348,19 +346,18 @@ defineExpose({
 
 .preset-button {
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--app-border-color);
     border-radius: 6px;
-    background: white;
-    color: #333;
-    /* 添加深色文字 */
+    background: var(--app-surface-color);
+    color: var(--app-text-color);
     cursor: pointer;
     transition: all 0.2s;
     text-align: center;
 }
 
 .preset-button:hover:not(:disabled) {
-    background: #f0f0f0;
-    border-color: #4caf50;
+    background: var(--app-hover-color);
+    border-color: var(--app-accent-color);
     transform: translateY(-1px);
 }
 
@@ -411,10 +408,12 @@ defineExpose({
 
 .number-input {
     padding: 6px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
     font-size: 14px;
     width: 80px;
+    background-color: var(--app-input-background-color);
+    color: var(--app-text-color);
 }
 
 input[type="checkbox"] {
@@ -423,18 +422,28 @@ input[type="checkbox"] {
 
 small {
     font-size: 11px;
-    color: #888;
+    color: var(--app-text-secondary-color);
     font-style: italic;
 }
 
 .error-message {
-    color: #d9534f;
-    background: #f2dede;
+    color: var(--app-error-color);
+    background: var(--app-error-background-color);
     padding: 12px;
     border-radius: 4px;
-    border: 1px solid #ebccd1;
+    border: 1px solid var(--app-error-border-color);
     font-size: 14px;
     margin-top: 12px;
+}
+
+.quality-description {
+    font-size: 13px;
+    color: var(--app-text-secondary-color);
+    font-style: italic;
+    padding: 8px 12px;
+    background: var(--app-background-secondary-color);
+    border-radius: 4px;
+    border-left: 3px solid var(--app-accent-color);
 }
 
 @media (max-width: 600px) {

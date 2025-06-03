@@ -1,63 +1,62 @@
 <template>
     <div class="page-container">
-        <h1>設定</h1>
-        <p>這裡是設定頁面的內容。您可以在這裡調整應用程式的各種選項。</p>
-        <!-- 範例設定 -->
+        <h1>{{ $t('settings.title') }}</h1>
+        <p>{{ $t('settings.desc') }}</p>
+        <!-- 語系切換 -->
         <div class="setting-item">
-            <label for="theme-select">應用程式主題：</label>
-            <select id="theme-select">
-                <option value="dark">暗色</option>
-                <option value="light">亮色</option>
+            <label for="lang-select">{{ $t('settings.language') }}</label>
+            <select id="lang-select" :value="locale" @change="onLocaleChange">
+                <option value="zh-TW">繁體中文</option>
+                <option value="zh-CN">简体中文</option>
+                <option value="en">English</option>
             </select>
         </div>
+        <!-- 配色主題設定 -->
         <div class="setting-item">
-            <label for="autosave-toggle">自動儲存：</label>
-            <input type="checkbox" id="autosave-toggle" checked />
+            <label for="theme-select">{{ $t('settings.theme') }}</label>
+            <select id="theme-select" :value="theme" @change="onThemeChange">
+                <option value="dark">{{ $t('settings.theme_dark') }}</option>
+                <option value="light">{{ $t('settings.theme_light') }}</option>
+            </select>
         </div>
+        <!-- <div class="setting-item">
+            <label for="autosave-toggle">{{ $t('settings.autosave') }}</label>
+            <input type="checkbox" id="autosave-toggle" checked />
+        </div> -->
     </div>
 </template>
 
 <script setup lang="ts">
-// import { useModalStore } from '../../stores/stores'; // No longer needed
+import { storeToRefs } from 'pinia';
+import { useAppState } from '@/stores/stores';
 
-// const modalStore = useModalStore(); // No longer needed
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
+const { locale, theme } = storeToRefs(appState);
 
-// const goBackToMenu = (event: MouseEvent) => { // No longer needed
-//   modalStore.openMenuAndCloseCurrentPage(event); // No longer needed
-// }; // No longer needed
+function onLocaleChange(e: Event) {
+    const val = (e.target as HTMLSelectElement).value;
+    appState.setLocale(val);
+}
+function onThemeChange(e: Event) {
+    const val = (e.target as HTMLSelectElement).value;
+    appState.setTheme(val);
+}
 </script>
 
 <style scoped>
 .page-container {
     padding: 20px;
-    color: #333;
+    color: var(--app-text-color);
+    background-color: var(--app-bg-color);
     height: 100%;
     overflow-y: auto;
 }
 
-/* .page-header { // No longer needed
-    display: flex; // No longer needed
-    align-items: center; // No longer needed
-    margin-bottom: 20px; // No longer needed
-} */
-
-/* .back-icon { // No longer needed
-    cursor: pointer; // No longer needed
-    margin-right: 10px; // No longer needed
-    color: #555; // No longer needed
-    width: 28px; // No longer needed
-    height: 28px; // No longer needed
-} */
-
-/* .back-icon:hover { // No longer needed
-    color: #000; // No longer needed
-} */
-
 h1 {
     margin-top: 0;
     margin-bottom: 20px;
-    /* Adjusted margin-bottom */
-    color: #111;
+    color: var(--app-text-color);
     border-bottom: none;
     padding-bottom: 0;
     font-size: 24px;
@@ -65,7 +64,8 @@ h1 {
 
 p {
     line-height: 1.6;
-    color: #444;
+    color: var(--app-text-color);
+    opacity: 0.8;
     margin-bottom: 15px;
 }
 
@@ -73,10 +73,49 @@ p {
     margin-bottom: 15px;
     display: flex;
     align-items: center;
+    padding: 12px;
+    background-color: var(--app-surface-color);
+    border-radius: 8px;
+    border: 1px solid var(--app-border-color);
+    transition: all 0.3s ease;
+}
+
+.setting-item:hover {
+    background-color: var(--app-hover-color);
 }
 
 .setting-item label {
-    margin-right: 10px;
-    color: #333;
+    margin-right: 15px;
+    color: var(--app-text-color);
+    font-weight: 500;
+    min-width: 100px;
+}
+
+.setting-item select {
+    padding: 8px 12px;
+    border: 1px solid var(--app-border-color);
+    border-radius: 6px;
+    background-color: var(--app-bg-color);
+    color: var(--app-text-color);
+    font-size: 14px;
+    min-width: 150px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.setting-item select:hover {
+    border-color: var(--app-accent-color);
+}
+
+.setting-item select:focus {
+    outline: none;
+    border-color: var(--app-accent-color);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.setting-item select option {
+    background-color: var(--app-surface-color);
+    color: var(--app-text-color);
+    padding: 8px;
 }
 </style>

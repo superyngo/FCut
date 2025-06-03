@@ -2,8 +2,8 @@ import { BaseClass } from "./BaseModel";
 
 export enum ACTIONS {
   CUT = "CUT",
-  SPEEDUP = "SPEEDUP",
   JUMPCUT = "JUMPCUT",
+  SPEEDUP = "SPEEDUP",
   CUT_SILENCE = "CUT_SILENCE",
   CUT_MOTIONLESS = "CUT_MOTIONLESS",
   COMPRESS_VIDEO = "COMPRESS_VIDEO",

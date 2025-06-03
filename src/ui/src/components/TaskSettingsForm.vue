@@ -1,12 +1,12 @@
 <template>
   <div class="task-settings-form" v-if="tempTask!.videoName">
-    <h4>設定 "{{ tempTask!.videoName }}" 的轉檔參數</h4>
+    <h4>{{ t('taskSettingsForm.title', { videoName: tempTask!.videoName }) }}</h4>
     <div class="form-group">
-      <label for="renderMethod">渲染方式</label>
-      <select id="renderMethod" v-model="tempTask!.renderMethod" :disabled="isTaskInProgress">
-        <option value="" disabled selected>選擇處理模式</option>
+      <label for="renderMethod">{{ t('taskSettingsForm.renderMethodLabel') }}</label>
+      <select id="renderMethod" class="render-select" v-model="tempTask!.renderMethod" :disabled="isTaskInProgress">
+        <option value="" disabled selected>{{ t('taskSettingsForm.selectPlaceholder') }}</option>
         <option v-for="method of ACTIONS" :key="method" :value="method">
-          {{ method }}
+          {{ $t(method) }}
         </option>
       </select>
     </div>
@@ -22,10 +22,9 @@
       <i class="fas fa-exclamation-triangle"></i>
       <span>{{ validationError }}</span>
     </div>
-
     <div class="form-actions">
-      <button @click="saveSettings" class="save-button">儲存</button>
-      <button @click="closeTaskSetting" class="cancel-button">取消</button>
+      <button @click="saveSettings" class="save-button">{{ t('taskSettingsForm.saveButton') }}</button>
+      <button @click="closeTaskSetting" class="cancel-button">{{ t('taskSettingsForm.cancelButton') }}</button>
     </div>
   </div>
 </template>
@@ -33,13 +32,15 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from "vue";
 import { storeToRefs } from "pinia";
-import { useTasks, useModalStore } from "../stores/stores";
+import { useTasks, useModalStore, useAppState } from "../stores/stores";
 import { TASK_STATUS, ACTIONS } from "../models/tasks";
 import { logger } from "../utils/logger";
 import { ActionSettings } from "./action-settings";
 
 const modalStore = useModalStore();
 const taskStore = useTasks();
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 const { tempTask } = storeToRefs(taskStore);
 
 const actionSettingsRef = ref<InstanceType<typeof ActionSettings> | null>(null);
@@ -108,7 +109,10 @@ watch(() => tempTask.value?.renderMethod, async (newMethod, oldMethod) => {
     const validation = actionSettingsRef.value.validate();
     if (!validation.valid) {
       // 驗證失敗，阻止切換
-      const errorMessage = `請先修復 ${previousRenderMethod} 的設定錯誤：${validation.message || '設定驗證失敗'}`;
+      const errorMessage = t('taskSettingsForm.validationError.fixSettings', {
+        action: previousRenderMethod,
+        message: validation.message || t('taskSettingsForm.validationError.validationFailed')
+      });
       validationError.value = errorMessage;
 
       // 恢復到之前的方法，阻止切換
@@ -141,11 +145,10 @@ watch(() => tempTask.value?.renderMethod, async (newMethod, oldMethod) => {
     await nextTick();
 
     setTimeout(async () => {
-      const newComponentReady = await waitForComponentReady();
-      if (newComponentReady && actionSettingsRef.value) {
+      const newComponentReady = await waitForComponentReady(); if (newComponentReady && actionSettingsRef.value) {
         const validation = actionSettingsRef.value.validate();
         if (!validation.valid) {
-          validationError.value = validation.message || '當前設定有錯誤';
+          validationError.value = validation.message || t('taskSettingsForm.validationError.currentSettingsError');
         }
       }
     }, 100);
@@ -158,7 +161,7 @@ const saveSettings = () => {
   if (actionSettingsRef.value) {
     const validation = actionSettingsRef.value.validate();
     if (!validation.valid) {
-      validationError.value = validation.message || '設定驗證失敗';
+      validationError.value = validation.message || t('taskSettingsForm.validationError.validationFailed');
       // 阻止保存操作
       return;
     }
@@ -170,7 +173,7 @@ const saveSettings = () => {
   if (
     tempTask.value!.selected &&
     taskStore.selectedTasks.length > 1 &&
-    confirm("是否要將相同的設置應用於所有選中的任務？")
+    confirm(t('taskSettingsForm.confirmApplyToAll'))
   ) {
     taskStore.selectedTasks.forEach((selectedTask) => {
       // 直接使用新的簡化設定格式
@@ -213,7 +216,7 @@ const saveSettings = () => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  color: #333;
+  color: var(--app-text-color);
 }
 
 .form-group {
@@ -224,21 +227,23 @@ const saveSettings = () => {
 
 .form-group label {
   font-weight: bold;
-  color: #333;
+  color: var(--app-text-color);
   font-size: 14px;
 }
 
 .form-group select,
 .form-group input {
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--app-border-color);
   border-radius: 4px;
   font-size: 14px;
+  background-color: var(--app-input-background-color);
+  color: var(--app-text-color);
 }
 
 .settings-fields {
   margin-top: 8px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--app-border-color);
   padding-top: 16px;
 }
 
@@ -247,16 +252,14 @@ const saveSettings = () => {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background-color: #fff3cd;
-  border: 1px solid #ffeaa7;
+  background-color: var(--app-error-background-color);
+  border: 1px solid var(--app-error-border-color);
   border-radius: 4px;
-  color: #d73927;
-  /* 改為紅色字體 */
+  color: var(--app-error-color);
 }
 
 .validation-error i {
-  color: #d73927;
-  /* 圖標也改為紅色 */
+  color: var(--app-error-color);
 }
 
 .form-actions {
@@ -277,20 +280,20 @@ const saveSettings = () => {
 }
 
 .save-button {
-  background-color: #4caf50;
+  background-color: var(--app-accent-color);
   color: white;
 }
 
 .save-button:hover {
-  background-color: #45a049;
+  background-color: var(--app-accent-hover-color);
 }
 
 .cancel-button {
-  background-color: #f1f1f1;
-  color: #333;
+  background-color: var(--app-background-secondary-color);
+  color: var(--app-text-color);
 }
 
 .cancel-button:hover {
-  background-color: #e0e0e0;
+  background-color: var(--app-hover-color);
 }
 </style>

@@ -17,8 +17,7 @@ class _MockPywebview {
     get_constants: async () => ({}),
     logger_debug: (message: string) => console.log(`[Mock Debug] ${message}`),
     logger_error: (message: string) => console.error(`[Mock Error] ${message}`),
-    logger_warning: (message: string) =>
-      console.warn(`[Mock Warning] ${message}`),
+    logger_warn: (message: string) => console.warn(`[Mock Warning] ${message}`),
     logger_info: (message: string) => console.info(`[Mock Info] ${message}`),
   };
 }

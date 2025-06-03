@@ -4,7 +4,8 @@ await waitForPyWebviewApi();
 import { defineStore } from "pinia";
 import { Task, TASK_STATUS } from "../models/tasks";
 import { logger } from "../utils/logger";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
+import { useI18n } from "vue-i18n";
 
 import {
   onMousemove,
@@ -18,6 +19,24 @@ import {
 } from "../utils/eventListner";
 // const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
+// Cookie 操作工具
+function setCookie(name: string, value: string, days = 365) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie =
+    name +
+    "=" +
+    encodeURIComponent(value) +
+    "; expires=" +
+    expires +
+    "; path=/";
+}
+function getCookie(name: string) {
+  return document.cookie.split("; ").reduce((r, v) => {
+    const parts = v.split("=");
+    return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+  }, "");
+}
+
 // 使用組合式 API 定義 AppState store
 export const useAppState = defineStore(crypto.randomUUID(), () => {
   const storeId = ref("app_constants");
@@ -25,11 +44,20 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
   const loading = ref(true);
   const constants = ref<null | Record<string, any>>(null);
   const messageQueue = ref<string[]>([]);
+  const locale = ref("zh-TW");
+  const theme = ref("dark");
+  const { locale: i18nLocale, t } = useI18n();
 
   // Actions
-  async function initFromPython() {
+  async function init() {
     loading.value = true;
     try {
+      // 從 cookies 還原設定
+      const savedLocale = getCookie("locale");
+      const savedTheme = getCookie("theme");
+      if (savedLocale) setLocale(savedLocale);
+      if (savedTheme) setTheme(savedTheme);
+
       const isReady = await waitForPyWebviewApi();
       if (!isReady) {
         error.value = true;
@@ -45,6 +73,22 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
       loading.value = false;
     }
   }
+  function setLocale(newLocale: string) {
+    // 確保語言在支援的列表中
+    const supportedLocales = ["zh-TW", "zh-CN", "en"];
+    if (!supportedLocales.includes(newLocale)) {
+      logger.warn(`Unsupported locale '${newLocale}', falling back to 'zhTW'`);
+      newLocale = "zh-TW";
+    }
+
+    locale.value = newLocale;
+    setCookie("locale", newLocale);
+    i18nLocale.value = newLocale;
+  }
+  function setTheme(newTheme: string) {
+    theme.value = newTheme;
+    setCookie("theme", newTheme);
+  }
 
   // 添加訊息到佇列
   function addMessage(message: string) {
@@ -57,7 +101,6 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
       messageQueue.value.shift();
     }
   }
-
   // 返回所有需要暴露的狀態和方法
   return {
     storeId,
@@ -65,9 +108,14 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
     loading,
     constants,
     messageQueue,
-    initFromPython,
+    locale,
+    theme,
+    t, // 導出翻譯函數
+    init,
     addMessage,
     removeFirstMessage,
+    setLocale,
+    setTheme,
   };
 });
 
@@ -382,11 +430,11 @@ export const useModalStore = defineStore(crypto.randomUUID(), () => {
   // State
   const storeId = ref("app_modals");
   const activeModals = ref({
-    menu: { isOpen: false, title: "選單" },
-    taskSettings: { isOpen: false, title: "任務設定" },
-    settingsPage: { isOpen: false, title: "設定" },
-    aboutPage: { isOpen: false, title: "關於" },
-    helpPage: { isOpen: false, title: "說明" },
+    menu: { isOpen: false },
+    taskSettings: { isOpen: false },
+    settingsPage: { isOpen: false },
+    aboutPage: { isOpen: false },
+    helpPage: { isOpen: false },
   });
   const menuModalStyle = ref<Record<string, string>>({}); // 明確指定類型
   const settingsModalStyle = ref<Record<string, string>>({}); // 明確指定類型

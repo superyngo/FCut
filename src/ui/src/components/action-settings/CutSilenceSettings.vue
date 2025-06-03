@@ -1,45 +1,22 @@
-ㄑ<template>
+<template>
     <div class="cut-silence-settings">
-        <div class="form-group"> <label for="silence-threshold">靜音閾值 (dB)</label>
+        <div class="form-group">
+            <label for="silence-threshold">{{ $t('actionSettings.CutSilence.threshold') }}</label>
             <div class="range-container">
                 <input id="silence-threshold" type="range" v-model.number="silenceThreshold" :min="minDb" :max="maxDb"
                     :step="1" :disabled="disabled" class="db-range" />
                 <span class="db-value">{{ silenceThreshold }} dB</span>
             </div>
             <div class="threshold-scale">
-                <span class="scale-label">保守</span>
-                <span class="scale-label">標準</span>
-                <span class="scale-label">積極</span>
+                <span class="scale-label">{{ $t('actionSettings.CutSilence.conservative') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.CutSilence.standard') }}</span>
+                <span class="scale-label">{{ $t('actionSettings.CutSilence.aggressive') }}</span>
             </div>
+            <!-- 2. 動態說明 -->
+            <div class="quality-description">{{ getSpeedDescription() }}</div>
         </div>
 
-        <div class="info-section">
-            <h4>設定說明</h4>
-            <div class="info-grid">
-                <div class="info-item">
-                    <strong>-45 dB</strong>
-                    <span>保守模式，幾乎不會移除任何片段</span>
-                </div>
-                <div class="info-item">
-                    <strong>-35 dB</strong>
-                    <span>溫和模式，只移除明顯的靜音段</span>
-                </div>
-                <div class="info-item">
-                    <strong>-23 dB</strong>
-                    <span>標準模式，移除靜音和輕微背景音</span>
-                </div>
-                <div class="info-item">
-                    <strong>-15 dB</strong>
-                    <span>積極模式，會移除較多的安靜片段</span>
-                </div>
-                <div class="info-item">
-                    <strong>-10 dB</strong>
-                    <span>最積極，只保留音量較大的內容</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="presets">
+        <!-- <div class="presets">
             <h4>推薦設定</h4>
             <div class="preset-buttons">
                 <button v-for="preset in silencePresets" :key="preset.name" @click="applyPreset(preset)"
@@ -48,19 +25,46 @@
                     <small>{{ preset.value }} dB</small>
                 </button>
             </div>
+        </div> -->
+        <div class="info-section">
+            <h4>{{ $t('actionSettings.CutSilence.settingDesc') }}</h4>
+            <div class="info-grid">
+                <div class="info-item">
+                    <strong>-45 dB</strong>
+                    <span>{{ $t('actionSettings.CutSilence.qualityRange.conservative') }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>-35 dB</strong>
+                    <span>{{ $t('actionSettings.CutSilence.qualityRange.gentle') }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>-23 dB</strong>
+                    <span>{{ $t('actionSettings.CutSilence.qualityRange.standard') }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>-15 dB</strong>
+                    <span>{{ $t('actionSettings.CutSilence.qualityRange.aggressive') }}</span>
+                </div>
+                <div class="info-item">
+                    <strong>-10 dB</strong>
+                    <span>{{ $t('actionSettings.CutSilence.qualityRange.maximum') }}</span>
+                </div>
+            </div>
         </div>
 
-        <div class="warning" v-if="showWarning">
+        <!-- <div class="warning" v-if="showWarning">
             <i class="fas fa-exclamation-triangle"></i>
             <span>{{ warningMessage }}</span>
-        </div>
+        </div> -->
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
-
+import { useAppState } from "@/stores/stores"
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 const props = defineProps<ActionSettingsProps>();
 const emit = defineEmits<ActionSettingsEmits>();
 
@@ -70,11 +74,11 @@ const maxDb = -10;
 
 // 預設選項
 const silencePresets = [
-    { name: '保守', value: -40, description: '只移除明顯靜音' },
-    { name: '標準', value: -23, description: '平衡的靜音檢測' },
-    { name: '積極', value: -15, description: '較敏感的靜音移除' },
-    { name: '講座', value: -30, description: '適合演講內容' },
-    { name: '音樂', value: -35, description: '適合含音樂的內容' }
+    { name: t('actionSettings.CutSilence.conservative'), value: -40, description: t('actionSettings.CutSilence.descConservative') },
+    { name: t('actionSettings.CutSilence.standard'), value: -23, description: t('actionSettings.CutSilence.descStandard') },
+    { name: t('actionSettings.CutSilence.aggressive'), value: -15, description: t('actionSettings.CutSilence.descAggressive') },
+    { name: t('actionSettings.CutSilence.lecture'), value: -30, description: t('actionSettings.CutSilence.descLecture') },
+    { name: t('actionSettings.CutSilence.music'), value: -35, description: t('actionSettings.CutSilence.descMusic') }
 ];
 
 // 警告訊息
@@ -84,10 +88,19 @@ const showWarning = computed(() => {
 
 const warningMessage = computed(() => {
     if (silenceThreshold.value > -12) {
-        return '閾值設定過高，可能會移除過多的音頻內容';
+        return t('actionSettings.CutSilence.warning');
     }
     return '';
 });
+
+// 動態說明
+const getSpeedDescription = (): string => {
+    if (silenceThreshold.value <= -40) return t('actionSettings.CutSilence.qualityRange.conservative');
+    if (silenceThreshold.value <= -35) return t('actionSettings.CutSilence.qualityRange.gentle');
+    if (silenceThreshold.value <= -23) return t('actionSettings.CutSilence.qualityRange.standard');
+    if (silenceThreshold.value <= -15) return t('actionSettings.CutSilence.qualityRange.aggressive');
+    return t('actionSettings.CutSilence.qualityRange.maximum');
+};
 
 // 應用預設
 const applyPreset = (preset: any) => {
@@ -149,7 +162,7 @@ defineExpose({
 
 .form-group label {
     font-weight: bold;
-    color: #333;
+    color: var(--app-text-color);
     font-size: 14px;
 }
 
@@ -175,9 +188,9 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
@@ -185,16 +198,16 @@ defineExpose({
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #333;
+    background: var(--app-accent-color);
     cursor: pointer;
-    border: 2px solid #fff;
+    border: 2px solid var(--app-surface-color);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .db-value {
     font-weight: bold;
     font-size: 16px;
-    color: #333;
+    color: var(--app-text-color);
     min-width: 70px;
     text-align: center;
     font-family: monospace;
@@ -204,20 +217,20 @@ defineExpose({
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #888;
+    color: var(--app-text-secondary-color);
     margin-top: 4px;
 }
 
 .info-section {
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--app-border-color);
 }
 
 .info-section h4 {
     margin: 0 0 12px 0;
-    color: #333;
+    color: var(--app-text-color);
 }
 
 .info-grid {
@@ -233,13 +246,13 @@ defineExpose({
 }
 
 .info-item strong {
-    color: #666;
+    color: var(--app-text-secondary-color);
     min-width: 60px;
     font-family: monospace;
 }
 
 .info-item span {
-    color: #555;
+    color: var(--app-text-color);
     flex: 1;
 }
 
@@ -256,11 +269,10 @@ defineExpose({
 
 .preset-button {
     padding: 10px 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
-    background: white;
-    color: #333;
-    /* 添加深色文字 */
+    background: var(--app-surface-color);
+    color: var(--app-text-color);
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -270,8 +282,8 @@ defineExpose({
 }
 
 .preset-button:hover:not(:disabled) {
-    background: #f0f0f0;
-    border-color: #4caf50;
+    background: var(--app-hover-color);
+    border-color: var(--app-accent-color);
 }
 
 .preset-button.active {
@@ -304,5 +316,15 @@ defineExpose({
 
 .warning i {
     color: #f39c12;
+}
+
+.quality-description {
+    font-size: 13px;
+    color: var(--app-text-secondary-color);
+    font-style: italic;
+    padding: 8px 12px;
+    background: var(--app-background-secondary-color);
+    border-radius: 4px;
+    border-left: 3px solid var(--app-accent-color);
 }
 </style>

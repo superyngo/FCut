@@ -1,96 +1,87 @@
 <template>
-    <div class="jumpcut-settings">
-        <!-- 1. 輸入區 -->
+    <div class="jumpcut-settings"> <!-- 1. 輸入區 -->
         <div class="settings-grid">
             <div class="form-group">
-                <label for="p1-duration">第一段持續時間 (秒)</label>
+                <label for="p1-duration">{{ $t('actionSettings.Jumpcut.p1Duration') }}</label>
                 <div class="input-container">
                     <input id="p1-duration" type="number" v-model.number="p1Duration" :min="0" :max="60" :step="0.1"
                         :disabled="disabled" class="number-input" />
-                    <span class="unit">秒</span>
+                    <span class="unit">{{ $t('actionSettings.Jumpcut.units.seconds') }}</span>
                 </div>
                 <!-- 動態說明 -->
-                <small class="help-text">原速播放的時間長度</small>
+                <small class="help-text">{{ $t('actionSettings.Jumpcut.helpText.p1Duration') }}</small>
             </div>
 
             <div class="form-group">
-                <label for="p2-duration">第二段持續時間 (秒)</label>
+                <label for="p2-duration">{{ $t('actionSettings.Jumpcut.p2Duration') }}</label>
                 <div class="input-container">
                     <input id="p2-duration" type="number" v-model.number="p2Duration" :min="0" :max="60" :step="0.1"
                         :disabled="disabled" class="number-input" />
-                    <span class="unit">秒</span>
+                    <span class="unit">{{ $t('actionSettings.Jumpcut.units.seconds') }}</span>
                 </div>
                 <!-- 動態說明 -->
-                <small class="help-text">加速播放的時間長度</small>
+                <small class="help-text">{{ $t('actionSettings.Jumpcut.helpText.p2Duration') }}</small>
             </div>
             <div class="form-group">
-                <label for="p1-multiple">第一段倍速</label>
+                <label for="p1-multiple">{{ $t('actionSettings.Jumpcut.p1Multiple') }}</label>
                 <div class="input-container">
                     <input id="p1-multiple" type="number" v-model.number="p1Multiple" :min="1" :max="10" :step="0.1"
                         :disabled="disabled" class="number-input" />
-                    <span class="unit">x</span>
+                    <span class="unit">{{ $t('actionSettings.Jumpcut.units.times') }}</span>
                 </div>
                 <!-- 動態說明 -->
-                <small class="help-text">通常設為1 (原速)</small>
+                <small class="help-text">{{ $t('actionSettings.Jumpcut.helpText.p1Multiple') }}</small>
             </div>
 
             <div class="form-group">
-                <label for="p2-multiple">第二段倍速</label>
+                <label for="p2-multiple">{{ $t('actionSettings.Jumpcut.p2Multiple') }}</label>
                 <div class="input-container">
                     <input id="p2-multiple" type="number" v-model.number="p2Multiple" :min="1" :max="20" :step="0.1"
                         :disabled="disabled" class="number-input" />
-                    <span class="unit">x</span>
+                    <span class="unit">{{ $t('actionSettings.Jumpcut.units.times') }}</span>
                 </div>
                 <!-- 動態說明 -->
-                <small class="help-text">快速跳過的倍數</small>
+                <small class="help-text">{{ $t('actionSettings.Jumpcut.helpText.p2Multiple') }}</small>
             </div>
-        </div>
-
-        <!-- 2. 動態估算區塊（預覽與平均加速） -->
+        </div> <!-- 2. 動態估算區塊（預覽與平均加速） -->
         <div class="pattern-preview">
-            <h4>播放模式預覽</h4>
+            <h4>{{ $t('actionSettings.Jumpcut.patternPreview') }}</h4>
             <div class="pattern-visualization">
                 <div class="pattern-segment p1" :style="{ width: segmentWidthP1 + '%' }">
-                    <span>原速 {{ p1Duration }}s</span>
-                    <small>{{ p1Multiple }}x</small>
+                    <span>原速 {{ p1Duration }}{{ $t('actionSettings.Jumpcut.units.seconds') }}</span>
+                    <small>{{ p1Multiple }}{{ $t('actionSettings.Jumpcut.units.times') }}</small>
                 </div>
                 <div class="pattern-segment p2" :style="{ width: segmentWidthP2 + '%' }">
-                    <span>快進 {{ p2Duration }}s</span>
-                    <small>{{ p2Multiple }}x</small>
+                    <span>快進 {{ p2Duration }}{{ $t('actionSettings.Jumpcut.units.seconds') }}</span>
+                    <small>{{ p2Multiple }}{{ $t('actionSettings.Jumpcut.units.times') }}</small>
                 </div>
             </div>
             <div class="pattern-info">
                 <div class="info-item">
                     <i class="fas fa-clock"></i>
-                    <span>循環週期：{{ totalCycleDuration.toFixed(1) }}秒</span>
+                    <span>{{ $t('actionSettings.Jumpcut.totalCycle') }}：{{ totalCycleDuration.toFixed(1) }}{{
+                        $t('actionSettings.Jumpcut.units.seconds') }}</span>
                 </div>
                 <div class="info-item">
                     <i class="fas fa-tachometer-alt"></i>
-                    <span>平均加速：{{ averageSpeedup.toFixed(2) }}x</span>
+                    <span>{{ $t('actionSettings.Jumpcut.avgSpeed') }}：{{ averageSpeedup.toFixed(2) }}{{
+                        $t('actionSettings.Jumpcut.units.times') }}</span>
                 </div>
             </div>
-        </div>
-
-        <!-- 3. 預設按鈕區塊 -->
+        </div> <!-- 3. 預設按鈕區塊 -->
         <div class="presets">
-            <h4>預設模式</h4>
+            <h4>{{ $t('actionSettings.Jumpcut.preset') }}</h4>
             <div class="preset-buttons">
                 <button v-for="preset in jumpCutPresets" :key="preset.name" @click="applyPreset(preset)"
                     :disabled="disabled" class="preset-button">
-                    {{ preset.name }}
+                    {{ $t(`actionSettings.Jumpcut.presets.${preset.name}`) }}
                 </button>
             </div>
-        </div>
-
-        <!-- 4. 靜態說明區塊（如有） -->
+        </div> <!-- 4. 靜態說明區塊（如有） -->
         <div class="info-section">
-            <h4>說明</h4>
             <div class="info-grid">
                 <div class="info-item">
-                    <span>「第一段」為原速播放區間，「第二段」為加速播放區間。可根據需求調整各段長度與倍速。</span>
-                </div>
-                <div class="info-item">
-                    <span>平均加速倍數越高，總時長壓縮越多，但可能影響觀看體驗。</span>
+                    <span>{{ $t('actionSettings.Jumpcut.info') }}</span>
                 </div>
             </div>
         </div>
@@ -105,9 +96,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
+import { useAppState } from "@/stores/stores"
 
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 const props = defineProps<ActionSettingsProps>();
-const emit = defineEmits<ActionSettingsEmits>();
+const emit = defineEmits<ActionSettingsEmits>()
 
 const p1Duration = ref<number>(2);
 const p2Duration = ref<number>(2);
@@ -118,10 +112,10 @@ const validationError = ref<string>('');
 
 // 預設模式
 const jumpCutPresets = [
-    { name: '溫和模式', p1Duration: 3, p2Duration: 1, p1Multiple: 1, p2Multiple: 4 },
-    { name: '標準模式', p1Duration: 2, p2Duration: 2, p1Multiple: 1, p2Multiple: 8 },
-    { name: '激進模式', p1Duration: 1, p2Duration: 3, p1Multiple: 1, p2Multiple: 15 },
-    { name: '講座模式', p1Duration: 5, p2Duration: 1, p1Multiple: 1, p2Multiple: 6 },
+    { name: 'gentle', p1Duration: 3, p2Duration: 1, p1Multiple: 1, p2Multiple: 4 },
+    { name: 'standard', p1Duration: 2, p2Duration: 2, p1Multiple: 1, p2Multiple: 8 },
+    { name: 'aggressive', p1Duration: 1, p2Duration: 3, p1Multiple: 1, p2Multiple: 15 },
+    { name: 'lecture', p1Duration: 5, p2Duration: 1, p1Multiple: 1, p2Multiple: 6 },
 ];
 
 // 計算總循環時間
@@ -172,19 +166,19 @@ const applyPreset = (preset: any) => {
 
 // 驗證設定
 const validate = (): { valid: boolean; message?: string } => {
-    // 1. 第一段和第二段持續時間不能同時為0，至少有一個須大於0
+    // 1. A段和B段持續時間不能同時為0，至少有一個須大於0
     if (p1Duration.value === 0 && p2Duration.value === 0) {
-        return { valid: false, message: '第一段和第二段持續時間不能同時為0，至少有一個須大於0' };
+        return { valid: false, message: t('actionSettings.Jumpcut.error.durationZero') };
     }
 
     // 2. p1及p2持續時間皆須>=0
     if (p1Duration.value < 0 || p2Duration.value < 0) {
-        return { valid: false, message: '持續時間不能為負數' };
+        return { valid: false, message: t('actionSettings.Jumpcut.error.durationNegative') };
     }
 
     // 3. p1及p2倍速皆須>=1
     if (p1Multiple.value < 1 || p2Multiple.value < 1) {
-        return { valid: false, message: '倍速必須大於等於1' };
+        return { valid: false, message: t('actionSettings.Jumpcut.error.multiple') };
     }
 
     return { valid: true };
@@ -270,7 +264,7 @@ defineExpose({
 
 .form-group label {
     font-weight: bold;
-    color: #333;
+    color: var(--app-text-color);
     font-size: 14px;
 }
 
@@ -283,33 +277,35 @@ defineExpose({
 .number-input {
     flex: 1;
     padding: 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--app-input-background-color);
+    color: var(--app-text-color);
 }
 
 .unit {
     font-size: 12px;
-    color: #666;
+    color: var(--app-text-secondary-color);
     min-width: 20px;
 }
 
 .help-text {
     font-size: 12px;
-    color: #888;
+    color: var(--app-text-secondary-color);
     font-style: italic;
 }
 
 .pattern-preview {
-    background: #f8f9fa;
+    background: var(--app-background-secondary-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #e9ecef;
+    border: 1px solid var(--app-border-color);
 }
 
 .pattern-preview h4 {
     margin: 0 0 12px 0;
-    color: #333;
+    color: var(--app-text-color);
 }
 
 .pattern-visualization {
@@ -317,7 +313,7 @@ defineExpose({
     height: 40px;
     border-radius: 4px;
     overflow: hidden;
-    border: 1px solid #ddd;
+    border: 1px solid var(--app-border-color);
     margin-bottom: 12px;
 }
 
@@ -359,17 +355,17 @@ defineExpose({
     align-items: center;
     gap: 6px;
     font-size: 13px;
-    color: #666;
+    color: var(--app-text-secondary-color);
 }
 
 .info-item i {
-    color: #4caf50;
+    color: var(--app-accent-color);
     width: 16px;
 }
 
 .presets h4 {
     margin: 0 0 12px 0;
-    color: #333;
+    color: var(--app-text-color);
 }
 
 .preset-buttons {
@@ -380,19 +376,18 @@ defineExpose({
 
 .preset-button {
     padding: 8px 16px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
-    background: white;
-    color: #333;
-    /* 添加深色文字 */
+    background: var(--app-surface-color);
+    color: var(--app-text-color);
     cursor: pointer;
     transition: all 0.2s;
     font-size: 13px;
 }
 
 .preset-button:hover:not(:disabled) {
-    background: #f0f0f0;
-    border-color: #4caf50;
+    background: var(--app-hover-color);
+    border-color: var(--app-accent-color);
 }
 
 .preset-button:disabled {
@@ -401,10 +396,10 @@ defineExpose({
 }
 
 .info-section {
-    background: #f1f8e9;
+    background: var(--app-background-secondary-color);
     padding: 16px;
     border-radius: 8px;
-    border: 1px solid #c8e6c9;
+    border: 1px solid var(--app-border-color);
 }
 
 .info-grid {

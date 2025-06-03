@@ -2,9 +2,9 @@
     <div class="message-bar">
         <!-- 取消選取按鈕放置在訊息欄中 -->
         <div v-if="taskStore.hasTasksSelected" class="clear-selection-wrapper">
-            <button @click="clearAllSelections" class="clear-selection-button" title="取消所有選取">
-                <img src="../assets/cancel-all.svg" alt=" 刪除" />
-                <span class="visually-hidden">取消所有選取</span>
+            <button @click="clearAllSelections" class="clear-selection-button" :title="$t('messageBar.clearAllTitle')">
+                <img src="../assets/cancel-all.svg" :alt="$t('messageBar.clearAllAlt')" />
+                <span class="visually-hidden">{{ $t('messageBar.clearAll') }}</span>
             </button>
         </div>
         <!-- 警告圖標 -->
@@ -14,7 +14,7 @@
         <div class="message-content">
             <Transition name="fade" mode="out-in">
                 <span :key="message" :class="{ 'warning-message': appState.messageQueue.length > 0 }">
-                    {{ message }}
+                    {{ messageI18n }}
                 </span>
             </Transition>
         </div>
@@ -27,24 +27,32 @@ import { useTasks, useAppState } from "../stores/stores";
 
 const taskStore = useTasks();
 const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 
 // 計算要顯示的訊息
 const message = computed(() => {
-    // 優先顯示佇列中的訊息
     if (appState.messageQueue.length > 0) {
         return appState.messageQueue[0];
     }
-
     if (taskStore.tasks.length === 0) {
-        return "請新增檔案";
+        return 'empty';
     }
-
     if (taskStore.hasTasksSelected) {
         const selectedCount = taskStore.selectedTasks.length;
-        return `已選擇 ${selectedCount} 個影片，可執行：Render / Remove`;
+        return { type: 'selected', count: selectedCount };
     }
+    return 'select';
+});
 
-    return "選擇影片以執行操作"; // 有檔案但沒有選取時顯示的訊息
+const messageI18n = computed(() => {
+    if (typeof message.value === 'string') {
+        if (message.value === 'empty') return t('messageBar.empty');
+        if (message.value === 'select') return t('messageBar.select');
+        return message.value;
+    } else if (typeof message.value === 'object' && message.value.type === 'selected') {
+        return t('messageBar.selected', { count: message.value.count });
+    }
+    return '';
 });
 
 // 監聽訊息佇列變化，自動移除顯示的訊息
@@ -188,7 +196,7 @@ if (import.meta.env.DEV) {
 }
 
 .clear-selection-button img {
-    filter: invert(1);
+    filter: var(--app-icon-filter);
 }
 
 .clear-selection-button:hover {

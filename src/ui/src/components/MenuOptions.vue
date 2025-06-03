@@ -1,21 +1,23 @@
 <template>
   <ul class="menu-options-list">
     <li v-for="(option, index) in options" :key="index" @click="option.action" class="menu-item">
-      {{ option.label }}
+      {{ $t(option.label) }}
     </li>
   </ul>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { useModalStore } from '../stores/stores'; // 匯入 useModalStore
+import { useModalStore, useAppState } from '../stores/stores'; // 匯入 useModalStore 和 useAppState
 
 const modalStore = useModalStore(); // 獲取 modal store 實例
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 
 const options = ref([
-  { label: '設定', action: () => modalStore.openSettingsPage() }, // 更新 action
-  { label: '關於', action: () => modalStore.openAboutPage() },    // 更新 action
-  { label: '說明', action: () => modalStore.openHelpPage() },      // 更新 action
+  { label: 'menu.options.settings', action: () => modalStore.openSettingsPage() }, // 更新 action
+  { label: 'menu.options.about', action: () => modalStore.openAboutPage() },    // 更新 action
+  { label: 'menu.options.help', action: () => modalStore.openHelpPage() },      // 更新 action
 ]);
 </script>
 
@@ -30,7 +32,7 @@ const options = ref([
 }
 
 .menu-item {
-  color: #555;
+  color: var(--app-text-color);
   padding: 12px 16px;
   text-align: left;
   cursor: pointer;
@@ -39,7 +41,7 @@ const options = ref([
   display: block;
   width: 100%;
   box-sizing: border-box;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--app-border-color);
 }
 
 .menu-item:last-child {
@@ -47,7 +49,7 @@ const options = ref([
 }
 
 .menu-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--app-hover-color);
 }
 
 /* 動畫效果 */

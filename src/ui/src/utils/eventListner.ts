@@ -108,7 +108,7 @@ export function addEventListener(
   listenerConfig: MakeOptional<ListenerConfig, "id" | "target">
 ): Result<ListnerHandle, null> {
   if (typeof window === "undefined") {
-    logger.warning(
+    logger.warn(
       "addEventListener is not available in the current environment."
     );
     return Result.err(null);
@@ -340,11 +340,11 @@ export class ShortCutKey {
 
   add(): this {
     if (this._isListing) {
-      logger.warning("ShortCutKey.add: This instance is already listening.");
+      logger.warn("ShortCutKey.add: This instance is already listening.");
       return this; // Return this even on handled failure for chaining
     }
     if (typeof window === "undefined") {
-      logger.warning(
+      logger.warn(
         "ShortCutKey.add: window is not available in the current environment."
       );
       return this; // Return this even on handled failure for chaining

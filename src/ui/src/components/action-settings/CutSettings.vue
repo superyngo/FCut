@@ -4,30 +4,28 @@
             <div v-for="(cutCell, index) in cutCells" :key="cutCell.id" class="cut-cell">
                 <div class="cut-cell-inputs">
                     <div class="form-group">
-                        <label>開始時間</label>
+                        <label>{{ $t('actionSettings.Cut.start') }}</label>
                         <input type="text" v-model="cutCell.start" :disabled="disabled" placeholder="00:00:000"
                             @focus="saveOldValue(index, 'start')" @input="validateAndUpdate(index, 'start', $event)"
                             class="time-input" />
                     </div>
                     <div class="form-group">
-                        <label>結束時間</label>
+                        <label>{{ $t('actionSettings.Cut.end') }}</label>
                         <input type="text" v-model="cutCell.end" :disabled="disabled" placeholder="00:00:123"
                             @focus="saveOldValue(index, 'end')" @input="validateAndUpdate(index, 'end', $event)"
                             class="time-input" />
                     </div>
-                </div>
-                <button v-if="cutCells.length > 1" @click="removeCutCell(index)" :disabled="disabled"
-                    class="remove-button" title="移除此片段">
+                </div> <button v-if="cutCells.length > 1" @click="removeCutCell(index)" :disabled="disabled"
+                    class="remove-button" :title="$t('actionSettings.Cut.removeSegment')">
                     <i class="fas fa-trash"></i>
-                    移除
+                    {{ $t('actionSettings.Cut.removeSegment') }}
                 </button>
             </div>
         </div>
-
         <div class="actions">
             <button @click="addCutCell" :disabled="disabled" class="add-button">
                 <i class="fas fa-plus"></i>
-                新增片段
+                {{ $t('actionSettings.Cut.addSegment') }}
             </button>
         </div>
 
@@ -41,6 +39,10 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import type { ActionSettingsProps, ActionSettingsEmits } from './types';
 import { logger } from '../../utils/logger';
+import { useAppState } from "@/stores/stores"
+
+const appState = useAppState();
+const { t } = appState; // 從 appState 獲取翻譯函數
 
 interface CutCell {
     id: string;
@@ -109,7 +111,7 @@ const validateTimeRange = (start: string, end: string): { valid: boolean; messag
     const endMs = timestampToMs(end);
 
     if (endMs <= startMs) {
-        return { valid: false, message: "結束時間必須大於開始時間" };
+        return { valid: false, message: t('actionSettings.Cut.errorEndGtStart') };
     }
 
     return { valid: true };
@@ -254,9 +256,9 @@ defineExpose({
     align-items: center;
     gap: 12px;
     padding: 12px;
-    border: 1px solid #e0e0e0;
+    border: 1px solid var(--app-border-color);
     border-radius: 6px;
-    background-color: #f9f9f9;
+    background-color: var(--app-background-secondary-color);
 }
 
 .cut-cell-inputs {
@@ -274,15 +276,17 @@ defineExpose({
 .form-group label {
     font-size: 12px;
     font-weight: bold;
-    color: #666;
+    color: var(--app-text-secondary-color);
 }
 
 .time-input {
     padding: 6px 8px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--app-border-color);
     border-radius: 4px;
     font-family: monospace;
     width: 80px;
+    background-color: var(--app-input-background-color);
+    color: var(--app-text-color);
 }
 
 .remove-button {
@@ -331,12 +335,12 @@ defineExpose({
 }
 
 .error-message {
-    color: #ff4444;
+    color: var(--app-error-color);
     font-size: 14px;
     font-weight: bold;
     padding: 8px 12px;
-    background-color: #fff5f5;
-    border: 1px solid #ffcdd2;
+    background-color: var(--app-error-background-color);
+    border: 1px solid var(--app-error-border-color);
     border-radius: 4px;
 }
 
