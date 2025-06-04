@@ -7,9 +7,6 @@ from enum import EnumMeta
 
 
 class Api:
-    def ping(self) -> str:
-        return "pong"
-
     def open_file_dialog(self) -> Sequence[str] | None:
         file_types = (
             "Media Files (*.mp4;*.mpeg;*.mpg;*.avi;*.mkv;*.mp3;*.aac)",
@@ -21,11 +18,26 @@ class Api:
         )
         return result
 
+    def open_folder_dialog(self) -> str | None:
+        """開啟資料夾選擇對話框"""
+        result = webview.windows[0].create_file_dialog(webview.FOLDER_DIALOG)
+        if result and len(result) > 0:
+            return result[0]
+        return None
+
+    def get_default_downloads_path(self) -> str:
+        """獲取系統預設 Downloads 資料夾路徑"""
+        from pathlib import Path
+
+        # Windows 系統的 Downloads 路徑
+        downloads_path = Path.home() / "Downloads"
+        return str(downloads_path)
+
     def logger_info(self, message) -> None:
         logger.info(message)
 
-    def logger.warn(self, message) -> None:
-        logger.warn(message)
+    def logger_warn(self, message) -> None:
+        logger.warning(message)
 
     def logger_error(self, message) -> None:
         logger.error(message)

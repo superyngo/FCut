@@ -7,6 +7,8 @@ export interface MockPyWebviewApi {
   logger_error(message: string): void;
   logger_warn(message: string): void;
   logger_info(message: string): void;
+  open_folder_dialog(): Promise<string | null>;
+  get_default_downloads_path(): Promise<string>;
 }
 
 class MockPyWebviewApiImpl implements MockPyWebviewApi {
@@ -44,9 +46,22 @@ class MockPyWebviewApiImpl implements MockPyWebviewApi {
   logger_warn(message: string): void {
     console.warn(`[MOCK WARNING] ${message}`);
   }
-
   logger_info(message: string): void {
     console.info(`[MOCK INFO] ${message}`);
+  }
+
+  async open_folder_dialog(): Promise<string | null> {
+    // 模擬資料夾選擇對話框
+    const mockPath = "C:\\Users\\user\\Downloads";
+    console.log(`[MOCK] 模擬選擇資料夾: ${mockPath}`);
+    return mockPath;
+  }
+
+  async get_default_downloads_path(): Promise<string> {
+    // 模擬獲取預設 Downloads 路徑
+    const defaultPath = "C:\\Users\\user\\Downloads";
+    console.log(`[MOCK] 模擬預設 Downloads 路徑: ${defaultPath}`);
+    return defaultPath;
   }
 }
 

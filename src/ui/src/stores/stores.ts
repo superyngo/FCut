@@ -46,7 +46,18 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
   const messageQueue = ref<string[]>([]);
   const locale = ref("zh-TW");
   const theme = ref("dark");
+  const outputPath = ref("");
   const { locale: i18nLocale, t } = useI18n();
+
+  // 支援的語言列表
+  const supportedLocales = ["zh-TW", "zh-CN", "en"];
+
+  // 語言顯示名稱（從語言檔中獲取）
+  const localeDisplayNames = computed(() => ({
+    "zh-TW": t("settings.language_zh_tw") || "繁體中文",
+    "zh-CN": t("settings.language_zh_cn") || "简体中文",
+    en: t("settings.language_en") || "English",
+  }));
 
   // Actions
   async function init() {
@@ -55,8 +66,15 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
       // 從 cookies 還原設定
       const savedLocale = getCookie("locale");
       const savedTheme = getCookie("theme");
+      const savedOutputPath = getCookie("outputPath");
       if (savedLocale) setLocale(savedLocale);
       if (savedTheme) setTheme(savedTheme);
+      if (savedOutputPath) {
+        outputPath.value = savedOutputPath;
+      } else {
+        // 設置預設輸出路徑為系統 Downloads 資料夾
+        await initDefaultOutputPath();
+      }
 
       const isReady = await waitForPyWebviewApi();
       if (!isReady) {
@@ -75,19 +93,60 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
   }
   function setLocale(newLocale: string) {
     // 確保語言在支援的列表中
-    const supportedLocales = ["zh-TW", "zh-CN", "en"];
     if (!supportedLocales.includes(newLocale)) {
-      logger.warn(`Unsupported locale '${newLocale}', falling back to 'zhTW'`);
+      logger.warn(`Unsupported locale '${newLocale}', falling back to 'zh-TW'`);
       newLocale = "zh-TW";
     }
 
     locale.value = newLocale;
     setCookie("locale", newLocale);
     i18nLocale.value = newLocale;
+
+    // 添加語言變更的本地化訊息
+    const localeName =
+      localeDisplayNames.value[
+        newLocale as keyof typeof localeDisplayNames.value
+      ];
+    addMessage(t("settings.languageChanged", { locale: localeName }));
   }
   function setTheme(newTheme: string) {
     theme.value = newTheme;
     setCookie("theme", newTheme);
+  }
+
+  // 初始化預設輸出路徑
+  async function initDefaultOutputPath() {
+    try {
+      const defaultPath =
+        await window.pywebview?.api?.get_default_downloads_path?.();
+      if (defaultPath) {
+        outputPath.value = defaultPath;
+        setCookie("outputPath", defaultPath);
+      }
+    } catch (err) {
+      console.error("Failed to get default downloads path:", err);
+    }
+  }
+
+  // 設置輸出路徑
+  function setOutputPath(newPath: string) {
+    outputPath.value = newPath;
+    setCookie("outputPath", newPath);
+    addMessage(t("settings.outputPathChanged", { path: newPath }));
+  }
+
+  // 選擇輸出資料夾
+  async function selectOutputFolder() {
+    try {
+      const selectedPath = await window.pywebview?.api?.open_folder_dialog?.();
+      if (selectedPath) {
+        setOutputPath(selectedPath);
+        return selectedPath;
+      }
+    } catch (err) {
+      console.error("Failed to open folder dialog:", err);
+    }
+    return null;
   }
 
   // 添加訊息到佇列
@@ -100,8 +159,7 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
     if (messageQueue.value.length > 0) {
       messageQueue.value.shift();
     }
-  }
-  // 返回所有需要暴露的狀態和方法
+  } // 返回所有需要暴露的狀態和方法
   return {
     storeId,
     error,
@@ -110,12 +168,18 @@ export const useAppState = defineStore(crypto.randomUUID(), () => {
     messageQueue,
     locale,
     theme,
+    outputPath,
+    supportedLocales,
+    localeDisplayNames,
     t, // 導出翻譯函數
     init,
     addMessage,
     removeFirstMessage,
     setLocale,
     setTheme,
+    initDefaultOutputPath,
+    setOutputPath,
+    selectOutputFolder,
   };
 });
 

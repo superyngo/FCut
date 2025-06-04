@@ -271,6 +271,8 @@ defineExpose({
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    /* 讓每個 form-group 均分空間 */
 }
 
 .form-group label {
@@ -284,7 +286,8 @@ defineExpose({
     border: 1px solid var(--app-border-color);
     border-radius: 4px;
     font-family: monospace;
-    width: 80px;
+    width: 100%;
+    /* 改為 100% 以填滿父容器 */
     background-color: var(--app-input-background-color);
     color: var(--app-text-color);
 }
@@ -346,5 +349,7 @@ defineExpose({
 
 .cut-cell-inputs .form-group {
     min-width: 90px;
+    /* 保持最小寬度確保可讀性 */
+    /* 移除這行會讓上面的 flex: 1 生效 */
 }
 </style>

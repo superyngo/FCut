@@ -207,8 +207,8 @@ export class logger {
       `%c[WANING] ${new Date().toISOString()}: ${message}`,
       this.COLORS.WANING
     );
-    if (pywebview?.api?.logger.warn) {
-      pywebview.api.logger.warn(message);
+    if (pywebview?.api?.logger_warn) {
+      pywebview.api.logger_warn(message);
     }
   }
 

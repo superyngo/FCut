@@ -88,7 +88,7 @@ console.log("Jumpcut.info exists:", !!zhTW.actionSettings?.Jumpcut?.info); // �
 {
   "actionSettings": {
     "Jumpcut": {
-      "info": "交替加速與正常片段，適合快速瀏覽長影片。"
+      "info": "交替加速剪輯AB片段，適合跳轉長影片，或是製作縮時效果。"
     }
   }
 }

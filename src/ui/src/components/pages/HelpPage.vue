@@ -16,7 +16,7 @@
 <style scoped>
 .page-container {
     padding: 20px;
-    color: #333;
+    color: var(--app-text-color);
     height: 100%;
     overflow-y: auto;
 }
@@ -25,7 +25,7 @@ h1 {
     margin-top: 0;
     margin-bottom: 20px;
     /* Adjusted margin-bottom */
-    color: #111;
+    color: var(--app-text-color);
     border-bottom: none;
     padding-bottom: 0;
     font-size: 24px;
@@ -33,14 +33,16 @@ h1 {
 
 p {
     line-height: 1.6;
-    color: #444;
+    color: var(--app-text-color);
+    opacity: 0.8;
     margin-bottom: 15px;
 }
 
 ul {
     list-style-type: disc;
     padding-left: 20px;
-    color: #444;
+    color: var(--app-text-color);
+    opacity: 0.8;
 }
 
 li {
@@ -49,6 +51,7 @@ li {
 }
 
 strong {
-    color: #222;
+    color: var(--app-text-color);
+    font-weight: 600;
 }
 </style>

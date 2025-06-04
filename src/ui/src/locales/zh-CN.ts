@@ -7,6 +7,17 @@ export default {
     theme_light: "亮色",
     autosave: "自动保存：",
     language: "语言：",
+    // 添加语言显示名称
+    language_zh_tw: "繁體中文",
+    language_zh_cn: "简体中文",
+    language_en: "English",
+    // 添加语言变更消息
+    languageChanged: "语言已更改为 {locale}",
+    // 输出路径设置
+    outputPath: "输出路径：",
+    outputPathPlaceholder: "选择文件输出位置",
+    selectFolder: "选择文件夹",
+    outputPathChanged: "输出路径已更改为 {path}",
   },
   about: {
     title: "关于 FCut",
@@ -23,7 +34,8 @@ export default {
     import_title: "如何导入视频？",
     import_desc: "点击主界面上的“新增”按钮，然后选择您的视频文件。",
     cut_title: "如何剪辑视频？",
-    cut_desc: "在时间轴上选择您想剪辑的片段，并使用剪辑工具。",
+    cut_desc:
+      "选择要对视频作的剪辑操作，然后设定相关参数，最后在导航栏按下「全部处理」进行转档。",
     problem_title: "遇到问题怎么办？",
     problem_desc: "请检查我们的线上 FAQ 或联系支持团队。",
   },
@@ -143,7 +155,7 @@ export default {
         gaming: "游戏、演示操作",
         sports: "体感游戏、运动",
       },
-      advancedOptions: "进阶选项",
+      settingDesc: "设置说明",
     },
     Speedup: {
       title: "倍速播放",
@@ -327,11 +339,11 @@ export default {
   CUT_SILENCE: "移除静音",
   CUT_MOTIONLESS: "移除静止画面",
   COMPRESS_VIDEO: "压缩视频",
-  CONVERT_TO_AUDIO: "转换音频",
+  CONVERT_TO_AUDIO: "转换成mp3",
 
   taskSettingsForm: {
     title: '设置 "{videoName}" 的转档参数',
-    renderMethodLabel: "渲染方式",
+    renderMethodLabel: "剪輯方式",
     selectPlaceholder: "选择处理模式",
     saveButton: "保存",
     cancelButton: "取消",

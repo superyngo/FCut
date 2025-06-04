@@ -70,8 +70,10 @@
                     <small>只保留音軌，減少檔案大小</small>
                 </div>
             </div>
-        </div> --> <!-- 動態估算 -->
-        <div class="conversion-estimate">
+        </div> -->
+
+        <!-- 動態估算 -->
+        <!-- <div class="conversion-estimate">
             <h4>{{ $t('actionSettings.ConvertToAudio.conversionEstimate') }}</h4>
             <div class="estimate-grid">
                 <div class="estimate-item">
@@ -98,7 +100,9 @@
                     </div>
                 </div>
             </div>
-        </div> <!-- 靜態說明 -->
+        </div>  -->
+
+        <!-- 靜態說明 -->
         <div class="info-section">
             <h4>{{ $t('actionSettings.ConvertToAudio.estimateLabels.quality') }}</h4>
             <div class="info-grid">

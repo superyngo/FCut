@@ -469,7 +469,7 @@ onUnmounted(() => {
 
 .custom-select-wrapper {
   position: relative;
-  width: 130px;
+  width: 160px;
   /* 調整下拉選單寬度 */
   min-width: 110px;
   flex-shrink: 1;
@@ -488,6 +488,8 @@ onUnmounted(() => {
   appearance: none;
   cursor: pointer;
   transition: border-color 0.2s;
+  text-align: center;
+  /* 添加文字置中對齊 */
 }
 
 .render-select:hover {

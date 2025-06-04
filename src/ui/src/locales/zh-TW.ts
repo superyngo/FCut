@@ -7,6 +7,17 @@ export default {
     theme_light: "亮色",
     autosave: "自動儲存：",
     language: "語言：",
+    // 添加語言顯示名稱
+    language_zh_tw: "繁體中文",
+    language_zh_cn: "简体中文",
+    language_en: "English",
+    // 添加語言變更訊息
+    languageChanged: "語言已變更為 {locale}",
+    // 輸出路徑設定
+    outputPath: "輸出路徑：",
+    outputPathPlaceholder: "選擇檔案輸出位置",
+    selectFolder: "選擇資料夾",
+    outputPathChanged: "輸出路徑已變更為 {path}",
   },
   about: {
     title: "關於 FCut",
@@ -23,7 +34,8 @@ export default {
     import_title: "如何匯入影片？",
     import_desc: "點擊主介面上的「新增」按鈕，然後選擇您的影片檔案。",
     cut_title: "如何剪輯影片？",
-    cut_desc: "在時間軸上選取您想剪輯的片段，並使用剪輯工具。",
+    cut_desc:
+      "選擇要對影片作的剪輯操作，然後設定相關參數，最後在導航列按下「全部處理」進行轉檔。",
     problem_title: "遇到問題怎麼辦？",
     problem_desc: "請檢查我們的線上 FAQ 或聯絡支援團隊。",
   },
@@ -65,7 +77,7 @@ export default {
   taskList: {
     selectTask: "選取任務",
     previewAlt: "預覽",
-    selectRenderMethod: "選擇處理模式",
+    selectRenderMethod: "選擇剪輯方式",
     moreSettings: "更多設定",
     settings: "設定",
     emptyHint: '請點擊"新增"按鈕添加影片',
@@ -143,7 +155,7 @@ export default {
         gaming: "遊戲、演示操作",
         sports: "體感遊戲、運動",
       },
-      advancedOptions: "進階選項",
+      settingDesc: "設定說明",
     },
     Speedup: {
       title: "倍速播放",
@@ -172,7 +184,7 @@ export default {
         aggressive: "激進模式",
         lecture: "講座模式",
       },
-      info: "交替加速與正常片段，適合快速瀏覽長影片。",
+      info: "交替加速剪輯AB片段，適合跳轉長影片，或是製作縮時效果。",
       error: {
         durationZero: "A段和B段持續時間不能同時為0，至少有一個須大於0",
         durationNegative: "持續時間不能為負數",
@@ -364,12 +376,12 @@ export default {
   CUT_SILENCE: "移除靜音",
   CUT_MOTIONLESS: "移除靜止畫面",
   COMPRESS_VIDEO: "壓縮影片",
-  CONVERT_TO_AUDIO: "轉換音訊",
+  CONVERT_TO_AUDIO: "轉換成mp3",
 
   taskSettingsForm: {
     title: '設定 "{videoName}" 的轉檔參數',
-    renderMethodLabel: "渲染方式",
-    selectPlaceholder: "選擇處理模式",
+    renderMethodLabel: "剪輯方式",
+    selectPlaceholder: "選擇剪輯方式",
     saveButton: "儲存",
     cancelButton: "取消",
     validationError: {

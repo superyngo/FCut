@@ -114,6 +114,8 @@ body {
 /* 統一按鈕樣式 */
 button {
   font-family: inherit;
+  user-select: none;
+  /* 按鈕不允許選取文字 */
 }
 
 /* 動態滾動條樣式 */
@@ -137,8 +139,24 @@ button {
   background: var(--scrollbar-thumb-hover-color);
 }
 
-/* 全域主題過渡效果 */
+/* 全域主題過渡效果和文字選取設定 */
 * {
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  user-select: text;
+  /* 預設允許文字選取 */
+}
+
+/* 特定元素不允許選取文字 */
+button,
+.button,
+[role="button"] {
+  user-select: none;
+}
+
+/* 確保輸入框和文字區域可以選取 */
+input,
+textarea,
+select {
+  user-select: text;
 }
 </style>

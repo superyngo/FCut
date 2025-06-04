@@ -7,6 +7,17 @@ export default {
     theme_light: "Light",
     autosave: "Auto Save:",
     language: "Language:",
+    // 添加語言顯示名稱
+    language_zh_tw: "繁體中文",
+    language_zh_cn: "简体中文",
+    language_en: "English",
+    // 添加語言變更訊息
+    languageChanged: "Language changed to {locale}",
+    // Output path settings
+    outputPath: "Output Path:",
+    outputPathPlaceholder: "Select output location",
+    selectFolder: "Select Folder",
+    outputPathChanged: "Output path changed to {path}",
   },
   about: {
     title: "About FCut",
@@ -23,7 +34,7 @@ export default {
       "Welcome to the FCut Help Center. Here is some information to help you get started:",
     import_title: "How to import videos?",
     import_desc:
-      "Click the 'Add' button on the main interface, then select your video file.",
+      "Select the editing operation to perform on the video, then configure the relevant parameters, and finally click 'Process All' in the navigation bar to start rendering.",
     cut_title: "How to cut videos?",
     cut_desc:
       "Select the segment you want to cut on the timeline and use the cut tool.",
@@ -151,7 +162,7 @@ export default {
         gaming: "Gaming, Demonstrations",
         sports: "Motion Games, Sports",
       },
-      advancedOptions: "Advanced Options",
+      settingDesc: "Setting Description",
     },
     Speedup: {
       title: "Speed Up",
@@ -180,7 +191,7 @@ export default {
         aggressive: "Aggressive Mode",
         lecture: "Lecture Mode",
       },
-      info: "Alternate speedup and normal segments, suitable for fast browsing long videos.",
+      info: "Alternately accelerate A and B segments, ideal for skipping long videos or creating time-lapse effects.",
       error: {
         durationZero:
           "A and B duration cannot both be 0, at least one must be greater than 0",
@@ -334,7 +345,7 @@ export default {
   CUT_SILENCE: "Remove Silence",
   CUT_MOTIONLESS: "Remove Motionless",
   COMPRESS_VIDEO: "Compress Video",
-  CONVERT_TO_AUDIO: "Convert to Audio",
+  CONVERT_TO_AUDIO: "Convert to mp3",
 
   taskSettingsForm: {
     title: 'Settings for "{videoName}" Conversion Parameters',

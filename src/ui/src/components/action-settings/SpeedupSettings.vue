@@ -9,13 +9,15 @@
             </div>
             <!-- 2. 動態說明 -->
             <div class="quality-description">{{ getSpeedDescription() }}</div>
-        </div> <!-- 3. 動態估算 -->
-        <div class="info-section">
+        </div>
+
+        <!-- 3. 動態估算 -->
+        <!-- <div class="info-section">
             <div class="info-item">
                 <i class="fas fa-clock"></i>
                 <span>{{ $t('actionSettings.Speedup.estimated', { percent: estimatedReduction }) }}</span>
             </div>
-        </div>
+        </div> -->
 
         <!-- 4. 預設按鈕
         <div class="speed-presets">

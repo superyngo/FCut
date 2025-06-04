@@ -48,7 +48,7 @@
             </div>
         </div> --> <!-- 靜態說明 -->
         <div class="info-section">
-            <h4>{{ $t('actionSettings.CutMotionless.advancedOptions') }}</h4>
+            <h4>{{ $t('actionSettings.CutMotionless.settingDesc') }}</h4>
             <div class="info-content">
                 <p>{{ $t('actionSettings.CutMotionless.info') }}</p>
                 <ul>

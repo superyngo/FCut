@@ -15,8 +15,10 @@
             <div class="quality-description">
                 {{ getQualityDescription() }}
             </div>
-        </div> <!-- 動態估算 -->
-        <div class="compression-estimate">
+        </div>
+
+        <!-- 動態估算 -->
+        <!-- <div class="compression-estimate">
             <h4>{{ $t('actionSettings.CompressVideo.compressionEstimate') }}</h4>
             <div class="estimate-grid">
                 <div class="estimate-item">
@@ -41,8 +43,10 @@
                     </div>
                 </div>
             </div>
-        </div> <!-- 預設按鈕 -->
-        <div class="presets">
+        </div> -->
+
+        <!-- 預設按鈕 -->
+        <!-- <div class="presets">
             <h4>{{ $t('actionSettings.CompressVideo.usagePresets') }}</h4>
             <div class="preset-buttons">
                 <button v-for="preset in qualityPresets" :key="preset.name" @click="applyPreset(preset)"
@@ -55,7 +59,9 @@
                     <div class="preset-size">{{ $t(preset.sizeInfo) }}</div>
                 </button>
             </div>
-        </div> <!-- 靜態說明 -->
+        </div>  -->
+
+        <!-- 靜態說明 -->
         <div class="info-section">
             <h4>{{ $t('actionSettings.CompressVideo.crfExplanation') }}</h4>
             <div class="info-grid">
