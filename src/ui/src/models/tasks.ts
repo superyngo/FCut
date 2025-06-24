@@ -16,6 +16,7 @@ export enum TASK_STATUS {
   Queued,
   Rendering,
   Done,
+  Error,
 }
 
 export class Task extends BaseClass {

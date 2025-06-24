@@ -72,9 +72,9 @@ const addTask = async () => {
 const deleteTask = () => {
   const selectedTasks = [...taskStore.selectedTasks];
   for (const task of selectedTasks) {
-    if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
-      return;
-    }
+    // if ([TASK_STATUS.Queued, TASK_STATUS.Rendering].includes(task.status)) {
+    //   return;
+    // }
     logger.debug(`Deleting task: ${task.id}`);
     taskStore.removeTask(task);
   }
@@ -99,10 +99,15 @@ const startRender = async () => {
 
   const queuedTasks = [...taskStore.queuedTasks];
   for (const task of queuedTasks) {
-    logger.debug(`Rendering task: ${task.id}`);
+    logger.debug(`Rendering task: ${task.id} with method ${task.renderMethod}`);
+    logger.debug(`${task.renderMethod} Parameters: ${JSON.stringify(task.settings[task.renderMethod])}`);
     task.status = TASK_STATUS.Rendering;
-    // Add a delay to simulate the rendering process
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    let callRender = await pywebview.api.render_entry(task.id, task.renderMethod, task.settings[task.renderMethod]);
+    if (callRender === false) {
+      logger.error(`Failed to render task: ${task.id}`);
+      task.status = TASK_STATUS.Error;
+      continue;
+    }
     task.status = TASK_STATUS.Done;
   }
 };

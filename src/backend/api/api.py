@@ -53,5 +53,10 @@ class Api:
                 constants, lambda o: isinstance(o, EnumMeta)
             )
         }
-
         return all_enum_dicts
+
+    def render_entry(self, id, method, parameters) -> bool:
+        logger.debug(
+            f"render_entry called with id: {id}, method: {method}, parameters: {parameters}"
+        )
+        return True
